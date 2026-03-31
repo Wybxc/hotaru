@@ -107,3 +107,22 @@ theorem typeof_welltyped : ∀ (t : Term) (T : HOLType), typeof t = some T → H
           simp [typeof] at h
       | abs _ _ =>
           simp [typeof] at h
+
+def IsAlphaVars (bv : List (Term × Term)) (v1 v2 : Term) : Prop :=
+  match bv with
+  | [] => v1 = v2
+  | (b1, b2) :: bvs =>
+      (v1 = b1 ∧ v2 = b2) ∨ (v1 ≠ b1 ∧ v2 ≠ b2 ∧ IsAlphaVars bvs v1 v2)
+
+inductive IsAlphaTerms : List (Term × Term) -> Term -> Term -> Prop
+| var : ∀ (bv : List (Term × Term)) (x1 x2 : String) (T1 T2 : HOLType),
+          IsAlphaVars bv (.var x1 T1) (.var x2 T2) → IsAlphaTerms bv (.var x1 T1) (.var x2 T2)
+| const : ∀ (bv : List (Term × Term)) (c1 c2 : String) (T1 T2 : HOLType),
+          IsAlphaVars bv (.const c1 T1) (.const c2 T2) → IsAlphaTerms bv (.const c1 T1) (.const c2 T2)
+| app : ∀ (bv : List (Term × Term)) (s1 s2 t1 t2 : Term),
+          IsAlphaTerms bv s1 s2 → IsAlphaTerms bv t1 t2 → IsAlphaTerms bv (.app s1 t1) (.app s2 t2)
+| abs : ∀ (bv : List (Term × Term)) (n1 n2 : Term) (t1 t2 : Term),
+          IsAlphaTerms ((n1, n2) :: bv) t1 t2 → IsAlphaTerms bv (.abs n1 t1) (.abs n2 t2)
+
+def IsAlpha (t1 t2 : Term) : Prop := IsAlphaTerms [] t1 t2
+
