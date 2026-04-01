@@ -72,8 +72,8 @@ theorem typeof_welltyped : ∀ (t : Term) (T : HOLType), typeof t = some T → H
           -- apply HasType.app: need HasType s (.fun dT rT) and HasType t dT
           apply HasType.app
           · -- show HasType s (.fun dT rT)
-            have : typeof s = some (.app "fun" (.cons dT (.cons rT .nil))) := heq_s
-            exact ih_s (.app "fun" (.cons dT (.cons rT .nil))) this
+            have : typeof s = some (.fun dT rT) := heq_s
+            exact ih_s (.fun dT rT) this
           · -- show HasType t dT
             have : typeof t = some dT := by
               rw [eq_dt]; exact heq_t
@@ -125,4 +125,3 @@ inductive IsAlphaTerms : List (Term × Term) -> Term -> Term -> Prop
           IsAlphaTerms ((n1, n2) :: bv) t1 t2 → IsAlphaTerms bv (.abs n1 t1) (.abs n2 t2)
 
 def IsAlpha (t1 t2 : Term) : Prop := IsAlphaTerms [] t1 t2
-
