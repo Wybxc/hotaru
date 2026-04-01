@@ -1,1 +1,2 @@
-import HotaruKernel.Basic
+import HotaruKernel.Type
+import HotaruKernel.Term

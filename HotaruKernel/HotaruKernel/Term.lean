@@ -1,4 +1,5 @@
 import HotaruKernel.Type
+import Aesop
 
 /-- HOL terms. -/
 inductive Term
@@ -42,11 +43,7 @@ def typeof (t : Term) : Option HOLType :=
 theorem welltyped_typeof : ∀ (t : Term) (T : HOLType), HasType t T → typeof t = some T
     := by
   intros t T ht
-  induction ht with simp [typeof]
-  | app s t dT rT ht_s ht_t ih_s ih_t =>
-      simp [ih_s, ih_t, HOLType.fun]
-  | abs n dT rT t ht_t ih_t =>
-      simp [ih_t]
+  induction ht with simp [typeof] <;> aesop
 
 theorem typeof_welltyped : ∀ (t : Term) (T : HOLType), typeof t = some T → HasType t T
     := by
@@ -63,7 +60,7 @@ theorem typeof_welltyped : ∀ (t : Term) (T : HOLType), typeof t = some T → H
         apply HasType.app
         · exact ih_s (.fun dT rT) heq_s
         · have : typeof t = some dT := by
-            rw [heq_t]; simp; symm; trivial
+            rw [heq_t]; aesop
           exact ih_t dT this
       · simp at h
   | abs n t ih_n ih_t =>
@@ -72,8 +69,7 @@ theorem typeof_welltyped : ∀ (t : Term) (T : HOLType), typeof t = some T → H
           split at h <;> simp at h
           subst h
           apply HasType.abs
-          apply ih_t
-          trivial
+          aesop
 
 /-- Theorem: `HasType t T` if and only if `typeof t = some T`. -/
 theorem welltyped_typeof_iff : ∀ (t : Term) (T : HOLType), HasType t T ↔ typeof t = some T
@@ -109,6 +105,7 @@ def IsTrivialRenaming (bv : List (Term × Term)) : Prop :=
   | [] => true
   | (b1, b2) :: bvs => b1 = b2 ∧ IsTrivialRenaming bvs
 
+@[aesop safe]
 theorem IsAlphaVars_refl : ∀ (bv : List (Term × Term)) (v : Term), IsTrivialRenaming bv → IsAlphaVars bv v v
     := by
   intros bv v h
@@ -117,35 +114,22 @@ theorem IsAlphaVars_refl : ∀ (bv : List (Term × Term)) (v : Term), IsTrivialR
   | cons bv bvs ih =>
       rcases bv with ⟨b1, b2⟩
       simp [IsTrivialRenaming] at h
-      rcases h with ⟨hb, htail⟩
-      by_cases hv : v = b1
-      · left
-        exact ⟨hv, by simpa [hb] using hv⟩
-      · right
-        refine ⟨hv, ?_, ih htail⟩
-        intro hv2
-        apply hv
-        simpa [hb] using hv2
+      by_cases hv : v = b1 <;> aesop
 
+@[aesop safe]
 theorem IsAlphaTerms_refl : ∀ (bv : List (Term × Term)) (t : Term), IsTrivialRenaming bv → IsAlphaTerms bv t t
     := by
   intro bv t
-  induction t generalizing bv with
+  induction t generalizing bv with intro h
   | var x T =>
-      intro h
       apply IsAlphaTerms.var
       exact IsAlphaVars_refl bv (.var x T) h
   | const c T =>
-      intro h
       apply IsAlphaTerms.const
       exact IsAlphaVars_refl bv (.const c T) h
   | app s t ih_s ih_t =>
-      intro h
-      apply IsAlphaTerms.app
-      · exact ih_s bv h
-      · exact ih_t bv h
+      apply IsAlphaTerms.app <;> aesop
   | abs n t ih_n ih_t =>
-      intro h
       apply IsAlphaTerms.abs
       have h' : IsTrivialRenaming ((n, n) :: bv) := by
         simp [IsTrivialRenaming, h]
@@ -155,35 +139,29 @@ def swap_renaming : List (Term × Term) -> List (Term × Term)
 | [] => []
 | (a, b) :: bvs => (b, a) :: swap_renaming bvs
 
+@[aesop safe]
 theorem IsAlphaVars_symm :
   ∀ (bv : List (Term × Term)) (v1 v2 : Term),
     IsAlphaVars bv v1 v2 → IsAlphaVars (swap_renaming bv) v2 v1 := by
   intro bv v1 v2 h
   induction bv generalizing v1 v2 with
   | nil =>
-    simpa [IsAlphaVars, swap_renaming] using h.symm
+      simpa [IsAlphaVars, swap_renaming] using h.symm
   | cons b bvs ih =>
-    rcases b with ⟨b1, b2⟩
-    simp [IsAlphaVars, swap_renaming] at h ⊢
-    rcases h with h | h
-    · left
-      apply And.symm
-      trivial
-    · exact Or.inr ⟨h.2.1, h.1, ih _ _ h.2.2⟩
+      simp [IsAlphaVars, swap_renaming] at h ⊢
+      aesop
 
+@[aesop safe]
 theorem IsAlphaTerms_symm :
   ∀ (bv : List (Term × Term)) (t1 t2 : Term),
     IsAlphaTerms bv t1 t2 → IsAlphaTerms (swap_renaming bv) t2 t1 := by
   intro bv t1 t2 h
   induction h with
-  | var bv x1 x2 T1 T2 hv =>
-    exact IsAlphaTerms.var _ _ _ _ _ (IsAlphaVars_symm bv _ _ hv)
-  | const bv c1 c2 T1 T2 hv =>
-    exact IsAlphaTerms.const _ _ _ _ _ (IsAlphaVars_symm bv _ _ hv)
-  | app bv s1 s2 t1 t2 hs ht ihs iht =>
-    exact IsAlphaTerms.app _ _ _ _ _ ihs iht
+  | var bv x1 x2 T1 T2 hv => apply IsAlphaTerms.var; aesop
+  | const bv c1 c2 T1 T2 hv => apply IsAlphaTerms.const; aesop
+  | app bv s1 s2 t1 t2 hs ht ihs iht => apply IsAlphaTerms.app <;> aesop
   | abs bv n1 n2 t1 t2 hbody ih =>
-    simpa [swap_renaming] using (IsAlphaTerms.abs (swap_renaming bv) n2 n1 t2 t1 ih)
+      simpa [swap_renaming] using (IsAlphaTerms.abs (swap_renaming bv) n2 n1 t2 t1 ih)
 
 inductive RenamingChain :
   List (Term × Term) -> List (Term × Term) -> List (Term × Term) -> Prop
@@ -194,6 +172,7 @@ inductive RenamingChain :
     RenamingChain bv12 bv23 bv13 ->
     RenamingChain ((n1, n2) :: bv12) ((n2, n3) :: bv23) ((n1, n3) :: bv13)
 
+@[aesop unsafe]
 theorem IsAlphaVars_trans :
   ∀ (bv12 bv23 bv13 : List (Term × Term)) (v1 v2 v3 : Term),
     RenamingChain bv12 bv23 bv13 ->
@@ -202,20 +181,12 @@ theorem IsAlphaVars_trans :
     IsAlphaVars bv13 v1 v3 := by
   intro bv12 bv23 bv13 v1 v2 v3 hchain h12 h23
   induction hchain generalizing v1 v2 v3 with
-  | nil =>
-    simpa [IsAlphaVars] using Eq.trans h12 h23
+  | nil => simpa [IsAlphaVars] using Eq.trans h12 h23
   | cons n1 n2 n3 bv12 bv23 bv13 hchain ih =>
-    simp [IsAlphaVars] at h12 h23 ⊢
-    rcases h12 with h12 | h12
-    · rcases h23 with h23 | h23
-      · exact Or.inl ⟨h12.1, h23.2⟩
-      · exfalso
-        exact h23.1 h12.2
-    · rcases h23 with h23 | h23
-      · exfalso
-        exact h12.2.1 h23.1
-      · exact Or.inr ⟨h12.1, h23.2.1, ih _ _ _ h12.2.2 h23.2.2⟩
+      simp [IsAlphaVars] at h12 h23 ⊢
+      aesop
 
+@[aesop safe]
 theorem IsAlphaTerms_trans :
   ∀ (bv12 bv23 bv13 : List (Term × Term)) (t1 t2 t3 : Term),
     RenamingChain bv12 bv23 bv13 ->
@@ -223,30 +194,22 @@ theorem IsAlphaTerms_trans :
     IsAlphaTerms bv23 t2 t3 ->
     IsAlphaTerms bv13 t1 t3 := by
   intro bv12 bv23 bv13 t1 t2 t3 hchain h12
-  induction h12 generalizing bv23 bv13 t3 with
+  induction h12 generalizing bv23 bv13 t3 with intro h23
   | var bv x1 x2 T1 T2 hv12 =>
-    intro h23
     cases h23 with
-    | var _ _ x3 _ T3 hv23 =>
-      exact IsAlphaTerms.var _ _ _ _ _ (IsAlphaVars_trans _ _ _ _ _ _ hchain hv12 hv23)
+    | var => apply IsAlphaTerms.var; aesop
   | const bv c1 c2 T1 T2 hv12 =>
-    intro h23
     cases h23 with
-    | const _ _ c3 _ T3 hv23 =>
-      exact IsAlphaTerms.const _ _ _ _ _ (IsAlphaVars_trans _ _ _ _ _ _ hchain hv12 hv23)
+    | const => apply IsAlphaTerms.const; aesop
   | app bv s1 s2 t1 t2 hs12 ht12 ihs iht =>
-    intro h23
     cases h23 with
-    | app _ _ s3 _ t3 hs23 ht23 =>
-      exact IsAlphaTerms.app _ _ _ _ _ (ihs _ _ _ hchain hs23) (iht _ _ _ hchain ht23)
+    | app => apply IsAlphaTerms.app <;> aesop
   | abs bv n1 n2 t1 t2 hbody12 ih =>
-    intro h23
     cases h23 with
-    | abs _ _ n3 _ t3 hbody23 =>
+    | abs =>
       apply IsAlphaTerms.abs
-      exact ih _ _ _
-        (RenamingChain.cons n1 n2 n3 bv bv23 bv13 hchain)
-        hbody23
+      apply ih <;> try aesop
+      apply RenamingChain.cons; simpa
 
 theorem IsAlpha.refl : ∀ (t : Term), IsAlpha t t
     := by
