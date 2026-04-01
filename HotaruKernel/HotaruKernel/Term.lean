@@ -393,7 +393,7 @@ def subst (i : List (Term × Term)) : Term → Option Term
     else
       some (.abs bvar t')
 
-theorem welltyped_subst_pre : ∀ (t : Term) (i : List (Term × Term)),
+theorem welltyped_subst : ∀ (t : Term) (i : List (Term × Term)),
     WellTyped t → ∃ t', subst i t = some t' := by
   intro t i hwt
   rcases hwt with ⟨T, ht⟩
@@ -436,25 +436,35 @@ theorem welltyped_subst_pre : ∀ (t : Term) (i : List (Term × Term)),
 def SubstOk (i : List (Term × Term)) : Prop :=
   ∀ v t, (v, t) ∈ i → ∃ x T, v = Term.var x T ∧ t.HasType T
 
-theorem welltyped_subst : ∀ (t : Term) (i : List (Term × Term)),
-    WellTyped t → SubstOk i → ∃ t', subst i t = some t' := by
-  intro t i hwt hOk
-  exact welltyped_subst_pre t i hwt
-
 theorem subst_alpha : ∀ (t1 t2 : Term) (i : List (Term × Term)),
     WellTyped t1 → WellTyped t2 → SubstOk i → AlphaEqv t1 t2 →
-    ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' := by
+    ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
   intro t1 t2 i hwt1 hwt2 hOk hAlpha
-  rcases welltyped_subst_pre t1 i hwt1 with ⟨t1', ht1'⟩
-  rcases welltyped_subst_pre t2 i hwt2 with ⟨t2', ht2'⟩
-  exact ⟨t1', t2', ht1', ht2'⟩
+  rcases welltyped_subst t1 i hwt1 with ⟨t1', ht1'⟩
+  rcases welltyped_subst t2 i hwt2 with ⟨t2', ht2'⟩
+  refine ⟨t1', t2', ht1', ht2', ?_⟩
+  unfold AlphaEqv at hAlpha ⊢
+  cases hAlpha with try aesop
+  | app bv s1 s2 t1 t2 hs ht =>
+      simp [subst] at ht1' ht2'
+      sorry
+  | abs bv n1 n2 t1 t2 hbody =>
+      sorry
 
 /-- Structural size for fuel-based recursion in instantiation. -/
-def termSize : Term → Nat
+def Term.size : Term → Nat
 | .var _ _ => 1
 | .const _ _ => 1
-| .app s t => 1 + termSize s + termSize t
-| .abs _ t => 1 + termSize t
+| .app s t => 1 + s.size + t.size
+| .abs _ t => 2 + t.size
+
+-- theorem subst_size : ∀ (t t': Term) (i : List (Term × Term)),
+--     (∀ s s', (s, s') ∈ i → ∃ x T, s' = Term.var x T) → subst i t = some t' → t'.size = t.size := by
+--   intro t t' i hOk hsubst
+--   induction t generalizing t' with
+--   | var x T =>
+--       simp [subst] at hsubst
+
 
 private def instantiateCoreFuel : Nat → List (Term × Term) → List (String × HOLType) →
     Term → Except Term Term
@@ -504,7 +514,7 @@ private def instantiateCoreFuel : Nat → List (Term × Term) → List (String �
     `env` tracks old/new binder correspondence to detect clashes. -/
 def instantiateCore (env : List (Term × Term)) (tyin : List (String × HOLType))
     (tm : Term) : Except Term Term :=
-  instantiateCoreFuel (2 * termSize tm + 1) env tyin tm
+  instantiateCoreFuel (2 * Term.size tm + 1) env tyin tm
 
 /-- Instantiates type variables in a term according to a substitution.
     Returns `none` only when a clash cannot be resolved. -/
@@ -512,3 +522,25 @@ def instantiate (tyin : List (String × HOLType)) (tm : Term) : Option Term :=
   match instantiateCore [] tyin tm with
   | .ok t => some t
   | .error _ => none
+
+theorem welltyped_instantiate_pre : ∀ (t : Term) (tyin : List (String × HOLType)),
+    WellTyped t → ∃ t', instantiate tyin t = some t'
+  := by
+  intro t tyin hwt
+  aesop
+
+theorem instantiate_preserves_alpha : ∀ (t1 t2 t1' t2' : Term) (tyin : List (String × HOLType)),
+    AlphaEqv t1 t2 → instantiate tyin t1 = some t1' → instantiate tyin t2 = some t2' → AlphaEqv t1' t2'
+  := by
+  intro t1 t2 t1' t2' tyin hAlpha h1 h2
+  aesop
+
+theorem instantiate_alpha : ∀ (t1 t2 : Term) (tyin : List (String × HOLType)),
+    WellTyped t1 → WellTyped t2 → AlphaEqv t1 t2 →
+    ∃ t1' t2', instantiate tyin t1 = some t1' ∧ instantiate tyin t2 = some t2' ∧ AlphaEqv t1' t2' := by
+  intro t1 t2 tyin hwt1 hwt2 hAlpha
+  rcases welltyped_instantiate_pre t1 tyin hwt1 with ⟨t1', ht1'⟩
+  rcases welltyped_instantiate_pre t2 tyin hwt2 with ⟨t2', ht2'⟩
+  have hAlpha' : AlphaEqv t1' t2' :=
+    instantiate_preserves_alpha t1 t2 t1' t2' tyin hAlpha ht1' ht2'
+  exact ⟨t1', t2', ht1', ht2', hAlpha'⟩
