@@ -250,8 +250,28 @@ def Term.IsFreeVarIn (var : Term) : Term -> Prop
 | .app s t => (var.IsFreeVarIn s) ∨ (var.IsFreeVarIn t)
 | .abs n t => (var ≠ n) ∧ (var.IsFreeVarIn t)
 
-instance {var t : Term} : Decidable (var.IsFreeVarIn t) := by
-  sorry
+def decIsFreeVarIn (var : Term) : (t : Term) → Decidable (var.IsFreeVarIn t)
+| .var x T => by
+  simpa [Term.IsFreeVarIn] using (by infer_instance)
+| .const x T => by
+  simpa [Term.IsFreeVarIn] using (by infer_instance)
+| .app s t =>
+  match decIsFreeVarIn var s, decIsFreeVarIn var t with
+  | .isTrue hs, _ => .isTrue (Or.inl hs)
+  | .isFalse hs, .isTrue ht => .isTrue (Or.inr ht)
+  | .isFalse hs, .isFalse ht =>
+    .isFalse (by
+      intro h
+      cases h with
+      | inl h1 => exact hs h1
+      | inr h2 => exact ht h2)
+| .abs n t =>
+  match (inferInstance : Decidable (var ≠ n)), decIsFreeVarIn var t with
+  | .isTrue hne, .isTrue ht => .isTrue ⟨hne, ht⟩
+  | .isFalse hne, _ => .isFalse (by intro h; exact hne h.1)
+  | .isTrue _, .isFalse ht => .isFalse (by intro h; exact ht h.2)
+
+instance {var t : Term} : Decidable (var.IsFreeVarIn t) := decIsFreeVarIn var t
 
 def Closed (t : Term) : Prop := ∀ x T, (Term.var x T).IsFreeVarIn t → False
 
