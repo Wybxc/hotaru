@@ -17,11 +17,11 @@ instance : Inhabited HOLTypeList where
 instance : Inhabited HOLType where
     default := .var "a"
 
-def HOLTypeList.toList : HOLTypeList -> List HOLType
+@[simp] def HOLTypeList.toList : HOLTypeList -> List HOLType
 | .nil => []
 | .cons h t => h :: toList t
 
-def HOLTypeList.fromList : List HOLType -> HOLTypeList
+@[simp] def HOLTypeList.fromList : List HOLType -> HOLTypeList
 | [] => .nil
 | h :: t => .cons h (fromList t)
 

@@ -42,79 +42,38 @@ def typeof (t : Term) : Option HOLType :=
 theorem welltyped_typeof : ∀ (t : Term) (T : HOLType), HasType t T → typeof t = some T
     := by
   intros t T ht
-  induction ht with
-  | var x T => simp [typeof]
-  | const c T => simp [typeof]
+  induction ht with simp [typeof]
   | app s t dT rT ht_s ht_t ih_s ih_t =>
-      simp [typeof]
-      rw [ih_s, ih_t]
-      simp [HOLType.fun, HOLTypeList.fromList]
+      simp [ih_s, ih_t, HOLType.fun]
   | abs n dT rT t ht_t ih_t =>
-      simp [typeof]
-      rw [ih_t]
+      simp [ih_t]
 
 theorem typeof_welltyped : ∀ (t : Term) (T : HOLType), typeof t = some T → HasType t T
     := by
   intros t T h
-  induction t generalizing T with
-  | var x T' =>
-      simp [typeof] at h
-      rw [h]
-      apply HasType.var
-  | const c T' =>
-      simp [typeof] at h
-      rw [h]
-      apply HasType.const
+  induction t generalizing T with try simp [typeof] at h; subst h
+  | var x T' => apply HasType.var
+  | const c T' => apply HasType.const
   | app s t ih_s ih_t =>
-      -- Key idea: unfold typeof and analyze the match
       unfold typeof at h
       split at h
-      · -- typeof s = some (.fun dT rT), typeof t = some tT
-        rename_i dT rT tT heq_s heq_t
-        split at h
-        · -- dT = tT, h : some rT = some T
-          rename_i eq_dt
-          simp at h
-          subst h
-          -- now we need to show HasType (s.app t) rT
-          -- apply HasType.app: need HasType s (.fun dT rT) and HasType t dT
-          apply HasType.app
-          · -- show HasType s (.fun dT rT)
-            have : typeof s = some (.fun dT rT) := heq_s
-            exact ih_s (.fun dT rT) this
-          · -- show HasType t dT
-            have : typeof t = some dT := by
-              rw [eq_dt]; exact heq_t
-            exact ih_t dT this
-        · -- contradiction: dT ≠ tT and h : none = some T
-          simp at h
-      · -- typeof s and typeof t don't match the pattern, h : none = some T
-        -- contradiction
-        simp at h
-  | abs n t =>
-      rename_i ih_n ih_t
-      -- Pattern match on n at the tactic level
-      cases n with
+      · rename_i dT rT tT heq_s heq_t
+        split at h <;> simp at h
+        subst h
+        apply HasType.app
+        · exact ih_s (.fun dT rT) heq_s
+        · have : typeof t = some dT := by
+            rw [heq_t]; simp; symm; trivial
+          exact ih_t dT this
+      · simp at h
+  | abs n t ih_n ih_t =>
+      cases n with simp [typeof] at h
       | var var_name dT =>
-          -- Now typeof (.abs (.var var_name dT) t) = match typeof t with ...
-          simp [typeof] at h
-          split at h
-          · -- typeof t = some rT and T = .fun dT rT
-            rename_i rT heq_t
-            simp at h
-            subst h
-            -- Show HasType (.abs (.var var_name dT) t) (.fun dT rT)
-            apply HasType.abs
-            exact ih_t rT heq_t
-          · -- none = some T, contradiction
-            simp at h
-      | const _ _ =>
-          -- typeof (.abs (.const _ _) t) = none (doesn't match the .var pattern)
-          simp [typeof] at h
-      | app _ _ =>
-          simp [typeof] at h
-      | abs _ _ =>
-          simp [typeof] at h
+          split at h <;> simp at h
+          subst h
+          apply HasType.abs
+          apply ih_t
+          trivial
 
 /-- Theorem: `HasType t T` if and only if `typeof t = some T`. -/
 theorem welltyped_typeof_iff : ∀ (t : Term) (T : HOLType), HasType t T ↔ typeof t = some T
@@ -207,7 +166,9 @@ theorem IsAlphaVars_symm :
     rcases b with ⟨b1, b2⟩
     simp [IsAlphaVars, swap_renaming] at h ⊢
     rcases h with h | h
-    · exact Or.inl ⟨h.2, h.1⟩
+    · left
+      apply And.symm
+      trivial
     · exact Or.inr ⟨h.2.1, h.1, ih _ _ h.2.2⟩
 
 theorem IsAlphaTerms_symm :
@@ -291,7 +252,7 @@ theorem IsAlpha.refl : ∀ (t : Term), IsAlpha t t
     := by
   intro t
   unfold IsAlpha
-  exact IsAlphaTerms_refl [] t (by simp [IsTrivialRenaming])
+  simpa using IsAlphaTerms_refl [] t (by simp [IsTrivialRenaming])
 
 theorem IsAlpha.symm : ∀ {t1 t2 : Term}, IsAlpha t1 t2 → IsAlpha t2 t1
     := by
