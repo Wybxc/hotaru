@@ -361,13 +361,33 @@ theorem VariantFresh : ∀ t x T, ¬(Term.var (generateVariant t x T) T).IsFreeV
   let best := chooseMinFreshSuffix t x T (t.maxVarNameLen + 1) (t.maxVarNameLen + 1) hbound
   simpa [variantFreshAt] using best.2
 
-
-
-/-- Reverse assoc lookup by second component (CakeML `REV_ASSOCD`). -/
-private def revAssocdBySnd (key : Term) (env : List (Term × Term)) (default : Term) : Term :=
-  match env with
-  | [] => default
-  | (x, y) :: rest => if y = key then x else revAssocdBySnd key rest default
+/-- Term variable substitution: applies a list of term substitutions to a term -/
+def varSubst (i : List (Term × Term)) : Term → Option Term
+| .var x ty => match i.find? (fun (y, _) => y = .var x ty) with
+    | some (_, t) => some t
+    | none => some (.var x ty)
+| .const c ty => some (.const c ty)
+| .app s t => do
+    let s' ← varSubst i s
+    let t' ← varSubst i t
+    some (.app s' t')
+| .abs bvar t => do
+    let i' := i.filter (fun (s, _) => s ≠ bvar)
+    let t' ← varSubst i' t
+    -- Check if any substitution introduces free variables that would be captured by bvar
+    if i'.any (fun (s, s') => bvar.IsFreeVarIn s' ∧ t.IsFreeVarIn s) then
+      -- Capture risk exists: generate a fresh variable
+      match bvar with
+      | .var x ty => do
+          let freshName := generateVariant t' x ty
+          let z := Term.var freshName ty
+          -- Add the new binding to prevent capture
+          let i'' := (z, bvar) :: i'
+          let t'' ← varSubst i'' t
+          some (.abs z t'')
+      | _ => none
+    else
+      some (.abs bvar t')
 
 /-- A local substitution helper used by `instantiateCoreFuel` for binder-renaming. -/
 private def renameSubst (i : List (Term × Term)) : Term → Option Term
@@ -408,10 +428,14 @@ private def instantiateCoreFuel : Nat → List (Term × Term) → List (String �
 | _ + 1, env, tyin, .var x ty =>
     let tm := Term.var x ty
     let tm' := Term.var x (typeSubst tyin ty)
-    if revAssocdBySnd tm' env tm = tm then
-      .ok tm'
-    else
-      .error tm'
+    -- Check if tm' (the new instantiated variable) would cause a clash
+    match env.find? (fun (old, _) => old = tm') with
+    | some (_, orig) =>
+        if orig = tm then
+          .ok tm'
+        else
+          .error tm'
+    | none => .ok tm'
 | _ + 1, _env, tyin, .const x ty =>
     .ok (.const x (typeSubst tyin ty))
 | fuel + 1, env, tyin, .app s t => do
@@ -423,7 +447,7 @@ private def instantiateCoreFuel : Nat → List (Term × Term) → List (String �
     | .var x ty =>
         let ty' := typeSubst tyin ty
         let v' := Term.var x ty'
-        let env' := (v, v') :: env
+        let env' := (v', v) :: env
         let tre : Except Term Term := instantiateCoreFuel fuel env' tyin t
         match tre with
         | .ok t' => .ok (Term.abs v' t')
@@ -437,7 +461,7 @@ private def instantiateCoreFuel : Nat → List (Term × Term) → List (String �
               match tSub? with
               | none => .error w
               | some tSub => do
-                  let env'' := (Term.var x' ty, Term.var x' ty') :: env
+                  let env'' := (Term.var x' ty', Term.var x' ty) :: env
                   let t'' ← instantiateCoreFuel fuel env'' tyin tSub
                   .ok (Term.abs (Term.var x' ty') t'')
     | _ => .error v
@@ -454,31 +478,3 @@ def instantiate (tyin : List (String × HOLType)) (tm : Term) : Option Term :=
   match instantiateCore [] tyin tm with
   | .ok t => some t
   | .error _ => none
-
-/-- Term variable substitution: applies a list of term substitutions to a term -/
-def varSubst (i : List (Term × Term)) : Term → Option Term
-| .var x ty => match i.find? (fun (y, _) => y = .var x ty) with
-    | some (_, t) => some t
-    | none => some (.var x ty)
-| .const c ty => some (.const c ty)
-| .app s t => do
-    let s' ← varSubst i s
-    let t' ← varSubst i t
-    some (.app s' t')
-| .abs bvar t => do
-    let i' := i.filter (fun (s, _) => s ≠ bvar)
-    let t' ← varSubst i' t
-    -- Check if any substitution introduces free variables that would be captured by bvar
-    if i'.any (fun (s, s') => bvar.IsFreeVarIn s' ∧ t.IsFreeVarIn s) then
-      -- Capture risk exists: generate a fresh variable
-      match bvar with
-      | .var x ty => do
-          let freshName := generateVariant t' x ty
-          let z := Term.var freshName ty
-          -- Add the new binding to prevent capture
-          let i'' := (z, bvar) :: i'
-          let t'' ← varSubst i'' t
-          some (.abs z t'')
-      | _ => none
-    else
-      some (.abs bvar t')
