@@ -121,11 +121,34 @@ theorem welltyped_typeof_iff : ∀ (t : Term) (T : HOLType), HasType t T ↔ typ
   · apply typeof_welltyped
 
 /-- Alpha-equivalence for variables under a list of renamings. -/
-def IsAlphaVars (bv : List (Term × Term)) (v1 v2 : Term) : Prop :=
+@[simp] def IsAlphaVars (bv : List (Term × Term)) (v1 v2 : Term) : Prop :=
   match bv with
   | [] => v1 = v2
   | (b1, b2) :: bvs =>
       (v1 = b1 ∧ v2 = b2) ∨ (v1 ≠ b1 ∧ v2 ≠ b2 ∧ IsAlphaVars bvs v1 v2)
+
+def IsTrivialRenaming (bv : List (Term × Term)) : Prop :=
+  match bv with
+  | [] => true
+  | (b1, b2) :: bvs => b1 = b2 ∧ IsTrivialRenaming bvs
+
+theorem IsAlphaVars.refl : ∀ (bv : List (Term × Term)) (v : Term), IsTrivialRenaming bv → IsAlphaVars bv v v
+    := by
+  intros bv v h
+  induction bv with
+  | nil => simp [IsAlphaVars]
+  | cons bv bvs ih =>
+      rcases bv with ⟨b1, b2⟩
+      simp [IsTrivialRenaming] at h
+      rcases h with ⟨hb, htail⟩
+      by_cases hv : v = b1
+      · left
+        exact ⟨hv, by simpa [hb] using hv⟩
+      · right
+        refine ⟨hv, ?_, ih htail⟩
+        intro hv2
+        apply hv
+        simpa [hb] using hv2
 
 /-- Alpha-equivalence for terms under a list of renamings. -/
 inductive IsAlphaTerms : List (Term × Term) -> Term -> Term -> Prop
@@ -138,5 +161,48 @@ inductive IsAlphaTerms : List (Term × Term) -> Term -> Term -> Prop
 | abs : ∀ (bv : List (Term × Term)) (n1 n2 : Term) (t1 t2 : Term),
           IsAlphaTerms ((n1, n2) :: bv) t1 t2 → IsAlphaTerms bv (.abs n1 t1) (.abs n2 t2)
 
+theorem IsAlphaTerms.refl : ∀ (bv : List (Term × Term)) (t : Term), IsTrivialRenaming bv → IsAlphaTerms bv t t
+    := by
+  intro bv t
+  induction t generalizing bv with
+  | var x T =>
+      intro h
+      apply IsAlphaTerms.var
+      exact IsAlphaVars.refl bv (.var x T) h
+  | const c T =>
+      intro h
+      apply IsAlphaTerms.const
+      exact IsAlphaVars.refl bv (.const c T) h
+  | app s t ih_s ih_t =>
+      intro h
+      apply IsAlphaTerms.app
+      · exact ih_s bv h
+      · exact ih_t bv h
+  | abs n t ih_n ih_t =>
+      intro h
+      apply IsAlphaTerms.abs
+      have h' : IsTrivialRenaming ((n, n) :: bv) := by
+        simp [IsTrivialRenaming, h]
+      exact ih_t ((n, n) :: bv) h'
+
 /-- Predicate for alpha-equivalence of terms. -/
 def IsAlpha (t1 t2 : Term) : Prop := IsAlphaTerms [] t1 t2
+
+theorem IsAlpha.refl : ∀ (t : Term), IsAlpha t t
+    := by
+  intro t
+  unfold IsAlpha
+  exact IsAlphaTerms.refl [] t (by simp [IsTrivialRenaming])
+
+theorem IsAlpha.symm : ∀ (t1 t2 : Term), IsAlpha t1 t2 → IsAlpha t2 t1
+    := by
+  sorry
+
+theorem IsAlpha.trans : ∀ (t1 t2 t3 : Term), IsAlpha t1 t2 → IsAlpha t2 t3 → IsAlpha t1 t3
+    := by
+  sorry
+
+instance : Equivalence IsAlpha where
+  refl := IsAlpha.refl
+  symm := by sorry
+  trans := by sorry
