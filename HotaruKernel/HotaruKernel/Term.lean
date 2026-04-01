@@ -361,8 +361,102 @@ theorem VariantFresh : ∀ t x T, ¬(Term.var (generateVariant t x T) T).IsFreeV
   let best := chooseMinFreshSuffix t x T (t.maxVarNameLen + 1) (t.maxVarNameLen + 1) hbound
   simpa [variantFreshAt] using best.2
 
+
+
+/-- Reverse assoc lookup by second component (CakeML `REV_ASSOCD`). -/
+private def revAssocdBySnd (key : Term) (env : List (Term × Term)) (default : Term) : Term :=
+  match env with
+  | [] => default
+  | (x, y) :: rest => if y = key then x else revAssocdBySnd key rest default
+
+/-- A local substitution helper used by `instantiateCoreFuel` for binder-renaming. -/
+private def renameSubst (i : List (Term × Term)) : Term → Option Term
+| .var x ty =>
+    match i.find? (fun (y, _) => y = .var x ty) with
+    | some (_, t) => some t
+    | none => some (.var x ty)
+| .const c ty => some (.const c ty)
+| .app s t => do
+    let s' ← renameSubst i s
+    let t' ← renameSubst i t
+    pure (.app s' t')
+| .abs bvar t => do
+    let i' := i.filter (fun (s, _) => s ≠ bvar)
+    let t' ← renameSubst i' t
+    if i'.any (fun (s, s') => bvar.IsFreeVarIn s' ∧ t.IsFreeVarIn s) then
+      match bvar with
+      | .var x ty => do
+          let freshName := generateVariant t' x ty
+          let z := Term.var freshName ty
+          let i'' := (z, bvar) :: i'
+          let t'' ← renameSubst i'' t
+          pure (.abs z t'')
+      | _ => none
+    else
+      pure (.abs bvar t')
+
+/-- Structural size for fuel-based recursion in instantiation. -/
+def termSize : Term → Nat
+| .var _ _ => 1
+| .const _ _ => 1
+| .app s t => 1 + termSize s + termSize t
+| .abs _ t => 1 + termSize t
+
+private def instantiateCoreFuel : Nat → List (Term × Term) → List (String × HOLType) →
+    Term → Except Term Term
+| 0, _env, _tyin, tm => .error tm
+| _ + 1, env, tyin, .var x ty =>
+    let tm := Term.var x ty
+    let tm' := Term.var x (typeSubst tyin ty)
+    if revAssocdBySnd tm' env tm = tm then
+      .ok tm'
+    else
+      .error tm'
+| _ + 1, _env, tyin, .const x ty =>
+    .ok (.const x (typeSubst tyin ty))
+| fuel + 1, env, tyin, .app s t => do
+    let s' ← instantiateCoreFuel fuel env tyin s
+    let t' ← instantiateCoreFuel fuel env tyin t
+    .ok (Term.app s' t')
+| fuel + 1, env, tyin, .abs v t =>
+    match v with
+    | .var x ty =>
+        let ty' := typeSubst tyin ty
+        let v' := Term.var x ty'
+        let env' := (v, v') :: env
+        let tre : Except Term Term := instantiateCoreFuel fuel env' tyin t
+        match tre with
+        | .ok t' => .ok (Term.abs v' t')
+        | .error w =>
+            if w ≠ v' then
+              .error w
+            else do
+              let t0 ← instantiateCoreFuel fuel [] tyin t
+              let x' := generateVariant t0 x ty'
+              let tSub? := renameSubst [(Term.var x ty, Term.var x' ty)] t
+              match tSub? with
+              | none => .error w
+              | some tSub => do
+                  let env'' := (Term.var x' ty, Term.var x' ty') :: env
+                  let t'' ← instantiateCoreFuel fuel env'' tyin tSub
+                  .ok (Term.abs (Term.var x' ty') t'')
+    | _ => .error v
+
+/-- Instantiate type variables in a term according to a substitution.
+    `env` tracks old/new binder correspondence to detect clashes. -/
+def instantiateCore (env : List (Term × Term)) (tyin : List (String × HOLType))
+    (tm : Term) : Except Term Term :=
+  instantiateCoreFuel (2 * termSize tm + 1) env tyin tm
+
+/-- Instantiates type variables in a term according to a substitution.
+    Returns `none` only when a clash cannot be resolved. -/
+def instantiate (tyin : List (String × HOLType)) (tm : Term) : Option Term :=
+  match instantiateCore [] tyin tm with
+  | .ok t => some t
+  | .error _ => none
+
 /-- Term variable substitution: applies a list of term substitutions to a term -/
-def varSubst (i : List (Term × Term)): Term → Option Term
+def varSubst (i : List (Term × Term)) : Term → Option Term
 | .var x ty => match i.find? (fun (y, _) => y = .var x ty) with
     | some (_, t) => some t
     | none => some (.var x ty)
