@@ -32,17 +32,17 @@ abbrev HOLType.fun (x y : HOLType) : HOLType := .app "fun" (.fromList [x, y])
 
 mutual
 /-- Type substitution: given an instaniation `i` mapping type variables to types, apply it to a type. -/
-def type_subst (i : List (String × HOLType)) : HOLType → HOLType
+def typeSubst (i : List (String × HOLType)) : HOLType → HOLType
 | .var x => match i.find? (fun (y, _) => y = x) with
     | some (_, T) => T
     | none => .var x
-| .app c args => .app c (type_subst_list i args)
+| .app c args => .app c (typeListSubst i args)
 
-def type_subst_list (i : List (String × HOLType)) : HOLTypeList → HOLTypeList
+def typeListSubst (i : List (String × HOLType)) : HOLTypeList → HOLTypeList
 | .nil => .nil
-| .cons h t => .cons (type_subst i h) (type_subst_list i t)
+| .cons h t => .cons (typeSubst i h) (typeListSubst i t)
 end
 
 /-- If `ty0` instantiates to `ty` under some substitution, then `ty` is an instance of `ty0`. -/
-def IsInstance (ty0 ty : HOLType) : Prop :=
-  ∃ i, type_subst i ty0 = ty
+def HOLType.IsInstance (ty ty0 : HOLType) : Prop :=
+  ∃ i, typeSubst i ty0 = ty

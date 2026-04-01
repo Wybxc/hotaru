@@ -13,16 +13,16 @@ instance : Inhabited Term where
   default := .var "x" HOLType.bool
 
 /-- Type checking predicate for terms. -/
-inductive HasType : Term -> HOLType -> Prop
-| var : ∀ (x : String) (T : HOLType), HasType (.var x T) T
-| const : ∀ (c : String) (T : HOLType), HasType (.const c T) T
+inductive Term.HasType : Term -> HOLType -> Prop
+| var : ∀ (x : String) (T : HOLType), Term.HasType (.var x T) T
+| const : ∀ (c : String) (T : HOLType), Term.HasType (.const c T) T
 | app : ∀ (s t : Term) (dT rT : HOLType),
-          HasType s (.fun dT rT) → HasType t dT → HasType (.app s t) rT
+          Term.HasType s (.fun dT rT) → Term.HasType t dT → Term.HasType (.app s t) rT
 | abs : ∀ (n : String) (dT rT : HOLType) (t : Term),
-          HasType t rT → HasType (.abs (.var n dT) t) (.fun dT rT)
+          Term.HasType t rT → Term.HasType (.abs (.var n dT) t) (.fun dT rT)
 
 /-- Predicate for well-typed terms. -/
-abbrev WellTyped (t : Term) : Prop := ∃ T, HasType t T
+abbrev WellTyped (t : Term) : Prop := ∃ T, t.HasType T
 
 /-- Type inference function for terms. -/
 def typeof (t : Term) : Option HOLType :=
@@ -40,24 +40,24 @@ def typeof (t : Term) : Option HOLType :=
       | none => none
   | _ => none
 
-theorem welltyped_typeof : ∀ (t : Term) (T : HOLType), HasType t T → typeof t = some T
+theorem welltyped_typeof : ∀ (t : Term) (T : HOLType), Term.HasType t T → typeof t = some T
     := by
   intros t T ht
   induction ht with simp [typeof] <;> aesop
 
-theorem typeof_welltyped : ∀ (t : Term) (T : HOLType), typeof t = some T → HasType t T
+theorem typeof_welltyped : ∀ (t : Term) (T : HOLType), typeof t = some T → t.HasType T
     := by
   intros t T h
   induction t generalizing T with try simp [typeof] at h; subst h
-  | var x T' => apply HasType.var
-  | const c T' => apply HasType.const
+  | var x T' => apply Term.HasType.var
+  | const c T' => apply Term.HasType.const
   | app s t ih_s ih_t =>
       unfold typeof at h
       split at h
       · rename_i dT rT tT heq_s heq_t
         split at h <;> simp at h
         subst h
-        apply HasType.app
+        apply Term.HasType.app
         · exact ih_s (.fun dT rT) heq_s
         · have : typeof t = some dT := by
             rw [heq_t]; aesop
@@ -68,11 +68,11 @@ theorem typeof_welltyped : ∀ (t : Term) (T : HOLType), typeof t = some T → H
       | var var_name dT =>
           split at h <;> simp at h
           subst h
-          apply HasType.abs
+          apply Term.HasType.abs
           aesop
 
 /-- Theorem: `HasType t T` if and only if `typeof t = some T`. -/
-theorem welltyped_typeof_iff : ∀ (t : Term) (T : HOLType), HasType t T ↔ typeof t = some T
+theorem welltyped_typeof_iff : ∀ (t : Term) (T : HOLType), t.HasType T ↔ typeof t = some T
     := by
   intros t T
   constructor
@@ -98,7 +98,7 @@ inductive IsAlphaTerms : List (Term × Term) -> Term -> Term -> Prop
           IsAlphaTerms ((n1, n2) :: bv) t1 t2 → IsAlphaTerms bv (.abs n1 t1) (.abs n2 t2)
 
 /-- Predicate for alpha-equivalence of terms. -/
-def IsAlpha (t1 t2 : Term) : Prop := IsAlphaTerms [] t1 t2
+def AlphaEqv (t1 t2 : Term) : Prop := IsAlphaTerms [] t1 t2
 
 def IsTrivialRenaming (bv : List (Term × Term)) : Prop :=
   match bv with
@@ -211,35 +211,92 @@ theorem IsAlphaTerms_trans :
       apply ih <;> try simpa
       apply RenamingChain.cons; simpa
 
-theorem IsAlpha.refl : ∀ (t : Term), IsAlpha t t
+theorem AlphaEqv.refl : ∀ (t : Term), AlphaEqv t t
     := by
   intro t
-  unfold IsAlpha
+  unfold AlphaEqv
   simpa using IsAlphaTerms_refl [] t (by simp [IsTrivialRenaming])
 
-theorem IsAlpha.symm : ∀ {t1 t2 : Term}, IsAlpha t1 t2 → IsAlpha t2 t1
+theorem AlphaEqv.symm : ∀ {t1 t2 : Term}, AlphaEqv t1 t2 → AlphaEqv t2 t1
     := by
   intro t1 t2 h
-  unfold IsAlpha at h ⊢
+  unfold AlphaEqv at h ⊢
   simpa [swap_renaming] using IsAlphaTerms_symm [] t1 t2 h
 
-theorem IsAlpha.trans : ∀ {t1 t2 t3 : Term}, IsAlpha t1 t2 → IsAlpha t2 t3 → IsAlpha t1 t3
+theorem AlphaEqv.trans : ∀ {t1 t2 t3 : Term}, AlphaEqv t1 t2 → AlphaEqv t2 t3 → AlphaEqv t1 t3
     := by
   intro t1 t2 t3 h12 h23
-  unfold IsAlpha at h12 h23 ⊢
+  unfold AlphaEqv at h12 h23 ⊢
   apply IsAlphaTerms_trans <;> try simpa
   apply RenamingChain.nil
 
-instance : Equivalence IsAlpha where
-  refl := IsAlpha.refl
-  symm := IsAlpha.symm
-  trans := IsAlpha.trans
+instance : Equivalence AlphaEqv where
+  refl := AlphaEqv.refl
+  symm := AlphaEqv.symm
+  trans := AlphaEqv.trans
 
-noncomputable instance : DecidableRel IsAlpha := by
+noncomputable instance : DecidableRel AlphaEqv := by
   intro t1 t2
   classical
   infer_instance
 
 instance : Setoid Term where
-  r := IsAlpha
-  iseqv := ⟨IsAlpha.refl, @IsAlpha.symm, @IsAlpha.trans⟩
+  r := AlphaEqv
+  iseqv := ⟨AlphaEqv.refl, AlphaEqv.symm, AlphaEqv.trans⟩
+
+def Term.IsFreeVarIn (var : Term) : Term -> Prop
+| .var x T => var = .var x T
+| .const x T => var = .const x T
+| .app s t => (var.IsFreeVarIn s) ∨ (var.IsFreeVarIn t)
+| .abs n t => (var ≠ n) ∧ (var.IsFreeVarIn t)
+
+instance {var t : Term} : Decidable (var.IsFreeVarIn t) := by
+  sorry
+
+def Closed (t : Term) : Prop := ∀ x T, (Term.var x T).IsFreeVarIn t → False
+
+/-- Helper function to find a fresh variable name by appending apostrophes -/
+private def findFreshVarName (term : Term) (baseName : String) (ty : HOLType) (maxTries : Nat) : String :=
+  let rec go (attempt : Nat) : String :=
+    if attempt ≥ maxTries then
+      baseName ++ String.ofList (List.replicate maxTries '\'')
+    else
+      let candidate := baseName ++ String.ofList (List.replicate attempt '\'')
+      if (Term.var candidate ty).IsFreeVarIn term then
+        go (attempt + 1)
+      else
+        candidate
+  termination_by maxTries - attempt
+  go 0
+
+/-- Generate a variable variant with primes appended to avoid name collisions -/
+def generateVariant (term : Term) (baseName : String) (ty : HOLType) : String :=
+  findFreshVarName term baseName ty 100
+
+/-- Term variable substitution: applies a list of term substitutions to a term -/
+def varSubst (i : List (Term × Term)): Term → Option Term
+| .var x ty => match i.find? (fun (y, _) => y = .var x ty) with
+    | some (_, t) => some t
+    | none => some (.var x ty)
+| .const c ty => some (.const c ty)
+| .app s t => do
+    let s' ← varSubst i s
+    let t' ← varSubst i t
+    some (.app s' t')
+| .abs bvar t => do
+    let i' := i.filter (fun (s, _) => s ≠ bvar)
+    let t' ← varSubst i' t
+    -- Check if any substitution introduces free variables that would be captured by bvar
+    if i'.any (fun (s, s') => bvar.IsFreeVarIn s' ∧ t.IsFreeVarIn s) then
+      -- Capture risk exists: generate a fresh variable
+      match bvar with
+      | .var x ty => do
+          let freshName := generateVariant t' x ty
+          let z := Term.var freshName ty
+          -- Add the new binding to prevent capture
+          let i'' := (z, bvar) :: i'
+          let t'' ← varSubst i'' t
+          some (.abs z t'')
+      | _ => none
+    else
+      some (.abs bvar t')
