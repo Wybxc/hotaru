@@ -244,6 +244,491 @@ instance : Setoid Term where
   r := AlphaEqv
   iseqv := ⟨AlphaEqv.refl, AlphaEqv.symm, AlphaEqv.trans⟩
 
+theorem alphaeqv_not_preserve_welltyped_without_rhs_assumption :
+    ∃ t1 t2, AlphaEqv t1 t2 ∧ WellTyped t1 ∧ ¬ WellTyped t2 := by
+  let t1 : Term := Term.abs (Term.var "x" HOLType.bool) (Term.const "k" HOLType.bool)
+  let t2 : Term := Term.abs (Term.const "c" HOLType.bool) (Term.const "k" HOLType.bool)
+  refine ⟨t1, t2, ?_, ?_, ?_⟩
+  · unfold AlphaEqv t1 t2
+    apply IsAlphaTerms.abs
+    apply IsAlphaTerms.const
+    right
+    constructor
+    · simp
+    constructor
+    · simp
+    · simp [IsAlphaVars]
+  · refine ⟨HOLType.fun HOLType.bool HOLType.bool, ?_⟩
+    apply Term.HasType.abs
+    exact Term.HasType.const "k" HOLType.bool
+  · change ¬ WellTyped ((Term.const "c" HOLType.bool).abs (Term.const "k" HOLType.bool))
+    intro hwt2
+    rcases hwt2 with ⟨T, ht⟩
+    cases ht
+
+/-- De Bruijn representation used to reason about alpha-equivalence. -/
+inductive DBTerm
+| bvar : Nat -> DBTerm
+| fvar : String -> HOLType -> DBTerm
+| const : String -> HOLType -> DBTerm
+| app : DBTerm -> DBTerm -> DBTerm
+| abs : DBTerm -> DBTerm
+deriving Repr, DecidableEq
+
+/-- Lookup binder depth in a de Bruijn context. -/
+def lookupBVar : List (String × HOLType) -> String -> HOLType -> Option Nat
+| [], _, _ => none
+| (y, Uy) :: ys, x, U =>
+    if (x = y ∧ U = Uy) then
+      some 0
+    else
+      Option.map Nat.succ (lookupBVar ys x U)
+
+/-- Convert a named term to de Bruijn form under a context. -/
+def toDBAux (ctx : List (String × HOLType)) : Term -> DBTerm
+| .var x T =>
+    match lookupBVar ctx x T with
+  | some n => DBTerm.bvar n
+    | none => DBTerm.fvar x T
+| .const c T => DBTerm.const c T
+| .app s t => DBTerm.app (toDBAux ctx s) (toDBAux ctx t)
+| .abs (.var x T) t => DBTerm.abs (toDBAux ((x, T) :: ctx) t)
+| .abs _ t => DBTerm.abs (toDBAux ctx t)
+
+/-- Convert a named term to de Bruijn form. -/
+def toDB (t : Term) : DBTerm := toDBAux [] t
+
+/-- Substitute free variables in de Bruijn terms according to a named substitution list. -/
+def dbSubst (i : List (Term × Term)) : DBTerm -> DBTerm
+| .bvar n => .bvar n
+| .fvar x T =>
+    match i.find? (fun p => p.fst = Term.var x T) with
+    | some (_, t) => toDB t
+    | none => .fvar x T
+| .const c T => .const c T
+| .app s t => .app (dbSubst i s) (dbSubst i t)
+| .abs t => .abs (dbSubst i t)
+
+theorem dbSubst_refl : ∀ (t : DBTerm), dbSubst [] t = t := by
+  intro t
+  induction t with
+  | bvar n => rfl
+  | fvar x T => simp [dbSubst]
+  | const c T => rfl
+  | app s t ihs iht => simp [dbSubst, ihs, iht]
+  | abs t iht => simp [dbSubst, iht]
+
+theorem dbSubst_eq_of_eq : ∀ (i : List (Term × Term)) (t1 t2 : DBTerm),
+    t1 = t2 -> dbSubst i t1 = dbSubst i t2 := by
+  intro i t1 t2 h
+  cases h
+  rfl
+
+theorem lookupBVar_cons_hit :
+    ∀ (ctx : List (String × HOLType)) (x : String) (T : HOLType),
+      lookupBVar ((x, T) :: ctx) x T = some 0 := by
+  intro ctx x T
+  simp [lookupBVar]
+
+theorem lookupBVar_cons_miss :
+    ∀ (ctx : List (String × HOLType)) (x y : String) (T U : HOLType),
+      (x ≠ y ∨ T ≠ U) ->
+      lookupBVar ((y, U) :: ctx) x T = Option.map Nat.succ (lookupBVar ctx x T) := by
+  intro ctx x y T U h
+  have hxyu : ¬(x = y ∧ T = U) := by
+    intro hxy
+    rcases hxy with ⟨hx, hT⟩
+    cases h with
+    | inl hxy' => exact hxy' hx
+    | inr hT' => exact hT' hT
+  simp [lookupBVar, hxyu]
+
+theorem lookupBVar_cons_eq_some_zero_iff :
+    ∀ (ctx : List (String × HOLType)) (x y : String) (T U : HOLType),
+      lookupBVar ((y, U) :: ctx) x T = some 0 ↔ x = y ∧ T = U := by
+  intro ctx x y T U
+  by_cases h : (x = y ∧ T = U)
+  · simp [lookupBVar, h]
+  · simp [lookupBVar, h]
+
+theorem lookupBVar_cons_eq_some_succ_iff :
+    ∀ (ctx : List (String × HOLType)) (x y : String) (T U : HOLType) (n : Nat),
+      lookupBVar ((y, U) :: ctx) x T = some (Nat.succ n) ↔
+      (x ≠ y ∨ T ≠ U) ∧ lookupBVar ctx x T = some n := by
+  intro ctx x y T U n
+  by_cases h : (x = y ∧ T = U)
+  · have hFalse : (x ≠ y ∨ T ≠ U) = False := by
+      apply propext
+      constructor
+      · intro h'
+        rcases h with ⟨hx, hT⟩
+        cases h' with
+        | inl hxy => exact (hxy hx).elim
+        | inr hTU => exact (hTU hT).elim
+      · intro h'
+        cases h'
+    simp [lookupBVar, h]
+  · have hTrue : (x ≠ y ∨ T ≠ U) = True := by
+      apply propext
+      constructor
+      · intro _
+        trivial
+      · intro _
+        by_cases hxy : x = y
+        · right
+          intro hTU
+          apply h
+          exact ⟨hxy, hTU⟩
+        · exact Or.inl hxy
+    simp [lookupBVar, h, hTrue]
+
+/-- Relation between alpha-renaming environment and paired de Bruijn contexts. -/
+inductive DBCtxRel : List (Term × Term) -> List (String × HOLType) -> List (String × HOLType) -> Prop
+| nil : DBCtxRel [] [] []
+| cons : ∀ (x y : String) (T1 T2 : HOLType)
+    (bv : List (Term × Term)) (ctx1 ctx2 : List (String × HOLType)),
+    DBCtxRel bv ctx1 ctx2 ->
+  DBCtxRel ((Term.var x T1, Term.var y T2) :: bv) ((x, T1) :: ctx1) ((y, T2) :: ctx2)
+
+theorem var_ne_disj :
+    ∀ (x y : String) (T U : HOLType),
+      Term.var x T ≠ Term.var y U -> (x ≠ y ∨ T ≠ U) := by
+  intro x y T U h
+  by_cases hxy : x = y
+  · right
+    intro hTU
+    apply h
+    subst hxy
+    subst hTU
+    rfl
+  · exact Or.inl hxy
+
+theorem lookupBVar_eq_of_IsAlphaVars_var :
+    ∀ (bv : List (Term × Term)) (ctx1 ctx2 : List (String × HOLType))
+      (x1 x2 : String) (T1 T2 : HOLType),
+      DBCtxRel bv ctx1 ctx2 ->
+      IsAlphaVars bv (.var x1 T1) (.var x2 T2) ->
+      lookupBVar ctx1 x1 T1 = lookupBVar ctx2 x2 T2 := by
+  intro bv ctx1 ctx2 x1 x2 T1 T2 hCtx hAlpha
+  induction hCtx generalizing x1 x2 T1 T2 with
+  | nil =>
+      dsimp [IsAlphaVars] at hAlpha
+      cases hAlpha
+      rfl
+  | cons x y TL TR bv ctx1 ctx2 hCtx ih =>
+      dsimp [IsAlphaVars] at hAlpha
+      rcases hAlpha with hHit | hMiss
+      · rcases hHit with ⟨hx1, hx2⟩
+        cases hx1
+        cases hx2
+        simp [lookupBVar]
+      · rcases hMiss with ⟨hneq1, hneq2, hTail⟩
+        have hdisj1 : x1 ≠ x ∨ T1 ≠ TL := var_ne_disj x1 x T1 TL hneq1
+        have hdisj2 : x2 ≠ y ∨ T2 ≠ TR := var_ne_disj x2 y T2 TR hneq2
+        rw [lookupBVar_cons_miss ctx1 x1 x T1 TL hdisj1]
+        rw [lookupBVar_cons_miss ctx2 x2 y T2 TR hdisj2]
+        have hrec : lookupBVar ctx1 x1 T1 = lookupBVar ctx2 x2 T2 :=
+          ih x1 x2 T1 T2 hTail
+        simpa using congrArg (Option.map Nat.succ) hrec
+
+theorem free_eq_of_IsAlphaVars_var_lookup_none :
+    ∀ (bv : List (Term × Term)) (ctx1 ctx2 : List (String × HOLType))
+      (x1 x2 : String) (T1 T2 : HOLType),
+      DBCtxRel bv ctx1 ctx2 ->
+      IsAlphaVars bv (.var x1 T1) (.var x2 T2) ->
+      lookupBVar ctx1 x1 T1 = none ->
+      x1 = x2 ∧ T1 = T2 := by
+  intro bv ctx1 ctx2 x1 x2 T1 T2 hCtx hAlpha hNone
+  induction hCtx generalizing x1 x2 T1 T2 with
+  | nil =>
+      dsimp [IsAlphaVars] at hAlpha
+      cases hAlpha
+      exact ⟨rfl, rfl⟩
+  | cons x y TL TR bv ctx1 ctx2 hCtx ih =>
+      dsimp [IsAlphaVars] at hAlpha
+      rcases hAlpha with hHit | hMiss
+      · rcases hHit with ⟨hx1, _⟩
+        cases hx1
+        simp [lookupBVar] at hNone
+      · rcases hMiss with ⟨hneq1, _, hTail⟩
+        have hdisj1 : x1 ≠ x ∨ T1 ≠ TL := var_ne_disj x1 x T1 TL hneq1
+        rw [lookupBVar_cons_miss ctx1 x1 x T1 TL hdisj1] at hNone
+        cases htail : lookupBVar ctx1 x1 T1 with
+        | none =>
+            exact ih x1 x2 T1 T2 hTail htail
+        | some n =>
+            simp [htail] at hNone
+
+theorem toDBAux_var_eq_of_IsAlphaVars :
+    ∀ (bv : List (Term × Term)) (ctx1 ctx2 : List (String × HOLType))
+      (x1 x2 : String) (T1 T2 : HOLType),
+      DBCtxRel bv ctx1 ctx2 ->
+      IsAlphaVars bv (.var x1 T1) (.var x2 T2) ->
+      toDBAux ctx1 (.var x1 T1) = toDBAux ctx2 (.var x2 T2) := by
+  intro bv ctx1 ctx2 x1 x2 T1 T2 hCtx hAlpha
+  have hLookup : lookupBVar ctx1 x1 T1 = lookupBVar ctx2 x2 T2 :=
+    lookupBVar_eq_of_IsAlphaVars_var bv ctx1 ctx2 x1 x2 T1 T2 hCtx hAlpha
+  cases hL : lookupBVar ctx1 x1 T1 with
+  | none =>
+      have hR : lookupBVar ctx2 x2 T2 = none := by simpa [hL] using hLookup.symm
+      have hFree : x1 = x2 ∧ T1 = T2 :=
+        free_eq_of_IsAlphaVars_var_lookup_none bv ctx1 ctx2 x1 x2 T1 T2 hCtx hAlpha hL
+      rcases hFree with ⟨hx, hT⟩
+      subst hx
+      subst hT
+      simp [toDBAux, hL, hR]
+  | some n =>
+      have hR : lookupBVar ctx2 x2 T2 = some n := by simpa [hL] using hLookup.symm
+      simp [toDBAux, hL, hR]
+
+theorem const_eq_of_IsAlphaVars :
+    ∀ (bv : List (Term × Term)) (ctx1 ctx2 : List (String × HOLType))
+      (c1 c2 : String) (T1 T2 : HOLType),
+      DBCtxRel bv ctx1 ctx2 ->
+      IsAlphaVars bv (.const c1 T1) (.const c2 T2) ->
+      c1 = c2 ∧ T1 = T2 := by
+  intro bv ctx1 ctx2 c1 c2 T1 T2 hCtx hAlpha
+  induction hCtx generalizing c1 c2 T1 T2 with
+  | nil =>
+      dsimp [IsAlphaVars] at hAlpha
+      cases hAlpha
+      exact ⟨rfl, rfl⟩
+  | cons x y TL TR bv ctx1 ctx2 hCtx ih =>
+      dsimp [IsAlphaVars] at hAlpha
+      rcases hAlpha with hHit | hMiss
+      · rcases hHit with ⟨h1, _⟩
+        cases h1
+      · rcases hMiss with ⟨_, _, hTail⟩
+        exact ih c1 c2 T1 T2 hTail
+
+theorem toDBAux_const_eq_of_IsAlphaVars :
+    ∀ (bv : List (Term × Term)) (ctx1 ctx2 : List (String × HOLType))
+      (c1 c2 : String) (T1 T2 : HOLType),
+      DBCtxRel bv ctx1 ctx2 ->
+      IsAlphaVars bv (.const c1 T1) (.const c2 T2) ->
+      toDBAux ctx1 (.const c1 T1) = toDBAux ctx2 (.const c2 T2) := by
+  intro bv ctx1 ctx2 c1 c2 T1 T2 hCtx hAlpha
+  rcases const_eq_of_IsAlphaVars bv ctx1 ctx2 c1 c2 T1 T2 hCtx hAlpha with ⟨hc, hT⟩
+  subst hc
+  subst hT
+  rfl
+
+theorem IsAlphaVars_const_refl_of_DBCtxRel :
+    ∀ (bv : List (Term × Term)) (ctx1 ctx2 : List (String × HOLType)) (c : String) (T : HOLType),
+      DBCtxRel bv ctx1 ctx2 -> IsAlphaVars bv (.const c T) (.const c T) := by
+  intro bv ctx1 ctx2 c T hCtx
+  induction hCtx with
+  | nil => simp [IsAlphaVars]
+  | cons x y TL TR bv ctx1 ctx2 hCtx ih =>
+      right
+      constructor
+      · intro hEq
+        cases hEq
+      constructor
+      · intro hEq
+        cases hEq
+      · exact ih
+
+theorem IsAlphaVars_of_toDBAux_const_eq :
+    ∀ (bv : List (Term × Term)) (ctx1 ctx2 : List (String × HOLType))
+      (c1 c2 : String) (T1 T2 : HOLType),
+      DBCtxRel bv ctx1 ctx2 ->
+      toDBAux ctx1 (.const c1 T1) = toDBAux ctx2 (.const c2 T2) ->
+      IsAlphaVars bv (.const c1 T1) (.const c2 T2) := by
+  intro bv ctx1 ctx2 c1 c2 T1 T2 hCtx hEq
+  simp [toDBAux] at hEq
+  rcases hEq with ⟨hc, hT⟩
+  subst hc
+  subst hT
+  exact IsAlphaVars_const_refl_of_DBCtxRel bv ctx1 ctx2 c1 T1 hCtx
+
+theorem IsAlphaVars_of_lookup_eq_some :
+    ∀ (bv : List (Term × Term)) (ctx1 ctx2 : List (String × HOLType))
+      (x1 x2 : String) (T1 T2 : HOLType) (n : Nat),
+      DBCtxRel bv ctx1 ctx2 ->
+      lookupBVar ctx1 x1 T1 = some n ->
+      lookupBVar ctx2 x2 T2 = some n ->
+      IsAlphaVars bv (.var x1 T1) (.var x2 T2) := by
+  intro bv ctx1 ctx2 x1 x2 T1 T2 n hCtx hL1 hL2
+  induction hCtx generalizing x1 x2 T1 T2 n with
+  | nil =>
+      simp [lookupBVar] at hL1
+  | cons x y TL TR bv ctx1 ctx2 hCtx ih =>
+      cases n with
+      | zero =>
+          have h1 : x1 = x ∧ T1 = TL :=
+            (lookupBVar_cons_eq_some_zero_iff ctx1 x1 x T1 TL).mp hL1
+          have h2 : x2 = y ∧ T2 = TR :=
+            (lookupBVar_cons_eq_some_zero_iff ctx2 x2 y T2 TR).mp hL2
+          rcases h1 with ⟨hx1, hT1⟩
+          rcases h2 with ⟨hx2, hT2⟩
+          left
+          constructor
+          · cases hx1
+            cases hT1
+            rfl
+          · cases hx2
+            cases hT2
+            rfl
+      | succ n =>
+          have h1 : (x1 ≠ x ∨ T1 ≠ TL) ∧ lookupBVar ctx1 x1 T1 = some n :=
+            (lookupBVar_cons_eq_some_succ_iff ctx1 x1 x T1 TL n).mp hL1
+          have h2 : (x2 ≠ y ∨ T2 ≠ TR) ∧ lookupBVar ctx2 x2 T2 = some n :=
+            (lookupBVar_cons_eq_some_succ_iff ctx2 x2 y T2 TR n).mp hL2
+          rcases h1 with ⟨hdisj1, hTail1⟩
+          rcases h2 with ⟨hdisj2, hTail2⟩
+          have hneq1 : Term.var x1 T1 ≠ Term.var x TL := by
+            intro hEq
+            cases hEq
+            cases hdisj1 with
+            | inl hxy => exact (hxy rfl).elim
+            | inr hT => exact (hT rfl).elim
+          have hneq2 : Term.var x2 T2 ≠ Term.var y TR := by
+            intro hEq
+            cases hEq
+            cases hdisj2 with
+            | inl hxy => exact (hxy rfl).elim
+            | inr hT => exact (hT rfl).elim
+          right
+          exact ⟨hneq1, hneq2, ih x1 x2 T1 T2 n hTail1 hTail2⟩
+
+theorem IsAlphaVars_of_lookup_none_eq :
+    ∀ (bv : List (Term × Term)) (ctx1 ctx2 : List (String × HOLType))
+      (x : String) (T : HOLType),
+      DBCtxRel bv ctx1 ctx2 ->
+      lookupBVar ctx1 x T = none ->
+      lookupBVar ctx2 x T = none ->
+      IsAlphaVars bv (.var x T) (.var x T) := by
+  intro bv ctx1 ctx2 x T hCtx hNone1 hNone2
+  induction hCtx generalizing x T with
+  | nil =>
+      simp [IsAlphaVars]
+  | cons xl xr TL TR bv ctx1 ctx2 hCtx ih =>
+      have hdisj1 : x ≠ xl ∨ T ≠ TL := by
+        by_cases h : x = xl ∧ T = TL
+        · have : lookupBVar ((xl, TL) :: ctx1) x T = some 0 := by
+            simp [lookupBVar, h]
+          simp [hNone1] at this
+        · by_cases hxy : x = xl
+          · right
+            intro hT
+            exact h ⟨hxy, hT⟩
+          · exact Or.inl hxy
+      have hdisj2 : x ≠ xr ∨ T ≠ TR := by
+        by_cases h : x = xr ∧ T = TR
+        · have : lookupBVar ((xr, TR) :: ctx2) x T = some 0 := by
+            simp [lookupBVar, h]
+          simp [hNone2] at this
+        · by_cases hxy : x = xr
+          · right
+            intro hT
+            exact h ⟨hxy, hT⟩
+          · exact Or.inl hxy
+      have hTail1 : lookupBVar ctx1 x T = none := by
+        rw [lookupBVar_cons_miss ctx1 x xl T TL hdisj1] at hNone1
+        cases hlookup : lookupBVar ctx1 x T with
+        | none => rfl
+        | some n => simp [hlookup] at hNone1
+      have hTail2 : lookupBVar ctx2 x T = none := by
+        rw [lookupBVar_cons_miss ctx2 x xr T TR hdisj2] at hNone2
+        cases hlookup : lookupBVar ctx2 x T with
+        | none => rfl
+        | some n => simp [hlookup] at hNone2
+      have hneq1 : Term.var x T ≠ Term.var xl TL := by
+        intro hEq
+        cases hEq
+        cases hdisj1 with
+        | inl hxy => exact (hxy rfl).elim
+        | inr hT => exact (hT rfl).elim
+      have hneq2 : Term.var x T ≠ Term.var xr TR := by
+        intro hEq
+        cases hEq
+        cases hdisj2 with
+        | inl hxy => exact (hxy rfl).elim
+        | inr hT => exact (hT rfl).elim
+      right
+      exact ⟨hneq1, hneq2, ih x T hTail1 hTail2⟩
+
+theorem IsAlphaVars_of_toDBAux_var_eq :
+    ∀ (bv : List (Term × Term)) (ctx1 ctx2 : List (String × HOLType))
+      (x1 x2 : String) (T1 T2 : HOLType),
+      DBCtxRel bv ctx1 ctx2 ->
+      toDBAux ctx1 (.var x1 T1) = toDBAux ctx2 (.var x2 T2) ->
+      IsAlphaVars bv (.var x1 T1) (.var x2 T2) := by
+  intro bv ctx1 ctx2 x1 x2 T1 T2 hCtx hEq
+  dsimp [toDBAux] at hEq
+  cases hL1 : lookupBVar ctx1 x1 T1 with
+  | none =>
+      cases hL2 : lookupBVar ctx2 x2 T2 with
+      | none =>
+          simp [hL1, hL2] at hEq
+          rcases hEq with ⟨hx, hT⟩
+          subst hx
+          subst hT
+          exact IsAlphaVars_of_lookup_none_eq bv ctx1 ctx2 x1 T1 hCtx hL1 hL2
+      | some n =>
+          simp [hL1, hL2] at hEq
+  | some n =>
+      cases hL2 : lookupBVar ctx2 x2 T2 with
+      | none =>
+          simp [hL1, hL2] at hEq
+      | some m =>
+          have hnm : n = m := by
+            simp [hL1, hL2] at hEq
+            exact hEq
+          subst hnm
+          exact IsAlphaVars_of_lookup_eq_some bv ctx1 ctx2 x1 x2 T1 T2 n hCtx hL1 hL2
+
+  theorem toDBAux_eq_of_IsAlphaTerms_wt :
+    ∀ (bv : List (Term × Term)) (ctx1 ctx2 : List (String × HOLType))
+      (t1 t2 : Term),
+      DBCtxRel bv ctx1 ctx2 ->
+      WellTyped t1 -> WellTyped t2 ->
+      IsAlphaTerms bv t1 t2 ->
+      toDBAux ctx1 t1 = toDBAux ctx2 t2 := by
+    intro bv ctx1 ctx2 t1 t2 hCtx hwt1 hwt2 hAlpha
+    induction hAlpha generalizing ctx1 ctx2 with
+    | var bv x1 x2 T1 T2 hv =>
+      exact toDBAux_var_eq_of_IsAlphaVars bv ctx1 ctx2 x1 x2 T1 T2 hCtx hv
+    | const bv c1 c2 T1 T2 hv =>
+      exact toDBAux_const_eq_of_IsAlphaVars bv ctx1 ctx2 c1 c2 T1 T2 hCtx hv
+    | app bv s1 s2 t1 t2 hs ht ihs iht =>
+      rcases hwt1 with ⟨_, hty1⟩
+      rcases hwt2 with ⟨_, hty2⟩
+      cases hty1 with
+      | app _ _ _ _ hs1 ht1 =>
+        cases hty2 with
+        | app _ _ _ _ hs2 ht2 =>
+          have hsEq : toDBAux ctx1 s1 = toDBAux ctx2 s2 :=
+            ihs ctx1 ctx2 hCtx ⟨_, hs1⟩ ⟨_, hs2⟩
+          have htEq : toDBAux ctx1 t1 = toDBAux ctx2 t2 :=
+            iht ctx1 ctx2 hCtx ⟨_, ht1⟩ ⟨_, ht2⟩
+          simp [toDBAux, hsEq, htEq]
+    | abs bv n1 n2 t1 t2 hbody ih =>
+      rcases hwt1 with ⟨_, hty1⟩
+      rcases hwt2 with ⟨_, hty2⟩
+      cases hty1 with
+      | abs x1 dT1 rT1 body1 hbody1 =>
+        cases hty2 with
+        | abs x2 dT2 rT2 body2 hbody2 =>
+          have hCtx' :
+            DBCtxRel
+            ((Term.var x1 dT1, Term.var x2 dT2) :: bv)
+            ((x1, dT1) :: ctx1)
+            ((x2, dT2) :: ctx2) := by
+            exact DBCtxRel.cons x1 x2 dT1 dT2 bv ctx1 ctx2 hCtx
+          have hRec :
+            toDBAux ((x1, dT1) :: ctx1) t1 =
+            toDBAux ((x2, dT2) :: ctx2) t2 :=
+            ih ((x1, dT1) :: ctx1) ((x2, dT2) :: ctx2) hCtx' ⟨rT1, hbody1⟩ ⟨rT2, hbody2⟩
+          simpa [toDBAux] using hRec
+
+  theorem toDB_eq_of_AlphaEqv_wt :
+    ∀ (t1 t2 : Term), WellTyped t1 -> WellTyped t2 -> AlphaEqv t1 t2 -> toDB t1 = toDB t2 := by
+    intro t1 t2 hwt1 hwt2 hAlpha
+    unfold AlphaEqv at hAlpha
+    simpa [toDB] using toDBAux_eq_of_IsAlphaTerms_wt [] [] [] t1 t2 DBCtxRel.nil hwt1 hwt2 hAlpha
+
 def Term.IsFreeVarIn (var : Term) : Term -> Prop
 | .var x T => var = .var x T
 | .const x T => var = .const x T
@@ -274,6 +759,596 @@ def decIsFreeVarIn (var : Term) : (t : Term) → Decidable (var.IsFreeVarIn t)
 instance {var t : Term} : Decidable (var.IsFreeVarIn t) := decIsFreeVarIn var t
 
 def Closed (t : Term) : Prop := ∀ x T, (Term.var x T).IsFreeVarIn t → False
+
+/-- De Bruijn term has no free-variable nodes. -/
+def DBClosed : DBTerm -> Prop
+| .bvar _ => True
+| .fvar _ _ => False
+| .const _ _ => True
+| .app s t => DBClosed s ∧ DBClosed t
+| .abs t => DBClosed t
+
+theorem toDBAux_DBClosed_of_wt_covered :
+    ∀ (ctx : List (String × HOLType)) (t : Term) (T : HOLType),
+      t.HasType T ->
+      (∀ x U, (Term.var x U).IsFreeVarIn t -> ∃ n, lookupBVar ctx x U = some n) ->
+      DBClosed (toDBAux ctx t) := by
+  intro ctx t T hty
+  induction hty generalizing ctx with
+  | var x T =>
+      intro hCov
+      have hfree : (Term.var x T).IsFreeVarIn (Term.var x T) := by
+        simp [Term.IsFreeVarIn]
+      rcases hCov x T hfree with ⟨n, hn⟩
+      simp [toDBAux, hn, DBClosed]
+  | const c T =>
+      intro _
+      simp [toDBAux, DBClosed]
+  | app s t dT rT hs ht ihs iht =>
+      intro hCov
+      have hsCov : ∀ x U, (Term.var x U).IsFreeVarIn s -> ∃ n, lookupBVar ctx x U = some n := by
+        intro x U hfree
+        exact hCov x U (Or.inl hfree)
+      have htCov : ∀ x U, (Term.var x U).IsFreeVarIn t -> ∃ n, lookupBVar ctx x U = some n := by
+        intro x U hfree
+        exact hCov x U (Or.inr hfree)
+      exact And.intro (ihs ctx hsCov) (iht ctx htCov)
+  | abs n dT rT t ht iht =>
+      intro hCov
+      have hBodyCov :
+          ∀ x U, (Term.var x U).IsFreeVarIn t ->
+          ∃ m, lookupBVar ((n, dT) :: ctx) x U = some m := by
+        intro x U hfree
+        by_cases hx : x = n
+        · by_cases hU : U = dT
+          · subst hx
+            subst hU
+            exact ⟨0, by simp [lookupBVar]⟩
+          · have hneq : Term.var x U ≠ Term.var n dT := by
+              intro hEq
+              cases hEq
+              exact hU rfl
+            have hfreeAbs : (Term.var x U).IsFreeVarIn (Term.abs (Term.var n dT) t) :=
+              And.intro hneq hfree
+            rcases hCov x U hfreeAbs with ⟨m, hm⟩
+            refine ⟨Nat.succ m, ?_⟩
+            rw [lookupBVar_cons_miss ctx x n U dT (Or.inr hU)]
+            simp [hm]
+        · have hneq : Term.var x U ≠ Term.var n dT := by
+            intro hEq
+            cases hEq
+            exact hx rfl
+          have hfreeAbs : (Term.var x U).IsFreeVarIn (Term.abs (Term.var n dT) t) :=
+            And.intro hneq hfree
+          rcases hCov x U hfreeAbs with ⟨m, hm⟩
+          refine ⟨Nat.succ m, ?_⟩
+          rw [lookupBVar_cons_miss ctx x n U dT (Or.inl hx)]
+          simp [hm]
+      have hBodyClosed : DBClosed (toDBAux ((n, dT) :: ctx) t) :=
+        iht ((n, dT) :: ctx) hBodyCov
+      simpa [toDBAux, DBClosed] using hBodyClosed
+
+theorem covered_of_toDBAux_DBClosed_wt :
+    ∀ (ctx : List (String × HOLType)) (t : Term) (T : HOLType),
+      t.HasType T ->
+      DBClosed (toDBAux ctx t) ->
+      ∀ x U, (Term.var x U).IsFreeVarIn t -> ∃ n, lookupBVar ctx x U = some n := by
+  intro ctx t T hty
+  induction hty generalizing ctx with
+  | var x T =>
+      intro hDb y U hfree
+      have hEq : Term.var y U = Term.var x T := by
+        simpa [Term.IsFreeVarIn] using hfree
+      cases hEq
+      cases hL : lookupBVar ctx x T with
+      | none =>
+          have : False := by
+            have hDb' := hDb
+            simp [toDBAux, DBClosed, hL] at hDb'
+          exact False.elim this
+      | some n =>
+          exact ⟨n, rfl⟩
+  | const c T =>
+      intro _ x U hfree
+      have : False := by
+        simp [Term.IsFreeVarIn] at hfree
+      exact False.elim this
+  | app s t dT rT hs ht ihs iht =>
+      intro hDb x U hfree
+      have hPair : DBClosed (toDBAux ctx s) ∧ DBClosed (toDBAux ctx t) := by
+        simpa [toDBAux, DBClosed] using hDb
+      rcases hPair with ⟨hsDb, htDb⟩
+      cases hfree with
+      | inl hsFree => exact ihs ctx hsDb x U hsFree
+      | inr htFree => exact iht ctx htDb x U htFree
+  | abs n dT rT t ht iht =>
+      intro hDb x U hfree
+      rcases hfree with ⟨hneq, hfreeBody⟩
+      have hBodyDb : DBClosed (toDBAux ((n, dT) :: ctx) t) := by
+        simpa [toDBAux, DBClosed] using hDb
+      rcases iht ((n, dT) :: ctx) hBodyDb x U hfreeBody with ⟨m, hm⟩
+      cases m with
+      | zero =>
+          have hEq : x = n ∧ U = dT :=
+            (lookupBVar_cons_eq_some_zero_iff ctx x n U dT).mp hm
+          rcases hEq with ⟨hx, hU⟩
+          apply False.elim
+          apply hneq
+          simp [hx, hU]
+      | succ k =>
+          have hSucc : (x ≠ n ∨ U ≠ dT) ∧ lookupBVar ctx x U = some k :=
+            (lookupBVar_cons_eq_some_succ_iff ctx x n U dT k).mp hm
+          exact ⟨k, hSucc.2⟩
+
+theorem toDB_DBClosed_of_wt_closed :
+    ∀ (t : Term), WellTyped t -> Closed t -> DBClosed (toDB t) := by
+  intro t hwt hClosed
+  rcases hwt with ⟨T, hty⟩
+  unfold toDB
+  apply toDBAux_DBClosed_of_wt_covered [] t T hty
+  intro x U hfree
+  exact False.elim (hClosed x U hfree)
+
+theorem closed_of_toDB_DBClosed_wt :
+    ∀ (t : Term), WellTyped t -> DBClosed (toDB t) -> Closed t := by
+  intro t hwt hDb
+  rcases hwt with ⟨T, hty⟩
+  intro x U hfree
+  have hCov : ∃ n, lookupBVar [] x U = some n := by
+    have hDbAux : DBClosed (toDBAux [] t) := by simpa [toDB] using hDb
+    exact covered_of_toDBAux_DBClosed_wt [] t T hty hDbAux x U hfree
+  rcases hCov with ⟨n, hn⟩
+  simp [lookupBVar] at hn
+
+theorem closed_of_alpha_wt_left :
+    ∀ (t1 t2 : Term),
+      WellTyped t1 -> WellTyped t2 -> AlphaEqv t1 t2 -> Closed t1 -> Closed t2 := by
+  intro t1 t2 hwt1 hwt2 hAlpha hClosed1
+  have hEq : toDB t1 = toDB t2 := toDB_eq_of_AlphaEqv_wt t1 t2 hwt1 hwt2 hAlpha
+  have hDb1 : DBClosed (toDB t1) := toDB_DBClosed_of_wt_closed t1 hwt1 hClosed1
+  have hDb2 : DBClosed (toDB t2) := by
+    simpa [hEq] using hDb1
+  exact closed_of_toDB_DBClosed_wt t2 hwt2 hDb2
+
+/-- Variable `(x,T)` is disjoint from all binders in `ctx`. -/
+def CtxDisjoint (ctx : List (String × HOLType)) (x : String) (T : HOLType) : Prop :=
+  ∀ y U, (y, U) ∈ ctx -> (x ≠ y ∨ T ≠ U)
+
+/-- De Bruijn term contains free-variable node `(x,T)`. -/
+def DBHasFVar (x : String) (T : HOLType) : DBTerm -> Prop
+| .bvar _ => False
+| .fvar y U => x = y ∧ T = U
+| .const _ _ => False
+| .app s t => DBHasFVar x T s ∨ DBHasFVar x T t
+| .abs t => DBHasFVar x T t
+
+theorem lookupBVar_none_of_disjoint :
+    ∀ (ctx : List (String × HOLType)) (x : String) (T : HOLType),
+      CtxDisjoint ctx x T -> lookupBVar ctx x T = none := by
+  intro ctx x T hDis
+  induction ctx with
+  | nil =>
+      rfl
+  | cons hd tl ih =>
+      rcases hd with ⟨y, U⟩
+      have hHead : x ≠ y ∨ T ≠ U := hDis y U (by simp)
+      have hTail : CtxDisjoint tl x T := by
+        intro y' U' hmem
+        exact hDis y' U' (by simp [hmem])
+      rw [lookupBVar_cons_miss tl x y T U hHead]
+      simp [ih hTail]
+
+theorem DBHasFVar_toDBAux_of_free :
+    ∀ (ctx : List (String × HOLType)) (t : Term) (x : String) (T : HOLType),
+      CtxDisjoint ctx x T -> (Term.var x T).IsFreeVarIn t -> DBHasFVar x T (toDBAux ctx t) := by
+  intro ctx t
+  induction t generalizing ctx with
+  | var y U =>
+      intro x T hDis hfree
+      have hEq : Term.var x T = Term.var y U := by
+        simpa [Term.IsFreeVarIn] using hfree
+      cases hEq
+      have hNone : lookupBVar ctx y U = none := lookupBVar_none_of_disjoint ctx y U hDis
+      simp [toDBAux, DBHasFVar, hNone]
+  | const c U =>
+      intro x T _ hfree
+      have : False := by
+        simp [Term.IsFreeVarIn] at hfree
+      exact False.elim this
+  | app s t ihs iht =>
+      intro x T hDis hfree
+      cases hfree with
+      | inl hs => exact Or.inl (ihs ctx x T hDis hs)
+      | inr ht => exact Or.inr (iht ctx x T hDis ht)
+  | abs n body ihn ihbody =>
+      intro x T hDis hfree
+      rcases hfree with ⟨hneq, hbody⟩
+      cases n with
+      | var y U =>
+          have hHead : x ≠ y ∨ T ≠ U := var_ne_disj x y T U hneq
+          have hDis' : CtxDisjoint ((y, U) :: ctx) x T := by
+            intro y' U' hmem
+            have hmem' : (y', U') = (y, U) ∨ (y', U') ∈ ctx := List.mem_cons.mp hmem
+            cases hmem' with
+            | inl hEq =>
+                rcases Prod.mk.inj hEq with ⟨hy, hU⟩
+                subst hy
+                subst hU
+                exact hHead
+            | inr hTail =>
+                exact hDis y' U' hTail
+          have hRec : DBHasFVar x T (toDBAux ((y, U) :: ctx) body) :=
+            ihbody ((y, U) :: ctx) x T hDis' hbody
+          simpa [toDBAux, DBHasFVar] using hRec
+      | const y U =>
+          have hRec : DBHasFVar x T (toDBAux ctx body) := ihbody ctx x T hDis hbody
+          simpa [toDBAux, DBHasFVar] using hRec
+      | app n1 n2 =>
+          have hRec : DBHasFVar x T (toDBAux ctx body) := ihbody ctx x T hDis hbody
+          simpa [toDBAux, DBHasFVar] using hRec
+      | abs n1 n2 =>
+          have hRec : DBHasFVar x T (toDBAux ctx body) := ihbody ctx x T hDis hbody
+          simpa [toDBAux, DBHasFVar] using hRec
+
+theorem no_DBHasFVar_of_lookup_some :
+    ∀ (ctx : List (String × HOLType)) (body : Term) (x : String) (T : HOLType) (n : Nat),
+      lookupBVar ctx x T = some n ->
+      DBHasFVar x T (toDBAux ctx body) -> False := by
+  intro ctx body x T n hLookup hHas
+  induction body generalizing ctx n with
+  | var y U =>
+      cases hL : lookupBVar ctx y U with
+      | none =>
+          have hEq : x = y ∧ T = U := by
+            simpa [toDBAux, DBHasFVar, hL] using hHas
+          rcases hEq with ⟨hx, hTU⟩
+          subst hx
+          subst hTU
+          rw [hL] at hLookup
+          simp at hLookup
+      | some m =>
+            simp [toDBAux, DBHasFVar, hL] at hHas
+  | const c U =>
+          simp [toDBAux, DBHasFVar] at hHas
+  | app s t ihs iht =>
+      have hSplit : DBHasFVar x T (toDBAux ctx s) ∨ DBHasFVar x T (toDBAux ctx t) := by
+        simpa [toDBAux, DBHasFVar] using hHas
+      cases hSplit with
+          | inl hs => exact ihs ctx n hLookup hs
+          | inr ht => exact iht ctx n hLookup ht
+  | abs nvar body ihn ihbody =>
+      cases nvar with
+      | var y U =>
+          have hBodyHas : DBHasFVar x T (toDBAux ((y, U) :: ctx) body) := by
+            simpa [toDBAux, DBHasFVar] using hHas
+          by_cases hxyu : (x = y ∧ T = U)
+          · have hLookup' : lookupBVar ((y, U) :: ctx) x T = some 0 := by
+              simp [lookupBVar, hxyu]
+            exact ihbody ((y, U) :: ctx) 0 hLookup' hBodyHas
+          · have hLookup' : lookupBVar ((y, U) :: ctx) x T = some (Nat.succ n) := by
+              simp [lookupBVar, hxyu, hLookup]
+            exact ihbody ((y, U) :: ctx) (Nat.succ n) hLookup' hBodyHas
+      | const y U =>
+          have hBodyHas : DBHasFVar x T (toDBAux ctx body) := by
+            simpa [toDBAux, DBHasFVar] using hHas
+          exact ihbody ctx n hLookup hBodyHas
+      | app n1 n2 =>
+          have hBodyHas : DBHasFVar x T (toDBAux ctx body) := by
+            simpa [toDBAux, DBHasFVar] using hHas
+          exact ihbody ctx n hLookup hBodyHas
+      | abs n1 n2 =>
+          have hBodyHas : DBHasFVar x T (toDBAux ctx body) := by
+            simpa [toDBAux, DBHasFVar] using hHas
+          exact ihbody ctx n hLookup hBodyHas
+
+theorem no_DBHasFVar_under_bound :
+    ∀ (ctx : List (String × HOLType)) (body : Term) (x : String) (T : HOLType),
+      ¬ DBHasFVar x T (toDBAux ((x, T) :: ctx) body) := by
+  intro ctx body x T
+  have hLookup : lookupBVar ((x, T) :: ctx) x T = some 0 := by
+    simp [lookupBVar]
+  intro hHas
+  exact no_DBHasFVar_of_lookup_some ((x, T) :: ctx) body x T 0 hLookup hHas
+
+theorem free_of_DBHasFVar_toDBAux :
+    ∀ (ctx : List (String × HOLType)) (t : Term) (x : String) (T : HOLType),
+      CtxDisjoint ctx x T -> DBHasFVar x T (toDBAux ctx t) -> (Term.var x T).IsFreeVarIn t := by
+  intro ctx t
+  induction t generalizing ctx with
+  | var y U =>
+      intro x T _ hHas
+      cases hL : lookupBVar ctx y U with
+      | none =>
+          have hEq : x = y ∧ T = U := by
+            simpa [toDBAux, DBHasFVar, hL] using hHas
+          rcases hEq with ⟨hx, hT⟩
+          subst hx
+          subst hT
+          simp [Term.IsFreeVarIn]
+      | some n =>
+          have : False := by
+            simp [toDBAux, DBHasFVar, hL] at hHas
+          exact False.elim this
+  | const c U =>
+      intro x T _ hHas
+      simp [toDBAux, DBHasFVar] at hHas
+  | app s t ihs iht =>
+      intro x T hDis hHas
+      have hSplit : DBHasFVar x T (toDBAux ctx s) ∨ DBHasFVar x T (toDBAux ctx t) := by
+        simpa [toDBAux, DBHasFVar] using hHas
+      cases hSplit with
+      | inl hs => exact Or.inl (ihs ctx x T hDis hs)
+      | inr ht => exact Or.inr (iht ctx x T hDis ht)
+  | abs n body ihn ihbody =>
+      intro x T hDis hHas
+      cases n with
+      | var y U =>
+          have hBodyHas : DBHasFVar x T (toDBAux ((y, U) :: ctx) body) := by
+            simpa [toDBAux, DBHasFVar] using hHas
+          have hHead : x ≠ y ∨ T ≠ U := by
+            by_cases hxy : x = y
+            · by_cases hTU : T = U
+              · subst hxy
+                subst hTU
+                exact False.elim ((no_DBHasFVar_under_bound ctx body x T) hBodyHas)
+              · exact Or.inr hTU
+            · exact Or.inl hxy
+          have hDis' : CtxDisjoint ((y, U) :: ctx) x T := by
+            intro y' U' hmem
+            have hmem' : (y', U') = (y, U) ∨ (y', U') ∈ ctx := List.mem_cons.mp hmem
+            cases hmem' with
+            | inl hEq =>
+                rcases Prod.mk.inj hEq with ⟨hy, hU⟩
+                subst hy
+                subst hU
+                exact hHead
+            | inr hTail =>
+                exact hDis y' U' hTail
+          have hBodyFree : (Term.var x T).IsFreeVarIn body :=
+            ihbody ((y, U) :: ctx) x T hDis' hBodyHas
+          have hneqTerm : Term.var x T ≠ Term.var y U := by
+            intro hEq
+            cases hEq
+            cases hHead with
+            | inl hxy => exact (hxy rfl).elim
+            | inr hTU => exact (hTU rfl).elim
+          exact And.intro hneqTerm hBodyFree
+      | const y U =>
+          have hBodyHas : DBHasFVar x T (toDBAux ctx body) := by
+            simpa [toDBAux, DBHasFVar] using hHas
+          have hBodyFree : (Term.var x T).IsFreeVarIn body := ihbody ctx x T hDis hBodyHas
+          have hneqTerm : Term.var x T ≠ Term.const y U := by
+            intro hEq
+            cases hEq
+          exact And.intro hneqTerm hBodyFree
+      | app n1 n2 =>
+          have hBodyHas : DBHasFVar x T (toDBAux ctx body) := by
+            simpa [toDBAux, DBHasFVar] using hHas
+          have hBodyFree : (Term.var x T).IsFreeVarIn body := ihbody ctx x T hDis hBodyHas
+          have hneqTerm : Term.var x T ≠ Term.app n1 n2 := by
+            intro hEq
+            cases hEq
+          exact And.intro hneqTerm hBodyFree
+      | abs n1 n2 =>
+          have hBodyHas : DBHasFVar x T (toDBAux ctx body) := by
+            simpa [toDBAux, DBHasFVar] using hHas
+          have hBodyFree : (Term.var x T).IsFreeVarIn body := ihbody ctx x T hDis hBodyHas
+          have hneqTerm : Term.var x T ≠ Term.abs n1 n2 := by
+            intro hEq
+            cases hEq
+          exact And.intro hneqTerm hBodyFree
+
+theorem DBHasFVar_toDB_of_free :
+    ∀ (t : Term) (x : String) (T : HOLType),
+      (Term.var x T).IsFreeVarIn t -> DBHasFVar x T (toDB t) := by
+  intro t x T hfree
+  unfold toDB
+  apply DBHasFVar_toDBAux_of_free [] t x T
+  · intro y U hmem
+    simp at hmem
+  · exact hfree
+
+theorem free_of_DBHasFVar_toDB :
+    ∀ (t : Term) (x : String) (T : HOLType),
+      DBHasFVar x T (toDB t) -> (Term.var x T).IsFreeVarIn t := by
+  intro t x T hHas
+  unfold toDB at hHas
+  apply free_of_DBHasFVar_toDBAux [] t x T
+  · intro y U hmem
+    simp at hmem
+  · exact hHas
+
+theorem free_var_iff_of_alpha_wt :
+    ∀ (t1 t2 : Term) (x : String) (T : HOLType),
+      WellTyped t1 -> WellTyped t2 -> AlphaEqv t1 t2 ->
+      ((Term.var x T).IsFreeVarIn t1 ↔ (Term.var x T).IsFreeVarIn t2) := by
+  intro t1 t2 x T hwt1 hwt2 hAlpha
+  have hEq : toDB t1 = toDB t2 := toDB_eq_of_AlphaEqv_wt t1 t2 hwt1 hwt2 hAlpha
+  constructor
+  · intro hfree1
+    have hHas1 : DBHasFVar x T (toDB t1) := DBHasFVar_toDB_of_free t1 x T hfree1
+    have hHas2 : DBHasFVar x T (toDB t2) := by
+      simpa [hEq] using hHas1
+    exact free_of_DBHasFVar_toDB t2 x T hHas2
+  · intro hfree2
+    have hHas2 : DBHasFVar x T (toDB t2) := DBHasFVar_toDB_of_free t2 x T hfree2
+    have hHas1 : DBHasFVar x T (toDB t1) := by
+      simpa [hEq] using hHas2
+    exact free_of_DBHasFVar_toDB t1 x T hHas1
+
+theorem IsFreeVarIn_app_arg_false :
+    ∀ (a b t : Term), ¬ (Term.app a b).IsFreeVarIn t := by
+  intro a b t
+  induction t with
+  | var x T =>
+      simp [Term.IsFreeVarIn]
+  | const c T =>
+      simp [Term.IsFreeVarIn]
+  | app s t ihs iht =>
+      intro h
+      cases h with
+      | inl hs => exact ihs hs
+      | inr ht => exact iht ht
+  | abs n t ihn iht =>
+      intro h
+      exact iht h.2
+
+theorem IsFreeVarIn_abs_arg_false :
+    ∀ (a b t : Term), ¬ (Term.abs a b).IsFreeVarIn t := by
+  intro a b t
+  induction t with
+  | var x T =>
+      simp [Term.IsFreeVarIn]
+  | const c T =>
+      simp [Term.IsFreeVarIn]
+  | app s t ihs iht =>
+      intro h
+      cases h with
+      | inl hs => exact ihs hs
+      | inr ht => exact iht ht
+  | abs n t ihn iht =>
+      intro h
+      exact iht h.2
+
+/-- De Bruijn term contains constant node `(c,T)`. -/
+def DBHasConst (c : String) (T : HOLType) : DBTerm -> Prop
+| .bvar _ => False
+| .fvar _ _ => False
+| .const c' T' => c = c' ∧ T = T'
+| .app s t => DBHasConst c T s ∨ DBHasConst c T t
+| .abs t => DBHasConst c T t
+
+theorem DBHasConst_toDBAux_of_free :
+    ∀ (ctx : List (String × HOLType)) (t : Term) (c : String) (T : HOLType),
+      (Term.const c T).IsFreeVarIn t -> DBHasConst c T (toDBAux ctx t) := by
+  intro ctx t
+  induction t generalizing ctx with
+  | var x U =>
+      intro c T hfree
+      simp [Term.IsFreeVarIn] at hfree
+  | const c' U =>
+      intro c T hfree
+      simpa [toDBAux, DBHasConst, Term.IsFreeVarIn] using hfree
+  | app s t ihs iht =>
+      intro c T hfree
+      cases hfree with
+      | inl hs => exact Or.inl (ihs ctx c T hs)
+      | inr ht => exact Or.inr (iht ctx c T ht)
+  | abs n body ihn ihbody =>
+      intro c T hfree
+      cases n with
+      | var x U =>
+          have hBody : (Term.const c T).IsFreeVarIn body := hfree.2
+          have hRec : DBHasConst c T (toDBAux ((x, U) :: ctx) body) := ihbody ((x, U) :: ctx) c T hBody
+          simpa [toDBAux, DBHasConst] using hRec
+      | const x U =>
+          have hBody : (Term.const c T).IsFreeVarIn body := hfree.2
+          have hRec : DBHasConst c T (toDBAux ctx body) := ihbody ctx c T hBody
+          simpa [toDBAux, DBHasConst] using hRec
+      | app n1 n2 =>
+          have hBody : (Term.const c T).IsFreeVarIn body := hfree.2
+          have hRec : DBHasConst c T (toDBAux ctx body) := ihbody ctx c T hBody
+          simpa [toDBAux, DBHasConst] using hRec
+      | abs n1 n2 =>
+          have hBody : (Term.const c T).IsFreeVarIn body := hfree.2
+          have hRec : DBHasConst c T (toDBAux ctx body) := ihbody ctx c T hBody
+          simpa [toDBAux, DBHasConst] using hRec
+
+theorem DBHasConst_toDBAux_ctx_irrel :
+    ∀ (ctx : List (String × HOLType)) (t : Term) (c : String) (T : HOLType),
+      DBHasConst c T (toDBAux ctx t) ↔ DBHasConst c T (toDBAux [] t) := by
+  intro ctx t
+  induction t generalizing ctx with
+  | var x U =>
+      intro c T
+      cases h : lookupBVar ctx x U with
+      | none => simp [toDBAux, DBHasConst, h, lookupBVar]
+      | some n => simp [toDBAux, DBHasConst, h, lookupBVar]
+  | const c' U =>
+      intro c T
+      simp [toDBAux, DBHasConst]
+  | app s t ihs iht =>
+      intro c T
+      constructor
+      · intro h
+        cases h with
+        | inl hs => exact Or.inl ((ihs ctx c T).mp hs)
+        | inr ht => exact Or.inr ((iht ctx c T).mp ht)
+      · intro h
+        cases h with
+        | inl hs => exact Or.inl ((ihs ctx c T).mpr hs)
+        | inr ht => exact Or.inr ((iht ctx c T).mpr ht)
+  | abs n body ihn ihbody =>
+      intro c T
+      cases n with
+      | var x U =>
+          have h1 : DBHasConst c T (toDBAux ((x, U) :: ctx) body) ↔ DBHasConst c T (toDBAux [] body) :=
+            ihbody ((x, U) :: ctx) c T
+          have h2 : DBHasConst c T (toDBAux ((x, U) :: []) body) ↔ DBHasConst c T (toDBAux [] body) :=
+            ihbody ((x, U) :: []) c T
+          exact Iff.trans h1 h2.symm
+      | const x U =>
+          simpa [toDBAux, DBHasConst] using (ihbody ctx c T)
+      | app n1 n2 =>
+          simpa [toDBAux, DBHasConst] using (ihbody ctx c T)
+      | abs n1 n2 =>
+          simpa [toDBAux, DBHasConst] using (ihbody ctx c T)
+
+theorem free_const_of_DBHasConst_toDB_wt :
+    ∀ (t : Term) (c : String) (T : HOLType),
+      WellTyped t -> DBHasConst c T (toDB t) -> (Term.const c T).IsFreeVarIn t := by
+  intro t c T hwt
+  rcases hwt with ⟨Ty, hty⟩
+  induction hty with
+  | var x U =>
+      intro hHas
+      have : False := by
+        simp [toDB, toDBAux, DBHasConst, lookupBVar] at hHas
+      exact False.elim this
+  | const c' U =>
+      intro hHas
+      have hEq : c = c' ∧ T = U := by
+        simpa [toDB, toDBAux, DBHasConst] using hHas
+      rcases hEq with ⟨hc, hT⟩
+      subst hc
+      subst hT
+      simp [Term.IsFreeVarIn]
+  | app s t dT rT hs ht ihs iht =>
+      intro hHas
+      have hSplit : DBHasConst c T (toDB s) ∨ DBHasConst c T (toDB t) := by
+        simpa [toDB, toDBAux, DBHasConst] using hHas
+      cases hSplit with
+      | inl hsHas => exact Or.inl (ihs hsHas)
+      | inr htHas => exact Or.inr (iht htHas)
+  | abs x dT rT body hbody ih =>
+      intro hHas
+      have hBodyCtx : DBHasConst c T (toDBAux ((x, dT) :: []) body) := by
+        simpa [toDB, toDBAux, DBHasConst] using hHas
+      have hBody0 : DBHasConst c T (toDB body) :=
+        (DBHasConst_toDBAux_ctx_irrel ((x, dT) :: []) body c T).mp hBodyCtx
+      have hBodyFree : (Term.const c T).IsFreeVarIn body := ih hBody0
+      have hneq : Term.const c T ≠ Term.var x dT := by
+        intro hEq
+        cases hEq
+      exact And.intro hneq hBodyFree
+
+theorem free_const_iff_of_alpha_wt :
+    ∀ (t1 t2 : Term) (c : String) (T : HOLType),
+      WellTyped t1 -> WellTyped t2 -> AlphaEqv t1 t2 ->
+      ((Term.const c T).IsFreeVarIn t1 ↔ (Term.const c T).IsFreeVarIn t2) := by
+  intro t1 t2 c T hwt1 hwt2 hAlpha
+  have hEq : toDB t1 = toDB t2 := toDB_eq_of_AlphaEqv_wt t1 t2 hwt1 hwt2 hAlpha
+  constructor
+  · intro hfree1
+    have hHas1 : DBHasConst c T (toDB t1) := DBHasConst_toDBAux_of_free [] t1 c T hfree1
+    have hHas2 : DBHasConst c T (toDB t2) := by
+      simpa [hEq] using hHas1
+    exact free_const_of_DBHasConst_toDB_wt t2 c T hwt2 hHas2
+  · intro hfree2
+    have hHas2 : DBHasConst c T (toDB t2) := DBHasConst_toDBAux_of_free [] t2 c T hfree2
+    have hHas1 : DBHasConst c T (toDB t1) := by
+      simpa [hEq] using hHas2
+    exact free_const_of_DBHasConst_toDB_wt t1 c T hwt1 hHas1
 
 /-- Maximum variable-name length appearing in a term. -/
 def Term.maxVarNameLen : Term → Nat
@@ -436,6 +1511,196 @@ theorem welltyped_subst : ∀ (t : Term) (i : List (Term × Term)),
 def SubstOk (i : List (Term × Term)) : Prop :=
   ∀ v t, (v, t) ∈ i → ∃ x T, v = Term.var x T ∧ t.HasType T
 
+/-- No constant appears on substitution LHS. -/
+def SubstNoConstLHS (i : List (Term × Term)) : Prop :=
+  ∀ v t, (v, t) ∈ i -> ¬ ∃ c T, v = Term.const c T
+
+theorem SubstOk.toNoConstLHS : ∀ (i : List (Term × Term)),
+    SubstOk i -> SubstNoConstLHS i := by
+  intro i hOk
+  intro v t hmem hconst
+  rcases hOk v t hmem with ⟨x, T, hv, _⟩
+  rcases hconst with ⟨c, U, hc⟩
+  subst hv
+  cases hc
+
+/-- No LHS variable of substitution list appears free in the target term. -/
+def SubstNoHit (i : List (Term × Term)) (t : Term) : Prop :=
+  ∀ v s, (v, s) ∈ i -> ¬ v.IsFreeVarIn t
+
+theorem SubstNoHit.of_closed :
+    ∀ (i : List (Term × Term)) (t : Term),
+    Closed t -> SubstNoConstLHS i -> SubstNoHit i t := by
+  intro i t hClosed hNoConst
+  intro v s hmem hfree
+  cases v with
+  | var x T =>
+    exact hClosed x T hfree
+  | const c T =>
+    exact False.elim ((hNoConst (Term.const c T) s hmem) ⟨c, T, rfl⟩)
+  | app a b =>
+    exact False.elim ((IsFreeVarIn_app_arg_false a b t) hfree)
+  | abs a b =>
+    exact False.elim ((IsFreeVarIn_abs_arg_false a b t) hfree)
+
+/-- Substitution is well-typed and all RHS terms are closed. -/
+def SubstOkClosed (i : List (Term × Term)) : Prop :=
+  ∀ v t, (v, t) ∈ i → (∃ x T, v = Term.var x T ∧ t.HasType T) ∧ Closed t
+
+theorem SubstOkClosed.toSubstOk : ∀ (i : List (Term × Term)),
+    SubstOkClosed i → SubstOk i := by
+  intro i hOk
+  intro v t hmem
+  exact (hOk v t hmem).1
+
+theorem SubstOkClosed.filter : ∀ (i : List (Term × Term)) (bvar : Term),
+    SubstOkClosed i -> SubstOkClosed (i.filter (fun p => !decide (p.fst = bvar))) := by
+  intro i bvar hOk
+  intro v t hmem
+  exact hOk v t (List.mem_filter.mp hmem).1
+
+theorem captureRisk_false_of_closed_rhs_var :
+    ∀ (x : String) (T : HOLType) (body : Term) (i : List (Term × Term)),
+      (∀ v t, (v, t) ∈ i → Closed t) ->
+      captureRisk (Term.var x T) body i = false := by
+  intro x T body i hClosed
+  unfold captureRisk
+  rw [List.any_eq_false]
+  intro p hp
+  rcases p with ⟨v, t⟩
+  intro h
+  have hPair : (Term.var x T).IsFreeVarIn t ∧ v.IsFreeVarIn body := by
+    simpa using h
+  exact (hClosed v t hp) x T hPair.1
+
+theorem captureRisk_false_of_SubstOkClosed_filter_var :
+    ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
+      SubstOkClosed i ->
+      captureRisk (Term.var x T) body (i.filter (fun p => !decide (p.fst = Term.var x T))) = false := by
+  intro i x T body hOk
+  apply captureRisk_false_of_closed_rhs_var
+  intro v t hmem
+  exact (hOk v t (List.mem_filter.mp hmem).1).2
+
+theorem subst_abs_no_rename_of_SubstOkClosed :
+    ∀ (i : List (Term × Term)) (x : String) (dT : HOLType) (t t' : Term),
+      SubstOkClosed i ->
+      subst (i.filter (fun p => !decide (p.fst = Term.var x dT))) t = some t' ->
+      subst i (Term.abs (Term.var x dT) t) = some (Term.abs (Term.var x dT) t') := by
+  intro i x dT t t' hOk ht
+  have hcap :
+      captureRisk (Term.var x dT) t (i.filter (fun p => !decide (p.fst = Term.var x dT))) = false :=
+    captureRisk_false_of_SubstOkClosed_filter_var i x dT t hOk
+  simp [subst, ht, hcap]
+
+theorem subst_self_of_no_hit :
+    ∀ (t : Term) (i : List (Term × Term)),
+  SubstNoHit i t ->
+      subst i t = some t := by
+  intro t
+  induction t with
+  | var x ty =>
+      intro i hNo
+      unfold subst
+      cases hfind : i.find? (fun (y, _) => y = Term.var x ty) with
+      | none =>
+          simp
+      | some p =>
+          rcases p with ⟨v, s⟩
+          have hmem : (v, s) ∈ i := List.mem_of_find?_eq_some hfind
+          have hpred : (fun q : Term × Term => decide (q.fst = Term.var x ty)) (v, s) = true :=
+            List.find?_some (p := fun q : Term × Term => decide (q.fst = Term.var x ty)) hfind
+          have hv : v = Term.var x ty := by
+            simp at hpred
+            exact hpred
+          have hfree : v.IsFreeVarIn (Term.var x ty) := by
+            simp [hv, Term.IsFreeVarIn]
+          exact False.elim ((hNo v s hmem) hfree)
+  | const c ty =>
+      intro i _
+      simp [subst]
+  | app s t ihs iht =>
+      intro i hNo
+      have hsNo : ∀ v r, (v, r) ∈ i -> ¬ v.IsFreeVarIn s := by
+        intro v r hmem hfree
+        exact (hNo v r hmem) (Or.inl hfree)
+      have htNo : ∀ v r, (v, r) ∈ i -> ¬ v.IsFreeVarIn t := by
+        intro v r hmem hfree
+        exact (hNo v r hmem) (Or.inr hfree)
+      have hs : subst i s = some s := ihs i hsNo
+      have ht : subst i t = some t := iht i htNo
+      simp [subst, hs, ht]
+  | abs n body ihn ihbody =>
+      intro i hNo
+      let i' := i.filter (fun p => !decide (p.fst = n))
+      have hNoBody : ∀ v r, (v, r) ∈ i' -> ¬ v.IsFreeVarIn body := by
+        intro v r hmem hfree
+        have hInI : (v, r) ∈ i := (List.mem_filter.mp hmem).1
+        have hkeep : (!decide (v = n)) = true := (List.mem_filter.mp hmem).2
+        have hvneq : v ≠ n := by
+          by_cases hEq : v = n
+          · simp [hEq] at hkeep
+          · exact hEq
+        have hfreeAbs : v.IsFreeVarIn (Term.abs n body) := by
+          exact And.intro hvneq hfree
+        exact (hNo v r hInI) hfreeAbs
+      have hbody : subst i' body = some body := ihbody i' hNoBody
+      have hcap : captureRisk n body i' = false := by
+        unfold captureRisk
+        rw [List.any_eq_false]
+        intro p hp
+        rcases p with ⟨v, r⟩
+        have hnv : ¬ v.IsFreeVarIn body := hNoBody v r hp
+        have hpair : ¬ (n.IsFreeVarIn r ∧ v.IsFreeVarIn body) := by
+          intro h
+          exact hnv h.2
+        simp [hpair]
+      simp [subst, i', hbody, hcap]
+
+theorem subst_self_of_closed :
+    ∀ (t : Term) (i : List (Term × Term)),
+      Closed t -> SubstNoConstLHS i -> subst i t = some t := by
+  intro t i hClosed hNoConst
+  apply subst_self_of_no_hit t i
+  exact SubstNoHit.of_closed i t hClosed hNoConst
+
+theorem subst_alpha_closed_terms_both_closed :
+    ∀ (t1 t2 : Term) (i : List (Term × Term)),
+      SubstNoConstLHS i -> Closed t1 -> Closed t2 -> AlphaEqv t1 t2 ->
+      ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
+  intro t1 t2 i hNoConst hClosed1 hClosed2 hAlpha
+  refine ⟨t1, t2, ?_, ?_, hAlpha⟩
+  · exact subst_self_of_closed t1 i hClosed1 hNoConst
+  · exact subst_self_of_closed t2 i hClosed2 hNoConst
+
+theorem subst_alpha_closed_terms : ∀ (t1 t2 : Term) (i : List (Term × Term)),
+  WellTyped t1 → WellTyped t2 → SubstNoConstLHS i → Closed t1 → AlphaEqv t1 t2 →
+    ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
+  intro t1 t2 i hwt1 hwt2 hNoConst hClosed1 hAlpha
+  have hClosed2 : Closed t2 := closed_of_alpha_wt_left t1 t2 hwt1 hwt2 hAlpha hClosed1
+  exact subst_alpha_closed_terms_both_closed t1 t2 i hNoConst hClosed1 hClosed2 hAlpha
+
+theorem subst_alpha_closed_terms_of_SubstOk :
+    ∀ (t1 t2 : Term) (i : List (Term × Term)),
+      WellTyped t1 → WellTyped t2 → SubstOk i → Closed t1 → AlphaEqv t1 t2 →
+      ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
+  intro t1 t2 i hwt1 hwt2 hOk hClosed1 hAlpha
+  exact subst_alpha_closed_terms t1 t2 i hwt1 hwt2 (SubstOk.toNoConstLHS i hOk) hClosed1 hAlpha
+
+theorem subst_alpha_closed_terms_both_closed_of_SubstOk :
+    ∀ (t1 t2 : Term) (i : List (Term × Term)),
+      SubstOk i -> Closed t1 -> Closed t2 -> AlphaEqv t1 t2 ->
+      ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
+  intro t1 t2 i hOk hClosed1 hClosed2 hAlpha
+  exact subst_alpha_closed_terms_both_closed t1 t2 i (SubstOk.toNoConstLHS i hOk) hClosed1 hClosed2 hAlpha
+
+theorem subst_alpha_closed_terms_both_closed_of_SubstOkClosed :
+    ∀ (t1 t2 : Term) (i : List (Term × Term)),
+      SubstOkClosed i -> Closed t1 -> Closed t2 -> AlphaEqv t1 t2 ->
+      ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
+  intro t1 t2 i hOk hClosed1 hClosed2 hAlpha
+  exact subst_alpha_closed_terms_both_closed_of_SubstOk t1 t2 i (SubstOkClosed.toSubstOk i hOk) hClosed1 hClosed2 hAlpha
+
 /-- Stronger condition used by the current alpha-preservation proof. -/
 def SubstOkStrong (i : List (Term × Term)) : Prop :=
   ∀ v t, (v, t) ∈ i → ∃ x T, v = Term.var x T ∧ t = Term.var x T
@@ -523,13 +1788,184 @@ theorem subst_self_of_SubstOk : ∀ (t : Term) (i : List (Term × Term)),
         simpa [i'] using captureRisk_false_of_SubstOk_filter n t i hOk
       simp [subst, i', ht, hcap]
 
-theorem subst_alpha : ∀ (t1 t2 : Term) (i : List (Term × Term)),
+theorem subst_alpha_strong : ∀ (t1 t2 : Term) (i : List (Term × Term)),
   WellTyped t1 → WellTyped t2 → SubstOkStrong i → AlphaEqv t1 t2 →
     ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
   intro t1 t2 i hwt1 hwt2 hOk hAlpha
   refine ⟨t1, t2, ?_, ?_, hAlpha⟩
   · exact subst_self_of_SubstOk t1 i hOk
   · exact subst_self_of_SubstOk t2 i hOk
+
+theorem SubstNoHit.right_of_free_iff :
+    ∀ (t1 t2 : Term) (i : List (Term × Term)),
+      (∀ x T, (Term.var x T).IsFreeVarIn t1 ↔ (Term.var x T).IsFreeVarIn t2) ->
+      (∀ c T, (Term.const c T).IsFreeVarIn t1 ↔ (Term.const c T).IsFreeVarIn t2) ->
+      SubstNoHit i t1 -> SubstNoHit i t2 := by
+  intro t1 t2 i hVar hConst hNo1
+  intro v s hmem hfree2
+  cases v with
+  | var x T =>
+      have hfree1 : (Term.var x T).IsFreeVarIn t1 := (hVar x T).mpr hfree2
+      exact (hNo1 (Term.var x T) s hmem) hfree1
+  | const c T =>
+      have hfree1 : (Term.const c T).IsFreeVarIn t1 := (hConst c T).mpr hfree2
+      exact (hNo1 (Term.const c T) s hmem) hfree1
+  | app a b =>
+      exact (IsFreeVarIn_app_arg_false a b t2) hfree2
+  | abs a b =>
+      exact (IsFreeVarIn_abs_arg_false a b t2) hfree2
+
+theorem SubstNoHit.left_of_free_iff :
+    ∀ (t1 t2 : Term) (i : List (Term × Term)),
+      (∀ x T, (Term.var x T).IsFreeVarIn t1 ↔ (Term.var x T).IsFreeVarIn t2) ->
+      (∀ c T, (Term.const c T).IsFreeVarIn t1 ↔ (Term.const c T).IsFreeVarIn t2) ->
+      SubstNoHit i t2 -> SubstNoHit i t1 := by
+  intro t1 t2 i hVar hConst hNo2
+  apply SubstNoHit.right_of_free_iff t2 t1 i
+  · intro x T
+    exact (hVar x T).symm
+  · intro c T
+    exact (hConst c T).symm
+  · exact hNo2
+
+theorem SubstNoHit.right_of_alpha :
+    ∀ (t1 t2 : Term) (i : List (Term × Term)),
+      WellTyped t1 -> WellTyped t2 -> AlphaEqv t1 t2 ->
+      SubstNoHit i t1 -> SubstNoHit i t2 := by
+  intro t1 t2 i hwt1 hwt2 hAlpha hNo1
+  apply SubstNoHit.right_of_free_iff t1 t2 i
+  · intro x T
+    exact free_var_iff_of_alpha_wt t1 t2 x T hwt1 hwt2 hAlpha
+  · intro c T
+    exact free_const_iff_of_alpha_wt t1 t2 c T hwt1 hwt2 hAlpha
+  · exact hNo1
+
+theorem SubstNoHit.left_of_alpha :
+    ∀ (t1 t2 : Term) (i : List (Term × Term)),
+      WellTyped t1 -> WellTyped t2 -> AlphaEqv t1 t2 ->
+      SubstNoHit i t2 -> SubstNoHit i t1 := by
+  intro t1 t2 i hwt1 hwt2 hAlpha hNo2
+  apply SubstNoHit.left_of_free_iff t1 t2 i
+  · intro x T
+    exact free_var_iff_of_alpha_wt t1 t2 x T hwt1 hwt2 hAlpha
+  · intro c T
+    exact free_const_iff_of_alpha_wt t1 t2 c T hwt1 hwt2 hAlpha
+  · exact hNo2
+
+theorem SubstNoHit.iff_of_free_iff :
+    ∀ (t1 t2 : Term) (i : List (Term × Term)),
+      (∀ x T, (Term.var x T).IsFreeVarIn t1 ↔ (Term.var x T).IsFreeVarIn t2) ->
+      (∀ c T, (Term.const c T).IsFreeVarIn t1 ↔ (Term.const c T).IsFreeVarIn t2) ->
+      (SubstNoHit i t1 ↔ SubstNoHit i t2) := by
+  intro t1 t2 i hVar hConst
+  constructor
+  · intro hNo1
+    exact SubstNoHit.right_of_free_iff t1 t2 i hVar hConst hNo1
+  · intro hNo2
+    exact SubstNoHit.left_of_free_iff t1 t2 i hVar hConst hNo2
+
+theorem SubstNoHit.iff_of_alpha :
+    ∀ (t1 t2 : Term) (i : List (Term × Term)),
+      WellTyped t1 -> WellTyped t2 -> AlphaEqv t1 t2 ->
+      (SubstNoHit i t1 ↔ SubstNoHit i t2) := by
+  intro t1 t2 i hwt1 hwt2 hAlpha
+  exact SubstNoHit.iff_of_free_iff t1 t2 i
+    (fun x T => free_var_iff_of_alpha_wt t1 t2 x T hwt1 hwt2 hAlpha)
+    (fun c T => free_const_iff_of_alpha_wt t1 t2 c T hwt1 hwt2 hAlpha)
+
+theorem SubstNoHit.of_closed_both :
+    ∀ (t1 t2 : Term) (i : List (Term × Term)),
+      SubstNoConstLHS i -> Closed t1 -> Closed t2 ->
+      SubstNoHit i t1 ∧ SubstNoHit i t2 := by
+  intro t1 t2 i hNoConst hClosed1 hClosed2
+  constructor
+  · exact SubstNoHit.of_closed i t1 hClosed1 hNoConst
+  · exact SubstNoHit.of_closed i t2 hClosed2 hNoConst
+
+theorem SubstNoHit.of_closed_left_alpha :
+    ∀ (t1 t2 : Term) (i : List (Term × Term)),
+      WellTyped t1 -> WellTyped t2 -> AlphaEqv t1 t2 ->
+      SubstNoConstLHS i -> Closed t1 ->
+      SubstNoHit i t1 ∧ SubstNoHit i t2 := by
+  intro t1 t2 i hwt1 hwt2 hAlpha hNoConst hClosed1
+  have hClosed2 : Closed t2 := closed_of_alpha_wt_left t1 t2 hwt1 hwt2 hAlpha hClosed1
+  exact SubstNoHit.of_closed_both t1 t2 i hNoConst hClosed1 hClosed2
+
+theorem subst_alpha_nohit_both : ∀ (t1 t2 : Term) (i : List (Term × Term)),
+  SubstNoHit i t1 →
+  SubstNoHit i t2 →
+  AlphaEqv t1 t2 →
+    ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
+  intro t1 t2 i hNo1 hNo2 hAlpha
+  refine ⟨t1, t2, ?_, ?_, hAlpha⟩
+  · exact subst_self_of_no_hit t1 i hNo1
+  · exact subst_self_of_no_hit t2 i hNo2
+
+theorem subst_alpha_of_free_iff : ∀ (t1 t2 : Term) (i : List (Term × Term)),
+  (∀ x T, (Term.var x T).IsFreeVarIn t1 ↔ (Term.var x T).IsFreeVarIn t2) →
+  (∀ c T, (Term.const c T).IsFreeVarIn t1 ↔ (Term.const c T).IsFreeVarIn t2) →
+  SubstNoHit i t1 →
+  AlphaEqv t1 t2 →
+    ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
+  intro t1 t2 i hVar hConst hNo1 hAlpha
+  have hNo2 : SubstNoHit i t2 := SubstNoHit.right_of_free_iff t1 t2 i hVar hConst hNo1
+  exact subst_alpha_nohit_both t1 t2 i hNo1 hNo2 hAlpha
+
+theorem subst_alpha_right_nohit_of_free_iff : ∀ (t1 t2 : Term) (i : List (Term × Term)),
+  (∀ x T, (Term.var x T).IsFreeVarIn t1 ↔ (Term.var x T).IsFreeVarIn t2) →
+  (∀ c T, (Term.const c T).IsFreeVarIn t1 ↔ (Term.const c T).IsFreeVarIn t2) →
+  SubstNoHit i t2 →
+  AlphaEqv t1 t2 →
+    ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
+  intro t1 t2 i hVar hConst hNo2 hAlpha
+  have hNo1 : SubstNoHit i t1 := SubstNoHit.left_of_free_iff t1 t2 i hVar hConst hNo2
+  exact subst_alpha_nohit_both t1 t2 i hNo1 hNo2 hAlpha
+
+theorem subst_alpha : ∀ (t1 t2 : Term) (i : List (Term × Term)),
+  WellTyped t1 → WellTyped t2 →
+  SubstNoHit i t1 →
+  AlphaEqv t1 t2 →
+    ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
+  intro t1 t2 i hwt1 hwt2 hNo1 hAlpha
+  exact subst_alpha_of_free_iff t1 t2 i
+    (fun x T => free_var_iff_of_alpha_wt t1 t2 x T hwt1 hwt2 hAlpha)
+    (fun c T => free_const_iff_of_alpha_wt t1 t2 c T hwt1 hwt2 hAlpha)
+    hNo1 hAlpha
+
+theorem subst_alpha_right_nohit : ∀ (t1 t2 : Term) (i : List (Term × Term)),
+  WellTyped t1 → WellTyped t2 →
+  SubstNoHit i t2 →
+  AlphaEqv t1 t2 →
+    ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
+  intro t1 t2 i hwt1 hwt2 hNo2 hAlpha
+  exact subst_alpha_right_nohit_of_free_iff t1 t2 i
+    (fun x T => free_var_iff_of_alpha_wt t1 t2 x T hwt1 hwt2 hAlpha)
+    (fun c T => free_const_iff_of_alpha_wt t1 t2 c T hwt1 hwt2 hAlpha)
+    hNo2 hAlpha
+
+theorem subst_alpha_of_SubstOk : ∀ (t1 t2 : Term) (i : List (Term × Term)),
+  WellTyped t1 → WellTyped t2 → SubstOk i →
+  SubstNoHit i t1 →
+  AlphaEqv t1 t2 →
+    ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
+  intro t1 t2 i hwt1 hwt2 _hOk hNo1 hAlpha
+  exact subst_alpha t1 t2 i hwt1 hwt2 hNo1 hAlpha
+
+theorem subst_alpha_of_SubstOkClosed : ∀ (t1 t2 : Term) (i : List (Term × Term)),
+  WellTyped t1 → WellTyped t2 → SubstOkClosed i →
+  SubstNoHit i t1 →
+  AlphaEqv t1 t2 →
+    ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
+  intro t1 t2 i hwt1 hwt2 hOk hNo1 hAlpha
+  exact subst_alpha_of_SubstOk t1 t2 i hwt1 hwt2 (SubstOkClosed.toSubstOk i hOk) hNo1 hAlpha
+
+theorem subst_alpha_closed_terms_of_SubstOkClosed :
+    ∀ (t1 t2 : Term) (i : List (Term × Term)),
+      WellTyped t1 → WellTyped t2 → SubstOkClosed i → Closed t1 → AlphaEqv t1 t2 →
+      ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
+  intro t1 t2 i hwt1 hwt2 hOk hClosed1 hAlpha
+  have hClosed2 : Closed t2 := closed_of_alpha_wt_left t1 t2 hwt1 hwt2 hAlpha hClosed1
+  exact subst_alpha_closed_terms_both_closed_of_SubstOkClosed t1 t2 i hOk hClosed1 hClosed2 hAlpha
 
 /-- Structural size for fuel-based recursion in instantiation. -/
 def Term.size : Term → Nat
