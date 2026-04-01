@@ -13,7 +13,6 @@ instance : Inhabited Term where
   default := .var "x" HOLType.bool
 
 /-- Type checking predicate for terms. -/
-@[aesop unsafe [constructors, cases]]
 inductive HasType : Term -> HOLType -> Prop
 | var : ∀ (x : String) (T : HOLType), HasType (.var x T) T
 | const : ∀ (c : String) (T : HOLType), HasType (.const c T) T
@@ -23,7 +22,6 @@ inductive HasType : Term -> HOLType -> Prop
           HasType t rT → HasType (.abs (.var n dT) t) (.fun dT rT)
 
 /-- Predicate for well-typed terms. -/
-@[aesop norm unfold]
 abbrev WellTyped (t : Term) : Prop := ∃ T, HasType t T
 
 /-- Type inference function for terms. -/
@@ -42,13 +40,11 @@ def typeof (t : Term) : Option HOLType :=
       | none => none
   | _ => none
 
-@[aesop safe apply]
 theorem welltyped_typeof : ∀ (t : Term) (T : HOLType), HasType t T → typeof t = some T
     := by
   intros t T ht
   induction ht with simp [typeof] <;> aesop
 
-@[aesop safe apply]
 theorem typeof_welltyped : ∀ (t : Term) (T : HOLType), typeof t = some T → HasType t T
     := by
   intros t T h
@@ -76,7 +72,6 @@ theorem typeof_welltyped : ∀ (t : Term) (T : HOLType), typeof t = some T → H
           aesop
 
 /-- Theorem: `HasType t T` if and only if `typeof t = some T`. -/
-@[aesop norm simp]
 theorem welltyped_typeof_iff : ∀ (t : Term) (T : HOLType), HasType t T ↔ typeof t = some T
     := by
   intros t T
@@ -92,7 +87,6 @@ theorem welltyped_typeof_iff : ∀ (t : Term) (T : HOLType), HasType t T ↔ typ
       (v1 = b1 ∧ v2 = b2) ∨ (v1 ≠ b1 ∧ v2 ≠ b2 ∧ IsAlphaVars bvs v1 v2)
 
 /-- Alpha-equivalence for terms under a list of renamings. -/
-@[aesop unsafe [constructors, cases]]
 inductive IsAlphaTerms : List (Term × Term) -> Term -> Term -> Prop
 | var : ∀ (bv : List (Term × Term)) (x1 x2 : String) (T1 T2 : HOLType),
           IsAlphaVars bv (.var x1 T1) (.var x2 T2) → IsAlphaTerms bv (.var x1 T1) (.var x2 T2)
@@ -104,7 +98,6 @@ inductive IsAlphaTerms : List (Term × Term) -> Term -> Term -> Prop
           IsAlphaTerms ((n1, n2) :: bv) t1 t2 → IsAlphaTerms bv (.abs n1 t1) (.abs n2 t2)
 
 /-- Predicate for alpha-equivalence of terms. -/
-@[aesop norm unfold]
 def IsAlpha (t1 t2 : Term) : Prop := IsAlphaTerms [] t1 t2
 
 def IsTrivialRenaming (bv : List (Term × Term)) : Prop :=
@@ -112,7 +105,7 @@ def IsTrivialRenaming (bv : List (Term × Term)) : Prop :=
   | [] => true
   | (b1, b2) :: bvs => b1 = b2 ∧ IsTrivialRenaming bvs
 
-@[aesop safe apply]
+@[aesop safe]
 theorem IsAlphaVars_refl : ∀ (bv : List (Term × Term)) (v : Term), IsTrivialRenaming bv → IsAlphaVars bv v v
     := by
   intros bv v h
@@ -123,7 +116,7 @@ theorem IsAlphaVars_refl : ∀ (bv : List (Term × Term)) (v : Term), IsTrivialR
       simp [IsTrivialRenaming] at h
       by_cases hv : v = b1 <;> aesop
 
-@[aesop safe apply]
+@[aesop safe]
 theorem IsAlphaTerms_refl : ∀ (bv : List (Term × Term)) (t : Term), IsTrivialRenaming bv → IsAlphaTerms bv t t
     := by
   intro bv t
@@ -146,7 +139,7 @@ def swap_renaming : List (Term × Term) -> List (Term × Term)
 | [] => []
 | (a, b) :: bvs => (b, a) :: swap_renaming bvs
 
-@[aesop safe apply]
+@[aesop safe]
 theorem IsAlphaVars_symm :
   ∀ (bv : List (Term × Term)) (v1 v2 : Term),
     IsAlphaVars bv v1 v2 → IsAlphaVars (swap_renaming bv) v2 v1 := by
@@ -158,7 +151,7 @@ theorem IsAlphaVars_symm :
       simp [IsAlphaVars, swap_renaming] at h ⊢
       aesop
 
-@[aesop safe apply]
+@[aesop safe]
 theorem IsAlphaTerms_symm :
   ∀ (bv : List (Term × Term)) (t1 t2 : Term),
     IsAlphaTerms bv t1 t2 → IsAlphaTerms (swap_renaming bv) t2 t1 := by
@@ -170,7 +163,6 @@ theorem IsAlphaTerms_symm :
   | abs bv n1 n2 t1 t2 hbody ih =>
       simpa [swap_renaming] using (IsAlphaTerms.abs (swap_renaming bv) n2 n1 t2 t1 ih)
 
-@[aesop unsafe [constructors, cases]]
 inductive RenamingChain :
   List (Term × Term) -> List (Term × Term) -> List (Term × Term) -> Prop
 | nil : RenamingChain [] [] []
@@ -180,7 +172,7 @@ inductive RenamingChain :
     RenamingChain bv12 bv23 bv13 ->
     RenamingChain ((n1, n2) :: bv12) ((n2, n3) :: bv23) ((n1, n3) :: bv13)
 
-@[aesop unsafe apply]
+@[aesop unsafe]
 theorem IsAlphaVars_trans :
   ∀ (bv12 bv23 bv13 : List (Term × Term)) (v1 v2 v3 : Term),
     RenamingChain bv12 bv23 bv13 ->
@@ -194,7 +186,7 @@ theorem IsAlphaVars_trans :
       simp [IsAlphaVars] at h12 h23 ⊢
       aesop
 
-@[aesop safe apply]
+@[aesop safe]
 theorem IsAlphaTerms_trans :
   ∀ (bv12 bv23 bv13 : List (Term × Term)) (t1 t2 t3 : Term),
     RenamingChain bv12 bv23 bv13 ->
@@ -219,21 +211,18 @@ theorem IsAlphaTerms_trans :
       apply ih <;> try simpa
       apply RenamingChain.cons; simpa
 
-@[aesop safe apply]
 theorem IsAlpha.refl : ∀ (t : Term), IsAlpha t t
     := by
   intro t
   unfold IsAlpha
   simpa using IsAlphaTerms_refl [] t (by simp [IsTrivialRenaming])
 
-@[aesop safe apply]
 theorem IsAlpha.symm : ∀ {t1 t2 : Term}, IsAlpha t1 t2 → IsAlpha t2 t1
     := by
   intro t1 t2 h
   unfold IsAlpha at h ⊢
   simpa [swap_renaming] using IsAlphaTerms_symm [] t1 t2 h
 
-@[aesop safe apply]
 theorem IsAlpha.trans : ∀ {t1 t2 t3 : Term}, IsAlpha t1 t2 → IsAlpha t2 t3 → IsAlpha t1 t3
     := by
   intro t1 t2 t3 h12 h23
