@@ -242,5 +242,4 @@ noncomputable instance : DecidableRel IsAlpha := by
 
 instance : Setoid Term where
   r := IsAlpha
-  iseqv :=
-    ⟨IsAlpha.refl, @IsAlpha.symm, @IsAlpha.trans⟩
+  iseqv := ⟨IsAlpha.refl, @IsAlpha.symm, @IsAlpha.trans⟩
