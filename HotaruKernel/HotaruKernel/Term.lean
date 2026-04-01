@@ -255,23 +255,55 @@ instance {var t : Term} : Decidable (var.IsFreeVarIn t) := by
 
 def Closed (t : Term) : Prop := ∀ x T, (Term.var x T).IsFreeVarIn t → False
 
-/-- Helper function to find a fresh variable name by appending apostrophes -/
-private def findFreshVarName (term : Term) (baseName : String) (ty : HOLType) (maxTries : Nat) : String :=
-  let rec go (attempt : Nat) : String :=
-    if attempt ≥ maxTries then
-      baseName ++ String.ofList (List.replicate maxTries '\'')
-    else
-      let candidate := baseName ++ String.ofList (List.replicate attempt '\'')
-      if (Term.var candidate ty).IsFreeVarIn term then
-        go (attempt + 1)
-      else
-        candidate
-  termination_by maxTries - attempt
-  go 0
+/-- Maximum variable-name length appearing in a term. -/
+def Term.maxVarNameLen : Term → Nat
+| .var x _ => String.length x
+| .const _ _ => 0
+| .app s t => Nat.max s.maxVarNameLen t.maxVarNameLen
+| .abs n t => Nat.max n.maxVarNameLen t.maxVarNameLen
+
+theorem var_not_free_of_name_length_gt :
+  ∀ (t : Term) (x : String) (T : HOLType),
+    t.maxVarNameLen < String.length x → ¬(Term.var x T).IsFreeVarIn t := by
+  intro t
+  induction t with
+  | var y Ty =>
+      intro x T hlen
+      intro hfree
+      simp [Term.maxVarNameLen, Term.IsFreeVarIn] at hlen hfree
+      rcases hfree with ⟨hxy, _⟩
+      subst hxy
+      exact (Nat.lt_irrefl _ hlen)
+  | const c Ty =>
+      intro x T _
+      simp [Term.IsFreeVarIn]
+  | app s t ihs iht =>
+      intro x T hlen
+      have hs : s.maxVarNameLen < String.length x :=
+        Nat.lt_of_le_of_lt (Nat.le_max_left s.maxVarNameLen t.maxVarNameLen) hlen
+      have ht : t.maxVarNameLen < String.length x :=
+        Nat.lt_of_le_of_lt (Nat.le_max_right s.maxVarNameLen t.maxVarNameLen) hlen
+      simp [Term.IsFreeVarIn, ihs x T hs, iht x T ht]
+  | abs n t ihn iht =>
+      intro x T hlen
+      have ht : t.maxVarNameLen < String.length x :=
+        Nat.lt_of_le_of_lt (Nat.le_max_right n.maxVarNameLen t.maxVarNameLen) hlen
+      simp [Term.IsFreeVarIn, iht x T ht]
 
 /-- Generate a variable variant with primes appended to avoid name collisions -/
-def generateVariant (term : Term) (baseName : String) (ty : HOLType) : String :=
-  findFreshVarName term baseName ty 100
+def generateVariant (term : Term) (baseName : String) (_ty : HOLType) : String :=
+  let suffixLen := term.maxVarNameLen + 1
+  baseName ++ String.ofList (List.replicate suffixLen '\'')
+
+theorem VariantFresh : ∀ t x T, ¬(Term.var (generateVariant t x T) T).IsFreeVarIn t
+    := by
+  intros t x T
+  apply var_not_free_of_name_length_gt
+  unfold generateVariant
+  have h1 : t.maxVarNameLen < t.maxVarNameLen + 1 := Nat.lt_succ_self _
+  have h2 : t.maxVarNameLen + 1 ≤ String.length x + (t.maxVarNameLen + 1) :=
+    Nat.le_add_left (t.maxVarNameLen + 1) (String.length x)
+  exact Nat.lt_of_lt_of_le h1 (by simp)
 
 /-- Term variable substitution: applies a list of term substitutions to a term -/
 def varSubst (i : List (Term × Term)): Term → Option Term
