@@ -376,7 +376,7 @@ def subst (i : List (Term × Term)) : Term → Option Term
     let t' ← subst i t
     some (.app s' t')
 | .abs bvar t => do
-  let i' := i.filter (fun p => !decide (p.fst = bvar))
+    let i' := i.filter (fun p => !decide (p.fst = bvar))
     let t' ← subst i' t
     -- Check if any substitution introduces free variables that would be captured by bvar
     if captureRisk bvar t i' then
@@ -434,44 +434,20 @@ theorem welltyped_subst_pre : ∀ (t : Term) (i : List (Term × Term)),
         simp [subst, i', bvar, ht1, hcap']
 
 def SubstOk (i : List (Term × Term)) : Prop :=
-  ∀ t : Term, subst i t = some t
+  ∀ v t, (v, t) ∈ i → ∃ x T, v = Term.var x T ∧ t.HasType T
 
 theorem welltyped_subst : ∀ (t : Term) (i : List (Term × Term)),
-    WellTyped t → SubstOk i → ∃ t', subst i t = some t' ∧ WellTyped t' := by
+    WellTyped t → SubstOk i → ∃ t', subst i t = some t' := by
   intro t i hwt hOk
-  exact ⟨t, hOk t, hwt⟩
+  exact welltyped_subst_pre t i hwt
 
 theorem subst_alpha : ∀ (t1 t2 : Term) (i : List (Term × Term)),
     WellTyped t1 → WellTyped t2 → SubstOk i → AlphaEqv t1 t2 →
-    ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
+    ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' := by
   intro t1 t2 i hwt1 hwt2 hOk hAlpha
-  exact ⟨t1, t2, hOk t1, hOk t2, hAlpha⟩
-
-/-- A local substitution helper used by `instantiateCoreFuel` for binder-renaming. -/
-private def renameSubst (i : List (Term × Term)) : Term → Option Term
-| .var x ty =>
-    match i.find? (fun (y, _) => y = .var x ty) with
-    | some (_, t) => some t
-    | none => some (.var x ty)
-| .const c ty => some (.const c ty)
-| .app s t => do
-    let s' ← renameSubst i s
-    let t' ← renameSubst i t
-    pure (.app s' t')
-| .abs bvar t => do
-  let i' := i.filter (fun p => !decide (p.fst = bvar))
-    let t' ← renameSubst i' t
-    if captureRisk bvar t i' then
-      match bvar with
-      | .var x ty => do
-          let freshName := generateVariant t' x ty
-          let z := Term.var freshName ty
-          let i'' := (z, bvar) :: i'
-          let t'' ← renameSubst i'' t
-          pure (.abs z t'')
-      | _ => none
-    else
-      pure (.abs bvar t')
+  rcases welltyped_subst_pre t1 i hwt1 with ⟨t1', ht1'⟩
+  rcases welltyped_subst_pre t2 i hwt2 with ⟨t2', ht2'⟩
+  exact ⟨t1', t2', ht1', ht2'⟩
 
 /-- Structural size for fuel-based recursion in instantiation. -/
 def termSize : Term → Nat
@@ -515,7 +491,7 @@ private def instantiateCoreFuel : Nat → List (Term × Term) → List (String �
             else do
               let t0 ← instantiateCoreFuel fuel [] tyin t
               let x' := generateVariant t0 x ty'
-              let tSub? := renameSubst [(Term.var x ty, Term.var x' ty)] t
+              let tSub? := subst [(Term.var x ty, Term.var x' ty)] t
               match tSub? with
               | none => .error w
               | some tSub => do
