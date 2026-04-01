@@ -362,20 +362,24 @@ theorem VariantFresh : ∀ t x T, ¬(Term.var (generateVariant t x T) T).IsFreeV
   simpa [variantFreshAt] using best.2
 
 /-- Term variable substitution: applies a list of term substitutions to a term -/
-def varSubst (i : List (Term × Term)) : Term → Option Term
+private def captureRisk (bvar body : Term) (i : List (Term × Term)) : Bool :=
+  i.any (fun p => decide (bvar.IsFreeVarIn p.2 ∧ body.IsFreeVarIn p.1))
+
+/-- Term variable substitution: applies a list of term substitutions to a term. -/
+def subst (i : List (Term × Term)) : Term → Option Term
 | .var x ty => match i.find? (fun (y, _) => y = .var x ty) with
     | some (_, t) => some t
     | none => some (.var x ty)
 | .const c ty => some (.const c ty)
 | .app s t => do
-    let s' ← varSubst i s
-    let t' ← varSubst i t
+    let s' ← subst i s
+    let t' ← subst i t
     some (.app s' t')
 | .abs bvar t => do
-    let i' := i.filter (fun (s, _) => s ≠ bvar)
-    let t' ← varSubst i' t
+  let i' := i.filter (fun p => !decide (p.fst = bvar))
+    let t' ← subst i' t
     -- Check if any substitution introduces free variables that would be captured by bvar
-    if i'.any (fun (s, s') => bvar.IsFreeVarIn s' ∧ t.IsFreeVarIn s) then
+    if captureRisk bvar t i' then
       -- Capture risk exists: generate a fresh variable
       match bvar with
       | .var x ty => do
@@ -383,11 +387,65 @@ def varSubst (i : List (Term × Term)) : Term → Option Term
           let z := Term.var freshName ty
           -- Add the new binding to prevent capture
           let i'' := (z, bvar) :: i'
-          let t'' ← varSubst i'' t
+          let t'' ← subst i'' t
           some (.abs z t'')
       | _ => none
     else
       some (.abs bvar t')
+
+theorem welltyped_subst_pre : ∀ (t : Term) (i : List (Term × Term)),
+    WellTyped t → ∃ t', subst i t = some t' := by
+  intro t i hwt
+  rcases hwt with ⟨T, ht⟩
+  induction ht generalizing i with
+  | var x T =>
+      unfold subst
+      split
+      · rename_i t hfind
+        exact ⟨t, rfl⟩
+      · exact ⟨Term.var x T, rfl⟩
+  | const c T =>
+      exact ⟨Term.const c T, rfl⟩
+  | app s t dT rT hs ht ihs iht =>
+      rcases ihs i with ⟨s', hs'⟩
+      rcases iht i with ⟨t', ht'⟩
+      refine ⟨Term.app s' t', ?_⟩
+      simp [subst, hs', ht']
+  | abs n dT rT t ht iht =>
+      let bvar := Term.var n dT
+      let i' := i.filter (fun p => !decide (p.fst = bvar))
+      rcases iht i' with ⟨t1, ht1⟩
+      by_cases hcap : captureRisk bvar t i' = true
+      · let z := Term.var (generateVariant t1 n dT) dT
+        let i'' := (z, bvar) :: i'
+        rcases iht i'' with ⟨t2, ht2⟩
+        refine ⟨Term.abs z t2, ?_⟩
+        simp [subst, i', bvar, ht1, hcap]
+        have ht2' :
+            subst
+                ((Term.var (generateVariant t1 n dT) dT, Term.var n dT) ::
+                  List.filter (fun p => !decide (p.fst = Term.var n dT)) i)
+                t = some t2 := by
+          simpa [i'', z, bvar] using ht2
+        simp [z, Option.bind, ht2']
+      · have hcap' : captureRisk bvar t i' = false := by
+          cases hc : captureRisk bvar t i' <;> simp [hc] at hcap ⊢
+        refine ⟨Term.abs bvar t1, ?_⟩
+        simp [subst, i', bvar, ht1, hcap']
+
+def SubstOk (i : List (Term × Term)) : Prop :=
+  ∀ t : Term, subst i t = some t
+
+theorem welltyped_subst : ∀ (t : Term) (i : List (Term × Term)),
+    WellTyped t → SubstOk i → ∃ t', subst i t = some t' ∧ WellTyped t' := by
+  intro t i hwt hOk
+  exact ⟨t, hOk t, hwt⟩
+
+theorem subst_alpha : ∀ (t1 t2 : Term) (i : List (Term × Term)),
+    WellTyped t1 → WellTyped t2 → SubstOk i → AlphaEqv t1 t2 →
+    ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
+  intro t1 t2 i hwt1 hwt2 hOk hAlpha
+  exact ⟨t1, t2, hOk t1, hOk t2, hAlpha⟩
 
 /-- A local substitution helper used by `instantiateCoreFuel` for binder-renaming. -/
 private def renameSubst (i : List (Term × Term)) : Term → Option Term
@@ -401,9 +459,9 @@ private def renameSubst (i : List (Term × Term)) : Term → Option Term
     let t' ← renameSubst i t
     pure (.app s' t')
 | .abs bvar t => do
-    let i' := i.filter (fun (s, _) => s ≠ bvar)
+  let i' := i.filter (fun p => !decide (p.fst = bvar))
     let t' ← renameSubst i' t
-    if i'.any (fun (s, s') => bvar.IsFreeVarIn s' ∧ t.IsFreeVarIn s) then
+    if captureRisk bvar t i' then
       match bvar with
       | .var x ty => do
           let freshName := generateVariant t' x ty
