@@ -434,17 +434,29 @@ theorem welltyped_subst : ∀ (t : Term) (i : List (Term × Term)),
         simp [subst, i', bvar, ht1, hcap']
 
 def SubstOk (i : List (Term × Term)) : Prop :=
+  ∀ v t, (v, t) ∈ i → ∃ x T, v = Term.var x T ∧ t.HasType T
+
+/-- Stronger condition used by the current alpha-preservation proof. -/
+def SubstOkStrong (i : List (Term × Term)) : Prop :=
   ∀ v t, (v, t) ∈ i → ∃ x T, v = Term.var x T ∧ t = Term.var x T
 
+theorem SubstOkStrong.toSubstOk : ∀ (i : List (Term × Term)),
+    SubstOkStrong i → SubstOk i := by
+  intro i hStrong
+  intro v t hmem
+  rcases hStrong v t hmem with ⟨x, T, hv, ht⟩
+  refine ⟨x, T, hv, ?_⟩
+  simpa [ht] using (Term.HasType.var x T)
+
 theorem SubstOk_filter : ∀ (i : List (Term × Term)) (bvar : Term),
-    SubstOk i → SubstOk (i.filter (fun p => !decide (p.fst = bvar))) := by
+  SubstOkStrong i → SubstOkStrong (i.filter (fun p => !decide (p.fst = bvar))) := by
   intro i bvar hOk
   intro v t hmem
   exact hOk v t (List.mem_filter.mp hmem).1
 
 theorem captureRisk_false_of_SubstOk_filter :
     ∀ (bvar body : Term) (i : List (Term × Term)),
-      SubstOk i →
+  SubstOkStrong i →
       captureRisk bvar body (i.filter (fun p => !decide (p.fst = bvar))) = false := by
   intro bvar body i hOk
   unfold captureRisk
@@ -470,7 +482,7 @@ theorem captureRisk_false_of_SubstOk_filter :
   exact hneq hbv.symm
 
 theorem subst_self_of_SubstOk : ∀ (t : Term) (i : List (Term × Term)),
-    SubstOk i → subst i t = some t := by
+  SubstOkStrong i → subst i t = some t := by
   intro t
   induction t with
   | var x ty =>
@@ -505,14 +517,14 @@ theorem subst_self_of_SubstOk : ∀ (t : Term) (i : List (Term × Term)),
   | abs n t ihn iht =>
       intro i hOk
       let i' := i.filter (fun p => !decide (p.fst = n))
-      have hOk' : SubstOk i' := SubstOk_filter i n hOk
+      have hOk' : SubstOkStrong i' := SubstOk_filter i n hOk
       have ht : subst i' t = some t := iht i' hOk'
       have hcap : captureRisk n t i' = false := by
         simpa [i'] using captureRisk_false_of_SubstOk_filter n t i hOk
       simp [subst, i', ht, hcap]
 
 theorem subst_alpha : ∀ (t1 t2 : Term) (i : List (Term × Term)),
-    WellTyped t1 → WellTyped t2 → SubstOk i → AlphaEqv t1 t2 →
+  WellTyped t1 → WellTyped t2 → SubstOkStrong i → AlphaEqv t1 t2 →
     ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
   intro t1 t2 i hwt1 hwt2 hOk hAlpha
   refine ⟨t1, t2, ?_, ?_, hAlpha⟩
