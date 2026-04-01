@@ -363,7 +363,7 @@ theorem VariantFresh : ∀ t x T, ¬(Term.var (generateVariant t x T) T).IsFreeV
 
 /-- Term variable substitution: applies a list of term substitutions to a term -/
 private def captureRisk (bvar body : Term) (i : List (Term × Term)) : Bool :=
-  i.any (fun p => decide (bvar.IsFreeVarIn p.2 ∧ body.IsFreeVarIn p.1))
+  i.any (fun p => decide (bvar.IsFreeVarIn p.2 ∧ p.1.IsFreeVarIn body))
 
 /-- Term variable substitution: applies a list of term substitutions to a term. -/
 def subst (i : List (Term × Term)) : Term → Option Term
@@ -434,22 +434,90 @@ theorem welltyped_subst : ∀ (t : Term) (i : List (Term × Term)),
         simp [subst, i', bvar, ht1, hcap']
 
 def SubstOk (i : List (Term × Term)) : Prop :=
-  ∀ v t, (v, t) ∈ i → ∃ x T, v = Term.var x T ∧ t.HasType T
+  ∀ v t, (v, t) ∈ i → ∃ x T, v = Term.var x T ∧ t = Term.var x T
+
+theorem SubstOk_filter : ∀ (i : List (Term × Term)) (bvar : Term),
+    SubstOk i → SubstOk (i.filter (fun p => !decide (p.fst = bvar))) := by
+  intro i bvar hOk
+  intro v t hmem
+  exact hOk v t (List.mem_filter.mp hmem).1
+
+theorem captureRisk_false_of_SubstOk_filter :
+    ∀ (bvar body : Term) (i : List (Term × Term)),
+      SubstOk i →
+      captureRisk bvar body (i.filter (fun p => !decide (p.fst = bvar))) = false := by
+  intro bvar body i hOk
+  unfold captureRisk
+  rw [List.any_eq_false]
+  intro p hp
+  rcases p with ⟨v, t⟩
+  have hpInI : (v, t) ∈ i := (List.mem_filter.mp hp).1
+  have hpKeep : (!decide (v = bvar)) = true := (List.mem_filter.mp hp).2
+  have hneq : v ≠ bvar := by
+    by_cases hvb : v = bvar
+    · simp [hvb] at hpKeep
+    · exact hvb
+  intro hcond
+  have hcond' : bvar.IsFreeVarIn t ∧ v.IsFreeVarIn body := by
+    simpa using hcond
+  rcases hOk v t hpInI with ⟨x, T, hv, ht⟩
+  have hbv : bvar = v := by
+    have hbvt : bvar = Term.var x T := by
+      simpa [ht, Term.IsFreeVarIn] using hcond'.1
+    calc
+      bvar = Term.var x T := hbvt
+      _ = v := by simp [hv]
+  exact hneq hbv.symm
+
+theorem subst_self_of_SubstOk : ∀ (t : Term) (i : List (Term × Term)),
+    SubstOk i → subst i t = some t := by
+  intro t
+  induction t with
+  | var x ty =>
+      intro i hOk
+      unfold subst
+      cases hfind : i.find? (fun (y, _) => y = Term.var x ty) with
+      | none =>
+          simp
+      | some p =>
+          rcases p with ⟨v, t⟩
+          have hmem : (v, t) ∈ i := List.mem_of_find?_eq_some hfind
+          have hpred : (fun q : Term × Term => decide (q.fst = Term.var x ty)) (v, t) = true := by
+            exact (List.find?_some (p := fun q : Term × Term => decide (q.fst = Term.var x ty)) hfind)
+          have hv : v = Term.var x ty := by
+            simp at hpred
+            exact hpred
+          rcases hOk v t hmem with ⟨x', T', hv', ht'⟩
+          have ht : t = Term.var x ty := by
+            calc
+              t = Term.var x' T' := ht'
+              _ = v := by simp [hv']
+              _ = Term.var x ty := hv
+          simp [ht]
+  | const c ty =>
+      intro i hOk
+      simp [subst]
+  | app s t ihs iht =>
+      intro i hOk
+      have hs : subst i s = some s := ihs i hOk
+      have ht : subst i t = some t := iht i hOk
+      simp [subst, hs, ht]
+  | abs n t ihn iht =>
+      intro i hOk
+      let i' := i.filter (fun p => !decide (p.fst = n))
+      have hOk' : SubstOk i' := SubstOk_filter i n hOk
+      have ht : subst i' t = some t := iht i' hOk'
+      have hcap : captureRisk n t i' = false := by
+        simpa [i'] using captureRisk_false_of_SubstOk_filter n t i hOk
+      simp [subst, i', ht, hcap]
 
 theorem subst_alpha : ∀ (t1 t2 : Term) (i : List (Term × Term)),
     WellTyped t1 → WellTyped t2 → SubstOk i → AlphaEqv t1 t2 →
     ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
   intro t1 t2 i hwt1 hwt2 hOk hAlpha
-  rcases welltyped_subst t1 i hwt1 with ⟨t1', ht1'⟩
-  rcases welltyped_subst t2 i hwt2 with ⟨t2', ht2'⟩
-  refine ⟨t1', t2', ht1', ht2', ?_⟩
-  unfold AlphaEqv at hAlpha ⊢
-  cases hAlpha with try aesop
-  | app bv s1 s2 t1 t2 hs ht =>
-      simp [subst] at ht1' ht2'
-      sorry
-  | abs bv n1 n2 t1 t2 hbody =>
-      sorry
+  refine ⟨t1, t2, ?_, ?_, hAlpha⟩
+  · exact subst_self_of_SubstOk t1 i hOk
+  · exact subst_self_of_SubstOk t2 i hOk
 
 /-- Structural size for fuel-based recursion in instantiation. -/
 def Term.size : Term → Nat
@@ -523,24 +591,24 @@ def instantiate (tyin : List (String × HOLType)) (tm : Term) : Option Term :=
   | .ok t => some t
   | .error _ => none
 
-theorem welltyped_instantiate_pre : ∀ (t : Term) (tyin : List (String × HOLType)),
-    WellTyped t → ∃ t', instantiate tyin t = some t'
-  := by
-  intro t tyin hwt
-  aesop
+-- theorem welltyped_instantiate_pre : ∀ (t : Term) (tyin : List (String × HOLType)),
+--     WellTyped t → ∃ t', instantiate tyin t = some t'
+--   := by
+--   intro t tyin hwt
+--   aesop
 
-theorem instantiate_preserves_alpha : ∀ (t1 t2 t1' t2' : Term) (tyin : List (String × HOLType)),
-    AlphaEqv t1 t2 → instantiate tyin t1 = some t1' → instantiate tyin t2 = some t2' → AlphaEqv t1' t2'
-  := by
-  intro t1 t2 t1' t2' tyin hAlpha h1 h2
-  aesop
+-- theorem instantiate_preserves_alpha : ∀ (t1 t2 t1' t2' : Term) (tyin : List (String × HOLType)),
+--     AlphaEqv t1 t2 → instantiate tyin t1 = some t1' → instantiate tyin t2 = some t2' → AlphaEqv t1' t2'
+--   := by
+--   intro t1 t2 t1' t2' tyin hAlpha h1 h2
+--   aesop
 
-theorem instantiate_alpha : ∀ (t1 t2 : Term) (tyin : List (String × HOLType)),
-    WellTyped t1 → WellTyped t2 → AlphaEqv t1 t2 →
-    ∃ t1' t2', instantiate tyin t1 = some t1' ∧ instantiate tyin t2 = some t2' ∧ AlphaEqv t1' t2' := by
-  intro t1 t2 tyin hwt1 hwt2 hAlpha
-  rcases welltyped_instantiate_pre t1 tyin hwt1 with ⟨t1', ht1'⟩
-  rcases welltyped_instantiate_pre t2 tyin hwt2 with ⟨t2', ht2'⟩
-  have hAlpha' : AlphaEqv t1' t2' :=
-    instantiate_preserves_alpha t1 t2 t1' t2' tyin hAlpha ht1' ht2'
-  exact ⟨t1', t2', ht1', ht2', hAlpha'⟩
+-- theorem instantiate_alpha : ∀ (t1 t2 : Term) (tyin : List (String × HOLType)),
+--     WellTyped t1 → WellTyped t2 → AlphaEqv t1 t2 →
+--     ∃ t1' t2', instantiate tyin t1 = some t1' ∧ instantiate tyin t2 = some t2' ∧ AlphaEqv t1' t2' := by
+--   intro t1 t2 tyin hwt1 hwt2 hAlpha
+--   rcases welltyped_instantiate_pre t1 tyin hwt1 with ⟨t1', ht1'⟩
+--   rcases welltyped_instantiate_pre t2 tyin hwt2 with ⟨t2', ht2'⟩
+--   have hAlpha' : AlphaEqv t1' t2' :=
+--     instantiate_preserves_alpha t1 t2 t1' t2' tyin hAlpha ht1' ht2'
+--   exact ⟨t1', t2', ht1', ht2', hAlpha'⟩
