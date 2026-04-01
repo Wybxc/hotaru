@@ -159,7 +159,7 @@ theorem IsAlphaTerms_symm :
   induction h with
   | var bv x1 x2 T1 T2 hv => apply IsAlphaTerms.var; aesop
   | const bv c1 c2 T1 T2 hv => apply IsAlphaTerms.const; aesop
-  | app bv s1 s2 t1 t2 hs ht ihs iht => apply IsAlphaTerms.app <;> aesop
+  | app bv s1 s2 t1 t2 hs ht ihs iht => apply IsAlphaTerms.app <;> simpa
   | abs bv n1 n2 t1 t2 hbody ih =>
       simpa [swap_renaming] using (IsAlphaTerms.abs (swap_renaming bv) n2 n1 t2 t1 ih)
 
@@ -208,7 +208,7 @@ theorem IsAlphaTerms_trans :
     cases h23 with
     | abs =>
       apply IsAlphaTerms.abs
-      apply ih <;> try aesop
+      apply ih <;> try simpa
       apply RenamingChain.cons; simpa
 
 theorem IsAlpha.refl : ∀ (t : Term), IsAlpha t t
@@ -227,7 +227,8 @@ theorem IsAlpha.trans : ∀ {t1 t2 t3 : Term}, IsAlpha t1 t2 → IsAlpha t2 t3 �
     := by
   intro t1 t2 t3 h12 h23
   unfold IsAlpha at h12 h23 ⊢
-  exact IsAlphaTerms_trans [] [] [] t1 t2 t3 RenamingChain.nil h12 h23
+  apply IsAlphaTerms_trans <;> try simpa
+  apply RenamingChain.nil
 
 instance : Equivalence IsAlpha where
   refl := IsAlpha.refl
