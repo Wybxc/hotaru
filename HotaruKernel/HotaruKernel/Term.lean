@@ -6,6 +6,7 @@ inductive Term
 | const : String -> HOLType -> Term
 | app : Term -> Term -> Term
 | abs : Term -> Term -> Term
+deriving Repr, DecidableEq
 
 /-- Type checking predicate for terms. -/
 inductive HasType : Term -> HOLType -> Prop
