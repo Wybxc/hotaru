@@ -8,6 +8,9 @@ inductive Term
 | abs : Term -> Term -> Term
 deriving Repr, DecidableEq
 
+instance : Inhabited Term where
+  default := .var "x" HOLType.bool
+
 /-- Type checking predicate for terms. -/
 inductive HasType : Term -> HOLType -> Prop
 | var : ∀ (x : String) (T : HOLType), HasType (.var x T) T
@@ -306,3 +309,13 @@ instance : Equivalence IsAlpha where
   refl := IsAlpha.refl
   symm := IsAlpha.symm
   trans := IsAlpha.trans
+
+noncomputable instance : DecidableRel IsAlpha := by
+  intro t1 t2
+  classical
+  infer_instance
+
+instance : Setoid Term where
+  r := IsAlpha
+  iseqv :=
+    ⟨IsAlpha.refl, @IsAlpha.symm, @IsAlpha.trans⟩

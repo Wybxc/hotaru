@@ -11,6 +11,12 @@ inductive HOLTypeList
 deriving Repr, DecidableEq
 end
 
+instance : Inhabited HOLTypeList where
+    default := .nil
+
+instance : Inhabited HOLType where
+    default := .var "a"
+
 def HOLTypeList.toList : HOLTypeList -> List HOLType
 | .nil => []
 | .cons h t => h :: toList t
