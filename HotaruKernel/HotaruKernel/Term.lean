@@ -282,7 +282,7 @@ def Term.maxVarNameLen : Term → Nat
 | .app s t => Nat.max s.maxVarNameLen t.maxVarNameLen
 | .abs n t => Nat.max n.maxVarNameLen t.maxVarNameLen
 
-theorem var_not_free_of_name_length_gt :
+theorem varNotFreeOfNameLengthGt :
   ∀ (t : Term) (x : String) (T : HOLType),
     t.maxVarNameLen < String.length x → ¬(Term.var x T).IsFreeVarIn t := by
   intro t
@@ -311,19 +311,55 @@ theorem var_not_free_of_name_length_gt :
       simp [Term.IsFreeVarIn, iht x T ht]
 
 /-- Generate a variable variant with primes appended to avoid name collisions -/
-def generateVariant (term : Term) (baseName : String) (_ty : HOLType) : String :=
-  let suffixLen := term.maxVarNameLen + 1
-  baseName ++ String.ofList (List.replicate suffixLen '\'')
+private def variantCandidate (baseName : String) (k : Nat) : String :=
+  baseName ++ String.ofList (List.replicate k '\'')
+
+/-- Freshness predicate for a suffix length. -/
+private def variantFreshAt (term : Term) (baseName : String) (ty : HOLType) (k : Nat) : Prop :=
+  ¬(Term.var (variantCandidate baseName k) ty).IsFreeVarIn term
+
+instance (term : Term) (baseName : String) (ty : HOLType) (k : Nat) :
+    Decidable (variantFreshAt term baseName ty k) := by
+  unfold variantFreshAt
+  infer_instance
+
+/-- Scan suffix lengths from `k` down to `0`, keeping the smallest fresh one found. -/
+private def chooseMinFreshSuffix (term : Term) (baseName : String) (ty : HOLType) :
+    (k best : Nat) → variantFreshAt term baseName ty best → {n : Nat // variantFreshAt term baseName ty n}
+| 0, best, hbest =>
+    if h0 : variantFreshAt term baseName ty 0 then ⟨0, h0⟩ else ⟨best, hbest⟩
+| k + 1, best, hbest =>
+    let next : {n : Nat // variantFreshAt term baseName ty n} :=
+      if hk1 : variantFreshAt term baseName ty (k + 1) then
+        ⟨k + 1, hk1⟩
+      else
+        ⟨best, hbest⟩
+    chooseMinFreshSuffix term baseName ty k next.1 next.2
+
+/-- Generate a variable variant with the shortest suffix that avoids capture. -/
+def generateVariant (term : Term) (baseName : String) (ty : HOLType) : String :=
+  let bound := term.maxVarNameLen + 1
+  let hbound : variantFreshAt term baseName ty bound := by
+    apply varNotFreeOfNameLengthGt
+    have h1 : term.maxVarNameLen < term.maxVarNameLen + 1 := Nat.lt_succ_self _
+    have h2 : term.maxVarNameLen + 1 ≤ String.length (variantCandidate baseName bound) := by
+      simp [bound, variantCandidate, Nat.le_add_left (term.maxVarNameLen + 1) (String.length baseName)]
+    exact Nat.lt_of_lt_of_le h1 h2
+  let best := chooseMinFreshSuffix term baseName ty bound bound hbound
+  variantCandidate baseName best.1
 
 theorem VariantFresh : ∀ t x T, ¬(Term.var (generateVariant t x T) T).IsFreeVarIn t
     := by
   intros t x T
-  apply var_not_free_of_name_length_gt
   unfold generateVariant
-  have h1 : t.maxVarNameLen < t.maxVarNameLen + 1 := Nat.lt_succ_self _
-  have h2 : t.maxVarNameLen + 1 ≤ String.length x + (t.maxVarNameLen + 1) :=
-    Nat.le_add_left (t.maxVarNameLen + 1) (String.length x)
-  exact Nat.lt_of_lt_of_le h1 (by simp)
+  have hbound : variantFreshAt t x T (t.maxVarNameLen + 1) := by
+    apply varNotFreeOfNameLengthGt
+    have h1 : t.maxVarNameLen < t.maxVarNameLen + 1 := Nat.lt_succ_self _
+    have h2 : t.maxVarNameLen + 1 ≤ String.length (variantCandidate x (t.maxVarNameLen + 1)) := by
+      simp [variantCandidate, Nat.le_add_left (t.maxVarNameLen + 1) (String.length x)]
+    exact Nat.lt_of_lt_of_le h1 h2
+  let best := chooseMinFreshSuffix t x T (t.maxVarNameLen + 1) (t.maxVarNameLen + 1) hbound
+  simpa [variantFreshAt] using best.2
 
 /-- Term variable substitution: applies a list of term substitutions to a term -/
 def varSubst (i : List (Term × Term)): Term → Option Term
