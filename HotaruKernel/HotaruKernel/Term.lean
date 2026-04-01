@@ -1,11 +1,13 @@
 import HotaruKernel.Type
 
+/-- HOL terms. -/
 inductive Term
 | var : String -> HOLType -> Term
 | const : String -> HOLType -> Term
 | app : Term -> Term -> Term
 | abs : Term -> Term -> Term
 
+/-- Type checking predicate for terms. -/
 inductive HasType : Term -> HOLType -> Prop
 | var : ∀ (x : String) (T : HOLType), HasType (.var x T) T
 | const : ∀ (c : String) (T : HOLType), HasType (.const c T) T
@@ -14,8 +16,10 @@ inductive HasType : Term -> HOLType -> Prop
 | abs : ∀ (n : String) (dT rT : HOLType) (t : Term),
           HasType t rT → HasType (.abs (.var n dT) t) (.fun dT rT)
 
+/-- Predicate for well-typed terms. -/
 abbrev WellTyped (t : Term) : Prop := ∃ T, HasType t T
 
+/-- Type inference function for terms. -/
 def typeof (t : Term) : Option HOLType :=
   match t with
   | .var _ T => some T
@@ -108,12 +112,22 @@ theorem typeof_welltyped : ∀ (t : Term) (T : HOLType), typeof t = some T → H
       | abs _ _ =>
           simp [typeof] at h
 
+/-- Theorem: `HasType t T` if and only if `typeof t = some T`. -/
+theorem welltyped_typeof_iff : ∀ (t : Term) (T : HOLType), HasType t T ↔ typeof t = some T
+    := by
+  intros t T
+  constructor
+  · apply welltyped_typeof
+  · apply typeof_welltyped
+
+/-- Alpha-equivalence for variables under a list of renamings. -/
 def IsAlphaVars (bv : List (Term × Term)) (v1 v2 : Term) : Prop :=
   match bv with
   | [] => v1 = v2
   | (b1, b2) :: bvs =>
       (v1 = b1 ∧ v2 = b2) ∨ (v1 ≠ b1 ∧ v2 ≠ b2 ∧ IsAlphaVars bvs v1 v2)
 
+/-- Alpha-equivalence for terms under a list of renamings. -/
 inductive IsAlphaTerms : List (Term × Term) -> Term -> Term -> Prop
 | var : ∀ (bv : List (Term × Term)) (x1 x2 : String) (T1 T2 : HOLType),
           IsAlphaVars bv (.var x1 T1) (.var x2 T2) → IsAlphaTerms bv (.var x1 T1) (.var x2 T2)
@@ -124,4 +138,5 @@ inductive IsAlphaTerms : List (Term × Term) -> Term -> Term -> Prop
 | abs : ∀ (bv : List (Term × Term)) (n1 n2 : Term) (t1 t2 : Term),
           IsAlphaTerms ((n1, n2) :: bv) t1 t2 → IsAlphaTerms bv (.abs n1 t1) (.abs n2 t2)
 
+/-- Predicate for alpha-equivalence of terms. -/
 def IsAlpha (t1 t2 : Term) : Prop := IsAlphaTerms [] t1 t2
