@@ -2238,13 +2238,20 @@ theorem subst_alpha_of_SubstOk_of_toDBAux_subst :
     (∀ (ctx : List (String × HOLType)) (t t' : Term) (i : List (Term × Term)),
       WellTyped t -> SubstOk i -> subst i t = some t' ->
       toDBAux ctx t' = dbSubst i (toDBAux ctx t)) ->
-    (∀ (n : String) (dT : HOLType) (body body' : Term) (i : List (Term × Term)),
-      dbSubst i (toDBAux ((generateVariant body' n dT, dT) :: []) body) =
-        dbSubst i (toDBAux ((n, dT) :: []) body)) ->
+    (∀ (n : String) (dT rT : HOLType) (body body' body'' : Term) (i : List (Term × Term)),
+      body.HasType rT -> SubstOk i ->
+      let i' := i.filter (fun p => !decide (p.fst = Term.var n dT))
+      subst i' body = some body' ->
+      captureRisk (Term.var n dT) body i' = true ->
+      let z := Term.var (generateVariant body' n dT) dT
+      let i'' := (Term.var n dT, z) :: i'
+      subst i'' body = some body'' ->
+      toDBAux ((generateVariant body' n dT, dT) :: []) body'' =
+        dbSubst i'' (toDBAux ((n, dT) :: []) body)) ->
     ∀ (t1 t2 : Term) (i : List (Term × Term)),
       (WellTyped t1 ∨ WellTyped t2) -> SubstOk i -> AlphaEqv t1 t2 ->
       ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
-  intro hCtxComm hBridge
+  intro hCtxComm hCapBridge
   apply subst_alpha_of_SubstOk_of_ctx_branches
   · intro n dT rT body body' i hBodyTy hOk i' hBodySub hRiskFalse
     have hOk' : SubstOk i' := by
@@ -2253,27 +2260,17 @@ theorem subst_alpha_of_SubstOk_of_toDBAux_subst :
       exact hBodySub
     exact hCtxComm ((n, dT) :: []) body body' i' ⟨rT, hBodyTy⟩ hOk' hBodySub'
   · intro n dT rT body body' body'' i hBodyTy hOk i' hBodySub hRisk z i'' hBodySub2
-    have hOk' : SubstOk i' := by
-      simpa [i'] using SubstOk.filter i (Term.var n dT) hOk
-    have hzTy : z.HasType dT := by
-      simpa [z] using (Term.HasType.var (generateVariant body' n dT) dT)
-    have hOk'' : SubstOk i'' := by
-      intro v t hmem
-      have hmem' : (v, t) ∈ (Term.var n dT, z) :: i' := by
-        simpa [i''] using hmem
-      rcases List.mem_cons.mp hmem' with hhead | htail
-      · cases hhead
-        exact ⟨n, dT, rfl, hzTy⟩
-      · exact hOk' v t htail
-    have hComm :
-        toDBAux ((generateVariant body' n dT, dT) :: []) body'' =
-          dbSubst i'' (toDBAux ((generateVariant body' n dT, dT) :: []) body) :=
-      hCtxComm ((generateVariant body' n dT, dT) :: []) body body'' i'' ⟨rT, hBodyTy⟩ hOk'' hBodySub2
-    have hBridge' :
-        dbSubst i'' (toDBAux ((generateVariant body' n dT, dT) :: []) body) =
-          dbSubst i'' (toDBAux ((n, dT) :: []) body) :=
-      hBridge n dT body body' i''
-    exact Eq.trans hComm hBridge'
+    have hBodySub' :
+        subst (i.filter (fun p => !decide (p.fst = Term.var n dT))) body = some body' := by
+      simpa [i'] using hBodySub
+    have hRisk' :
+        captureRisk (Term.var n dT) body (i.filter (fun p => !decide (p.fst = Term.var n dT))) = true := by
+      simpa [i'] using hRisk
+    have hBodySub2' :
+        subst ((Term.var n dT, Term.var (generateVariant body' n dT) dT) ::
+          (i.filter (fun p => !decide (p.fst = Term.var n dT)))) body = some body'' := by
+      simpa [i', i'', z] using hBodySub2
+    exact hCapBridge n dT rT body body' body'' i hBodyTy hOk hBodySub' hRisk' hBodySub2'
 
 /-- Structural size for fuel-based recursion in instantiation. -/
 def Term.size : Term → Nat
