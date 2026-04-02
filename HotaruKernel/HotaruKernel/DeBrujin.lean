@@ -12,27 +12,32 @@ deriving Repr, DecidableEq
 
 /-- Convert a named term to de Bruijn form under a context. -/
 @[simp]
-private def toDBAux (env : List (String × HOLType)) : Term -> DBTerm
+private def toDBAux (env : List (String × HOLType)) : Term -> Option DBTerm
 | .var x T =>
     match env.findIdx? (fun (y, yT) => x = y ∧ T = yT) with
-    | some n => DBTerm.bvar n
-    | none => DBTerm.fvar x T
-| .const c T => DBTerm.const c T
-| .app s t => DBTerm.app (toDBAux env s) (toDBAux env t)
-| .abs (.var x T) t => DBTerm.abs (toDBAux ((x, T) :: env) t)
-| .abs _ t => DBTerm.abs (toDBAux env t)
+    | some n => some (DBTerm.bvar n)
+    | none => some (DBTerm.fvar x T)
+| .const c T => some (DBTerm.const c T)
+| .app s t => do
+    let s' ← toDBAux env s
+    let t' ← toDBAux env t
+    some (DBTerm.app s' t')
+| .abs (.var x T) t => do
+    let t' ← toDBAux ((x, T) :: env) t
+    some (DBTerm.abs t')
+| .abs _ _ => none
 
 /-- Convert a named term to de Bruijn form. -/
-def Term.toDB (t : Term) : DBTerm := toDBAux [] t
+def Term.toDB (t : Term) : Option DBTerm := toDBAux [] t
 
 theorem alpha_debrujin :
   ∀ t1 t2 : Term,
-    AlphaEqv t1 t2 → t1.toDB = t2.toDB := by
+    AlphaEqv t1 t2 → ∃ dt, t1.toDB = some dt ∧ t2.toDB = some dt := by
   intros t1 t2 h
   sorry
 
 theorem debrujin_alpha :
-  ∀ t1 t2 : Term,
-    t1.toDB = t2.toDB → WellTyped t1 → WellTyped t2 → AlphaEqv t1 t2 := by
-  intros t1 t2
+  ∀ (t1 t2 : Term) (dt : DBTerm),
+    t1.toDB = some dt → t2.toDB = some dt → AlphaEqv t1 t2 := by
+  intros t1 t2 dt h1 h2
   sorry
