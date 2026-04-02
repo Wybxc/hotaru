@@ -8,7 +8,7 @@ inductive DBTerm
 | fvar : String -> HOLType -> DBTerm
 | const : String -> HOLType -> DBTerm
 | app : DBTerm -> DBTerm -> DBTerm
-| abs : DBTerm -> DBTerm
+| abs : HOLType -> DBTerm -> DBTerm
 deriving Repr, DecidableEq
 
 /-- Convert a named term to de Bruijn form under a context. -/
@@ -25,7 +25,7 @@ private def toDBAux (ctx : List (String × HOLType)) : Term -> Option DBTerm
     some (DBTerm.app s' t')
 | .abs (.var x T) t => do
     let t' ← toDBAux ((x, T) :: ctx) t
-    some (DBTerm.abs t')
+    some (DBTerm.abs T t')
 | .abs _ _ => none
 
 /-- Convert a named term to de Bruijn form. -/
@@ -116,12 +116,13 @@ theorem toDB_app : ∀ (ctx : List (String × HOLType)) (t : Term) (s' t' : DBTe
       cases n with try simp at h
       | var x U => cases hb : toDBAux ((x, U) :: ctx) body <;> simp [hb] at h
 
-theorem toDB_abs : ∀ (ctx : List (String × HOLType)) (t : Term) (t' : DBTerm),
-    toDBAux ctx t = some (DBTerm.abs t') →
-    ∃ x T t'', t = .abs (.var x T) t'' ∧ toDBAux ((x, T) :: ctx) t'' = some t' := by
-  intro ctx t t' h
+theorem toDB_abs : ∀ (ctx : List (String × HOLType)) (t : Term) (dT : HOLType) (t' : DBTerm),
+    toDBAux ctx t = some (DBTerm.abs dT t') →
+    ∃ x t'', t = .abs (.var x dT) t'' ∧ toDBAux ((x, dT) :: ctx) t'' = some t' := by
+  intro ctx t dT t' h
   cases t with try simp at h
-  | var x U => cases hidx : ctx.idxOf? (x, U) <;> simp [hidx] at h
+  | var x U =>
+      cases hidx : ctx.idxOf? (x, U) <;> simp [hidx] at h
   | app s u =>
       cases hs : toDBAux ctx s <;> simp [hs] at h
       cases hu : toDBAux ctx u <;> simp [hu] at h
@@ -130,10 +131,11 @@ theorem toDB_abs : ∀ (ctx : List (String × HOLType)) (t : Term) (t' : DBTerm)
       | var x U =>
           cases hb : toDBAux ((x, U) :: ctx) body with simp [hb] at h
           | some db =>
-              have hdb : db = t' := by
+              have hAbs : DBTerm.abs U db = DBTerm.abs dT t' := by
                 simpa [toDBAux, hb] using h
-              subst hdb
-              exact ⟨x, U, body, rfl, hb⟩
+              injection hAbs with hU hdb
+              subst hU hdb
+              exact ⟨x, body, rfl, hb⟩
 
 /-- Proof skeleton: relation between alpha-renaming environment and de Bruijn contexts. -/
 private inductive DBCtxRel :
@@ -208,6 +210,10 @@ private theorem IsAlphaTerms_of_toDBAux_eq :
   intro bv env1 env2 t1 t2 dt hRel h1 h2
   induction dt generalizing t1 t2 env1 env2 with
   | bvar n =>
+      have ⟨x1, T1, hEnv1, hVar1⟩ := toDB_bvar env1 t1 n h1
+      have ⟨x2, T2, hEnv2, hVar2⟩ := toDB_bvar env2 t2 n h2
+      subst hVar1 hVar2
+      apply IsAlphaTerms.var
       sorry
   | fvar x T =>
       sorry
@@ -215,8 +221,8 @@ private theorem IsAlphaTerms_of_toDBAux_eq :
       sorry
   | app s t ihs iht =>
       sorry
-  | abs t ih =>
-      sorry
+    | abs dT t ih =>
+            sorry
 
 theorem alpha_debrujin :
   ∀ t1 t2 : Term,
