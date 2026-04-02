@@ -90,7 +90,7 @@ theorem toDB_const : ∀ (ctx : List (String × HOLType)) (t : Term) (c : String
       subst hc hT
       rfl
   | app s u =>
-      cases hs : toDBAux ctx s <;> simp [ hs] at h
+      cases hs : toDBAux ctx s <;> simp [hs] at h
       cases hu : toDBAux ctx u <;> simp [hu] at h
   | abs n body =>
       cases n with try simp at h
@@ -98,15 +98,23 @@ theorem toDB_const : ∀ (ctx : List (String × HOLType)) (t : Term) (c : String
 
 theorem toDB_app : ∀ (ctx : List (String × HOLType)) (t : Term) (s' t' : DBTerm),
     toDBAux ctx t = some (DBTerm.app s' t') →
-    ∃ s t, toDBAux ctx s = some s' ∧ toDBAux ctx t = some t' ∧ t = .app s t := by
+    ∃ s u, toDBAux ctx s = some s' ∧ toDBAux ctx u = some t' ∧ t = .app s u := by
   intros ctx t s' t' h
-  induction t generalizing ctx with try simp at h
-  | var x T =>
-      sorry
-  | app s t ihs iht =>
-      sorry
-  | abs n t ih =>
-      sorry
+  cases t with try simp at h
+  | var x U => cases hidx : ctx.idxOf? (x, U) <;> simp [hidx] at h
+  | app s u =>
+      cases hs : toDBAux ctx s with simp [hs] at h
+      | some ds =>
+          cases hu : toDBAux ctx u with simp [hu] at h
+          | some du =>
+              have happ : DBTerm.app ds du = DBTerm.app s' t' := by
+                simpa [toDBAux, hs, hu] using h
+              injection happ with hds hdu
+              subst hds hdu
+              exact ⟨s, u, hs, hu, rfl⟩
+  | abs n body =>
+      cases n with try simp at h
+      | var x U => cases hb : toDBAux ((x, U) :: ctx) body <;> simp [hb] at h
 
 theorem toDB_abs : ∀ (ctx : List (String × HOLType)) (t : Term) (t' : DBTerm),
     toDBAux ctx t = some (DBTerm.abs t') →
