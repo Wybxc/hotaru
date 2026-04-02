@@ -132,6 +132,13 @@ theorem AlphaEqv.welltyped_left : ∀ {t1 t2 : Term}, AlphaEqv t1 t2 → WellTyp
   intro t1 t2 h hwt2
   exact (AlphaEqv.welltyped_iff h).mpr hwt2
 
+theorem AlphaEqv.welltyped_both_of_either :
+    ∀ {t1 t2 : Term}, AlphaEqv t1 t2 → (WellTyped t1 ∨ WellTyped t2) → (WellTyped t1 ∧ WellTyped t2) := by
+  intro t1 t2 hAlpha hEither
+  cases hEither with
+  | inl hwt1 => exact ⟨hwt1, AlphaEqv.welltyped_right hAlpha hwt1⟩
+  | inr hwt2 => exact ⟨AlphaEqv.welltyped_left hAlpha hwt2, hwt2⟩
+
 def IsTrivialRenaming (bv : List (Term × Term)) : Prop :=
   match bv with
   | [] => true
@@ -1491,7 +1498,7 @@ def subst (i : List (Term × Term)) : Term → Option Term
           let freshName := generateVariant t' x ty
           let z := Term.var freshName ty
           -- Add the new binding to prevent capture
-          let i'' := (z, bvar) :: i'
+          let i'' := (bvar, z) :: i'
           let t'' ← subst i'' t
           some (.abs z t'')
       | _ => none
@@ -1522,13 +1529,13 @@ theorem welltyped_subst : ∀ (t : Term) (i : List (Term × Term)),
       rcases iht i' with ⟨t1, ht1⟩
       by_cases hcap : captureRisk bvar t i' = true
       · let z := Term.var (generateVariant t1 n dT) dT
-        let i'' := (z, bvar) :: i'
+        let i'' := (bvar, z) :: i'
         rcases iht i'' with ⟨t2, ht2⟩
         refine ⟨Term.abs z t2, ?_⟩
         simp [subst, i', bvar, ht1, hcap]
         have ht2' :
             subst
-                ((Term.var (generateVariant t1 n dT) dT, Term.var n dT) ::
+                ((Term.var n dT, Term.var (generateVariant t1 n dT) dT) ::
                   List.filter (fun p => !decide (p.fst = Term.var n dT)) i)
                 t = some t2 := by
           simpa [i'', z, bvar] using ht2
@@ -1553,6 +1560,94 @@ theorem SubstOk.toNoConstLHS : ∀ (i : List (Term × Term)),
   rcases hconst with ⟨c, U, hc⟩
   subst hv
   cases hc
+
+theorem SubstOk.filter : ∀ (i : List (Term × Term)) (bvar : Term),
+    SubstOk i -> SubstOk (i.filter (fun p => !decide (p.fst = bvar))) := by
+  intro i bvar hOk
+  intro v t hmem
+  exact hOk v t (List.mem_filter.mp hmem).1
+
+theorem subst_hasType_of_SubstOk :
+    ∀ (t : Term) (T : HOLType) (i : List (Term × Term)),
+      t.HasType T -> SubstOk i -> ∃ t', subst i t = some t' ∧ t'.HasType T := by
+  intro t T i hty
+  induction hty generalizing i with
+  | var x T =>
+      intro hOk
+      unfold subst
+      cases hfind : i.find? (fun (y, _) => y = Term.var x T) with
+      | none =>
+          refine ⟨Term.var x T, ?_, ?_⟩
+          · simp
+          · exact Term.HasType.var x T
+      | some p =>
+          rcases p with ⟨v, s⟩
+          have hmem : (v, s) ∈ i := List.mem_of_find?_eq_some hfind
+          have hpred : (fun q : Term × Term => decide (q.fst = Term.var x T)) (v, s) = true :=
+            List.find?_some (p := fun q : Term × Term => decide (q.fst = Term.var x T)) hfind
+          have hv : v = Term.var x T := by
+            simp at hpred
+            exact hpred
+          rcases hOk v s hmem with ⟨x', T', hv', hsTy⟩
+          cases hv'
+          cases hv
+          refine ⟨s, ?_, ?_⟩
+          · simp
+          · exact hsTy
+  | const c T =>
+      intro _
+      refine ⟨Term.const c T, ?_, ?_⟩
+      · rfl
+      · exact Term.HasType.const c T
+  | app s t dT rT hs ht ihs iht =>
+      intro hOk
+      rcases ihs i hOk with ⟨s', hsEq, hsTy⟩
+      rcases iht i hOk with ⟨t', htEq, htTy⟩
+      refine ⟨Term.app s' t', ?_, ?_⟩
+      · simp [subst, hsEq, htEq]
+      · exact Term.HasType.app s' t' dT rT hsTy htTy
+  | abs n dT rT body hbody ih =>
+      intro hOk
+      let bvar := Term.var n dT
+      let i' := i.filter (fun p => !decide (p.fst = bvar))
+      have hOk' : SubstOk i' := SubstOk.filter i bvar hOk
+      rcases ih i' hOk' with ⟨body', hSubBody, hBodyTy⟩
+      by_cases hcap : captureRisk bvar body i' = true
+      · let z := Term.var (generateVariant body' n dT) dT
+        let i'' := (bvar, z) :: i'
+        have hzTy : z.HasType dT := by
+          dsimp [z]
+          exact Term.HasType.var _ _
+        have hOk'' : SubstOk i'' := by
+          intro v t hmem
+          rcases List.mem_cons.mp hmem with hhead | htail
+          · cases hhead
+            refine ⟨n, dT, rfl, hzTy⟩
+          · exact hOk' v t htail
+        rcases ih i'' hOk'' with ⟨body'', hSubBody2, hBodyTy2⟩
+        refine ⟨Term.abs z body'', ?_, ?_⟩
+        · simp [subst, i', bvar, hSubBody, hcap]
+          have hSubBody2' :
+              subst
+                  ((Term.var n dT, Term.var (generateVariant body' n dT) dT) ::
+                    List.filter (fun p => !decide (p.fst = Term.var n dT)) i)
+                  body = some body'' := by
+            simpa [i'', z, bvar, i'] using hSubBody2
+          simp [z, Option.bind, hSubBody2']
+        · exact Term.HasType.abs (generateVariant body' n dT) dT rT body'' hBodyTy2
+      · have hcap' : captureRisk bvar body i' = false := by
+          cases hc : captureRisk bvar body i' <;> simp [hc] at hcap ⊢
+        refine ⟨Term.abs bvar body', ?_, ?_⟩
+        · simp [subst, i', bvar, hSubBody, hcap']
+        · simpa [bvar] using (Term.HasType.abs n dT rT body' hBodyTy)
+
+theorem welltyped_subst_of_SubstOk :
+    ∀ (t : Term) (i : List (Term × Term)),
+      WellTyped t -> SubstOk i -> ∃ t', subst i t = some t' ∧ WellTyped t' := by
+  intro t i hwt hOk
+  rcases hwt with ⟨T, hty⟩
+  rcases subst_hasType_of_SubstOk t T i hty hOk with ⟨t', hs, hty'⟩
+  exact ⟨t', hs, ⟨T, hty'⟩⟩
 
 /-- No LHS variable of substitution list appears free in the target term. -/
 def SubstNoHit (i : List (Term × Term)) (t : Term) : Prop :=
@@ -1704,32 +1799,35 @@ theorem subst_alpha_closed_terms_both_closed :
   · exact subst_self_of_closed t2 i hClosed2 hNoConst
 
 theorem subst_alpha_closed_terms : ∀ (t1 t2 : Term) (i : List (Term × Term)),
-  WellTyped t1 → WellTyped t2 → SubstNoConstLHS i → Closed t1 → AlphaEqv t1 t2 →
+  (WellTyped t1 ∨ WellTyped t2) → SubstNoConstLHS i → Closed t1 → AlphaEqv t1 t2 →
     ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
-  intro t1 t2 i hwt1 hwt2 hNoConst hClosed1 hAlpha
+  intro t1 t2 i hwtEither hNoConst hClosed1 hAlpha
+  have hBoth : WellTyped t1 ∧ WellTyped t2 := AlphaEqv.welltyped_both_of_either hAlpha hwtEither
+  have hwt1 : WellTyped t1 := hBoth.1
+  have hwt2 : WellTyped t2 := hBoth.2
   have hClosed2 : Closed t2 := closed_of_alpha_wt_left t1 t2 hwt1 hwt2 hAlpha hClosed1
   exact subst_alpha_closed_terms_both_closed t1 t2 i hNoConst hClosed1 hClosed2 hAlpha
 
 theorem subst_alpha_closed_terms_of_SubstOk :
     ∀ (t1 t2 : Term) (i : List (Term × Term)),
-      WellTyped t1 → WellTyped t2 → SubstOk i → Closed t1 → AlphaEqv t1 t2 →
+      (WellTyped t1 ∨ WellTyped t2) → SubstNoConstLHS i → Closed t1 → AlphaEqv t1 t2 →
       ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
-  intro t1 t2 i hwt1 hwt2 hOk hClosed1 hAlpha
-  exact subst_alpha_closed_terms t1 t2 i hwt1 hwt2 (SubstOk.toNoConstLHS i hOk) hClosed1 hAlpha
+  intro t1 t2 i hwtEither hNoConst hClosed1 hAlpha
+  exact subst_alpha_closed_terms t1 t2 i hwtEither hNoConst hClosed1 hAlpha
 
 theorem subst_alpha_closed_terms_both_closed_of_SubstOk :
     ∀ (t1 t2 : Term) (i : List (Term × Term)),
-      SubstOk i -> Closed t1 -> Closed t2 -> AlphaEqv t1 t2 ->
+      SubstNoConstLHS i -> Closed t1 -> Closed t2 -> AlphaEqv t1 t2 ->
       ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
-  intro t1 t2 i hOk hClosed1 hClosed2 hAlpha
-  exact subst_alpha_closed_terms_both_closed t1 t2 i (SubstOk.toNoConstLHS i hOk) hClosed1 hClosed2 hAlpha
+  intro t1 t2 i hNoConst hClosed1 hClosed2 hAlpha
+  exact subst_alpha_closed_terms_both_closed t1 t2 i hNoConst hClosed1 hClosed2 hAlpha
 
 theorem subst_alpha_closed_terms_both_closed_of_SubstOkClosed :
     ∀ (t1 t2 : Term) (i : List (Term × Term)),
-      SubstOkClosed i -> Closed t1 -> Closed t2 -> AlphaEqv t1 t2 ->
+      SubstNoConstLHS i -> Closed t1 -> Closed t2 -> AlphaEqv t1 t2 ->
       ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
-  intro t1 t2 i hOk hClosed1 hClosed2 hAlpha
-  exact subst_alpha_closed_terms_both_closed_of_SubstOk t1 t2 i (SubstOkClosed.toSubstOk i hOk) hClosed1 hClosed2 hAlpha
+  intro t1 t2 i hNoConst hClosed1 hClosed2 hAlpha
+  exact subst_alpha_closed_terms_both_closed_of_SubstOk t1 t2 i hNoConst hClosed1 hClosed2 hAlpha
 
 theorem SubstNoHit.right_of_free_iff :
     ∀ (t1 t2 : Term) (i : List (Term × Term)),
@@ -1765,9 +1863,12 @@ theorem SubstNoHit.left_of_free_iff :
 
 theorem SubstNoHit.right_of_alpha :
     ∀ (t1 t2 : Term) (i : List (Term × Term)),
-      WellTyped t1 -> WellTyped t2 -> AlphaEqv t1 t2 ->
+      (WellTyped t1 ∨ WellTyped t2) -> AlphaEqv t1 t2 ->
       SubstNoHit i t1 -> SubstNoHit i t2 := by
-  intro t1 t2 i hwt1 hwt2 hAlpha hNo1
+  intro t1 t2 i hwtEither hAlpha hNo1
+  have hBoth : WellTyped t1 ∧ WellTyped t2 := AlphaEqv.welltyped_both_of_either hAlpha hwtEither
+  have hwt1 : WellTyped t1 := hBoth.1
+  have hwt2 : WellTyped t2 := hBoth.2
   apply SubstNoHit.right_of_free_iff t1 t2 i
   · intro x T
     exact free_var_iff_of_alpha_wt t1 t2 x T hwt1 hwt2 hAlpha
@@ -1777,9 +1878,12 @@ theorem SubstNoHit.right_of_alpha :
 
 theorem SubstNoHit.left_of_alpha :
     ∀ (t1 t2 : Term) (i : List (Term × Term)),
-      WellTyped t1 -> WellTyped t2 -> AlphaEqv t1 t2 ->
+      (WellTyped t1 ∨ WellTyped t2) -> AlphaEqv t1 t2 ->
       SubstNoHit i t2 -> SubstNoHit i t1 := by
-  intro t1 t2 i hwt1 hwt2 hAlpha hNo2
+  intro t1 t2 i hwtEither hAlpha hNo2
+  have hBoth : WellTyped t1 ∧ WellTyped t2 := AlphaEqv.welltyped_both_of_either hAlpha hwtEither
+  have hwt1 : WellTyped t1 := hBoth.1
+  have hwt2 : WellTyped t2 := hBoth.2
   apply SubstNoHit.left_of_free_iff t1 t2 i
   · intro x T
     exact free_var_iff_of_alpha_wt t1 t2 x T hwt1 hwt2 hAlpha
@@ -1801,9 +1905,12 @@ theorem SubstNoHit.iff_of_free_iff :
 
 theorem SubstNoHit.iff_of_alpha :
     ∀ (t1 t2 : Term) (i : List (Term × Term)),
-      WellTyped t1 -> WellTyped t2 -> AlphaEqv t1 t2 ->
+      (WellTyped t1 ∨ WellTyped t2) -> AlphaEqv t1 t2 ->
       (SubstNoHit i t1 ↔ SubstNoHit i t2) := by
-  intro t1 t2 i hwt1 hwt2 hAlpha
+  intro t1 t2 i hwtEither hAlpha
+  have hBoth : WellTyped t1 ∧ WellTyped t2 := AlphaEqv.welltyped_both_of_either hAlpha hwtEither
+  have hwt1 : WellTyped t1 := hBoth.1
+  have hwt2 : WellTyped t2 := hBoth.2
   exact SubstNoHit.iff_of_free_iff t1 t2 i
     (fun x T => free_var_iff_of_alpha_wt t1 t2 x T hwt1 hwt2 hAlpha)
     (fun c T => free_const_iff_of_alpha_wt t1 t2 c T hwt1 hwt2 hAlpha)
@@ -1819,10 +1926,13 @@ theorem SubstNoHit.of_closed_both :
 
 theorem SubstNoHit.of_closed_left_alpha :
     ∀ (t1 t2 : Term) (i : List (Term × Term)),
-      WellTyped t1 -> WellTyped t2 -> AlphaEqv t1 t2 ->
+      (WellTyped t1 ∨ WellTyped t2) -> AlphaEqv t1 t2 ->
       SubstNoConstLHS i -> Closed t1 ->
       SubstNoHit i t1 ∧ SubstNoHit i t2 := by
-  intro t1 t2 i hwt1 hwt2 hAlpha hNoConst hClosed1
+  intro t1 t2 i hwtEither hAlpha hNoConst hClosed1
+  have hBoth : WellTyped t1 ∧ WellTyped t2 := AlphaEqv.welltyped_both_of_either hAlpha hwtEither
+  have hwt1 : WellTyped t1 := hBoth.1
+  have hwt2 : WellTyped t2 := hBoth.2
   have hClosed2 : Closed t2 := closed_of_alpha_wt_left t1 t2 hwt1 hwt2 hAlpha hClosed1
   exact SubstNoHit.of_closed_both t1 t2 i hNoConst hClosed1 hClosed2
 
@@ -1857,50 +1967,59 @@ theorem subst_alpha_right_nohit_of_free_iff : ∀ (t1 t2 : Term) (i : List (Term
   exact subst_alpha_nohit_both t1 t2 i hNo1 hNo2 hAlpha
 
 theorem subst_alpha : ∀ (t1 t2 : Term) (i : List (Term × Term)),
-  WellTyped t1 → WellTyped t2 →
+  (WellTyped t1 ∨ WellTyped t2) →
   SubstNoHit i t1 →
   AlphaEqv t1 t2 →
     ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
-  intro t1 t2 i hwt1 hwt2 hNo1 hAlpha
+  intro t1 t2 i hwtEither hNo1 hAlpha
+  have hBoth : WellTyped t1 ∧ WellTyped t2 := AlphaEqv.welltyped_both_of_either hAlpha hwtEither
+  have hwt1 : WellTyped t1 := hBoth.1
+  have hwt2 : WellTyped t2 := hBoth.2
   exact subst_alpha_of_free_iff t1 t2 i
     (fun x T => free_var_iff_of_alpha_wt t1 t2 x T hwt1 hwt2 hAlpha)
     (fun c T => free_const_iff_of_alpha_wt t1 t2 c T hwt1 hwt2 hAlpha)
     hNo1 hAlpha
 
 theorem subst_alpha_right_nohit : ∀ (t1 t2 : Term) (i : List (Term × Term)),
-  WellTyped t1 → WellTyped t2 →
+  (WellTyped t1 ∨ WellTyped t2) →
   SubstNoHit i t2 →
   AlphaEqv t1 t2 →
     ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
-  intro t1 t2 i hwt1 hwt2 hNo2 hAlpha
+  intro t1 t2 i hwtEither hNo2 hAlpha
+  have hBoth : WellTyped t1 ∧ WellTyped t2 := AlphaEqv.welltyped_both_of_either hAlpha hwtEither
+  have hwt1 : WellTyped t1 := hBoth.1
+  have hwt2 : WellTyped t2 := hBoth.2
   exact subst_alpha_right_nohit_of_free_iff t1 t2 i
     (fun x T => free_var_iff_of_alpha_wt t1 t2 x T hwt1 hwt2 hAlpha)
     (fun c T => free_const_iff_of_alpha_wt t1 t2 c T hwt1 hwt2 hAlpha)
     hNo2 hAlpha
 
 theorem subst_alpha_of_SubstOk : ∀ (t1 t2 : Term) (i : List (Term × Term)),
-  WellTyped t1 → WellTyped t2 → SubstOk i →
+  (WellTyped t1 ∨ WellTyped t2) →
   SubstNoHit i t1 →
   AlphaEqv t1 t2 →
     ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
-  intro t1 t2 i hwt1 hwt2 _hOk hNo1 hAlpha
-  exact subst_alpha t1 t2 i hwt1 hwt2 hNo1 hAlpha
+  intro t1 t2 i hwtEither hNo1 hAlpha
+  exact subst_alpha t1 t2 i hwtEither hNo1 hAlpha
 
 theorem subst_alpha_of_SubstOkClosed : ∀ (t1 t2 : Term) (i : List (Term × Term)),
-  WellTyped t1 → WellTyped t2 → SubstOkClosed i →
+  (WellTyped t1 ∨ WellTyped t2) →
   SubstNoHit i t1 →
   AlphaEqv t1 t2 →
     ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
-  intro t1 t2 i hwt1 hwt2 hOk hNo1 hAlpha
-  exact subst_alpha_of_SubstOk t1 t2 i hwt1 hwt2 (SubstOkClosed.toSubstOk i hOk) hNo1 hAlpha
+  intro t1 t2 i hwtEither hNo1 hAlpha
+  exact subst_alpha_of_SubstOk t1 t2 i hwtEither hNo1 hAlpha
 
 theorem subst_alpha_closed_terms_of_SubstOkClosed :
     ∀ (t1 t2 : Term) (i : List (Term × Term)),
-      WellTyped t1 → WellTyped t2 → SubstOkClosed i → Closed t1 → AlphaEqv t1 t2 →
+      (WellTyped t1 ∨ WellTyped t2) → SubstNoConstLHS i → Closed t1 → AlphaEqv t1 t2 →
       ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
-  intro t1 t2 i hwt1 hwt2 hOk hClosed1 hAlpha
+  intro t1 t2 i hwtEither hNoConst hClosed1 hAlpha
+  have hBoth : WellTyped t1 ∧ WellTyped t2 := AlphaEqv.welltyped_both_of_either hAlpha hwtEither
+  have hwt1 : WellTyped t1 := hBoth.1
+  have hwt2 : WellTyped t2 := hBoth.2
   have hClosed2 : Closed t2 := closed_of_alpha_wt_left t1 t2 hwt1 hwt2 hAlpha hClosed1
-  exact subst_alpha_closed_terms_both_closed_of_SubstOkClosed t1 t2 i hOk hClosed1 hClosed2 hAlpha
+  exact subst_alpha_closed_terms_both_closed_of_SubstOkClosed t1 t2 i hNoConst hClosed1 hClosed2 hAlpha
 
 /-- Structural size for fuel-based recursion in instantiation. -/
 def Term.size : Term → Nat
