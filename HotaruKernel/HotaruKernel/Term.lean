@@ -2231,6 +2231,111 @@ theorem subst_pair_welltyped_of_SubstOk :
   rcases welltyped_subst_of_SubstOk t2 i hwt2 hOk with ⟨t2', hs2, hwt2'⟩
   exact ⟨t1', t2', hs1, hs2, hwt1', hwt2'⟩
 
+  theorem subst_toDB_commute_of_abs_case :
+    (∀ (n : String) (dT rT : HOLType) (body t' : Term) (i : List (Term × Term)),
+      body.HasType rT -> SubstOk i ->
+      subst i (Term.abs (Term.var n dT) body) = some t' ->
+      toDB t' = dbSubst i (toDB (Term.abs (Term.var n dT) body))) ->
+    ∀ (t t' : Term) (i : List (Term × Term)),
+      WellTyped t -> SubstOk i -> subst i t = some t' ->
+      toDB t' = dbSubst i (toDB t) := by
+    intro hAbs t t' i hwt hOk hSub
+    rcases hwt with ⟨T, hty⟩
+    revert t' i hOk hSub
+    induction hty with
+    | var x T =>
+      intro t' i hOk hSub
+      unfold subst at hSub
+      cases hfind : i.find? (fun (y, _) => y = Term.var x T) with
+      | none =>
+        simp [hfind] at hSub
+        cases hSub
+        exact (dbSubst_fvar_eq_of_find_none i x T hfind).symm
+      | some p =>
+        simp [hfind] at hSub
+        cases hSub
+        exact (dbSubst_fvar_eq_of_find_some i x T p.1 p.2 hfind).symm
+    | const c T =>
+      intro t' i hOk hSub
+      simp [subst] at hSub
+      cases hSub
+      rfl
+    | app s t dT rT hs ht ihs iht =>
+      intro t' i hOk hSub
+      unfold subst at hSub
+      cases hs' : subst i s with
+      | none =>
+        simp [hs'] at hSub
+      | some s' =>
+        cases ht' : subst i t with
+        | none =>
+          simp [hs', ht'] at hSub
+        | some t'' =>
+          simp [hs', ht'] at hSub
+          cases hSub
+          have hS : toDB s' = dbSubst i (toDB s) := ihs s' i hOk hs'
+          have hT : toDB t'' = dbSubst i (toDB t) := iht t'' i hOk ht'
+          calc
+            toDB (Term.app s' t'') = DBTerm.app (toDB s') (toDB t'') := by rfl
+            _ = DBTerm.app (dbSubst i (toDB s)) (dbSubst i (toDB t)) := by
+              simp [hS, hT]
+            _ = dbSubst i (toDB (Term.app s t)) := by
+              rfl
+    | abs n dT rT body hbody ihbody =>
+      intro t' i hOk hSub
+      exact hAbs n dT rT body t' i hbody hOk hSub
+
+theorem subst_toDB_abs_case_of_branches :
+    (∀ (n : String) (dT rT : HOLType) (body body' : Term) (i : List (Term × Term)),
+      body.HasType rT -> SubstOk i ->
+      let i' := i.filter (fun p => !decide (p.fst = Term.var n dT))
+      subst i' body = some body' ->
+      captureRisk (Term.var n dT) body i' = false ->
+      toDB (Term.abs (Term.var n dT) body') = dbSubst i (toDB (Term.abs (Term.var n dT) body))) ->
+    (∀ (n : String) (dT rT : HOLType) (body body' body'' : Term) (i : List (Term × Term)),
+      body.HasType rT -> SubstOk i ->
+      let i' := i.filter (fun p => !decide (p.fst = Term.var n dT))
+      subst i' body = some body' ->
+      captureRisk (Term.var n dT) body i' = true ->
+      let z := Term.var (generateVariant body' n dT) dT
+      let i'' := (Term.var n dT, z) :: i'
+      subst i'' body = some body'' ->
+      toDB (Term.abs (Term.var (generateVariant body' n dT) dT) body'') =
+        dbSubst i (toDB (Term.abs (Term.var n dT) body))) ->
+    ∀ (n : String) (dT rT : HOLType) (body t' : Term) (i : List (Term × Term)),
+      body.HasType rT -> SubstOk i ->
+      subst i (Term.abs (Term.var n dT) body) = some t' ->
+      toDB t' = dbSubst i (toDB (Term.abs (Term.var n dT) body)) := by
+  intro hNoCap hCap n dT rT body t' i hBodyTy hOk hSub
+  let bvar := Term.var n dT
+  let i' := i.filter (fun p => !decide (p.fst = bvar))
+  unfold subst at hSub
+  cases hBody : subst i' body with
+  | none =>
+      simp [i', bvar, hBody] at hSub
+  | some body' =>
+      by_cases hRisk : captureRisk bvar body i' = true
+      · let z : Term := Term.var (generateVariant body' n dT) dT
+        let i'' : List (Term × Term) := (Term.var n dT, z) :: i'
+        cases hBody2 : subst i'' body with
+        | none =>
+            simp [i', bvar, hBody, hRisk, z, i'', hBody2] at hSub
+        | some body'' =>
+            simp [i', bvar, hBody, hRisk, z, i'', hBody2] at hSub
+            cases hSub
+            have hCapMain :=
+              hCap n dT rT body body' body'' i hBodyTy hOk
+                (by simpa [i', bvar] using hBody)
+                hRisk
+                (by simpa [z, i''] using hBody2)
+            simpa [i', bvar, z, i''] using hCapMain
+      · have hRiskFalse : captureRisk bvar body i' = false := by
+          cases hc : captureRisk bvar body i' <;> simp [hc] at hRisk ⊢
+        simp [i', bvar, hBody, hRiskFalse] at hSub
+        cases hSub
+        have hNoCapMain := hNoCap n dT rT body body' i hBodyTy hOk (by simpa [i', bvar] using hBody) hRiskFalse
+        simpa [i', bvar] using hNoCapMain
+
 theorem subst_alpha_of_SubstOk_of_toDB_subst :
     (∀ (t t' : Term) (i : List (Term × Term)),
       WellTyped t -> SubstOk i -> subst i t = some t' ->
@@ -2257,6 +2362,46 @@ theorem subst_alpha_of_SubstOk_of_toDB_subst :
       _ = toDB t2' := hEq2.symm
   have hAlphaOut : AlphaEqv t1' t2' := AlphaEqv_of_toDB_eq_wt t1' t2' hwt1' hwt2' hEqOut
   exact ⟨t1', t2', hs1, hs2, hAlphaOut⟩
+
+theorem subst_alpha_of_SubstOk_of_abs_case :
+    (∀ (n : String) (dT rT : HOLType) (body t' : Term) (i : List (Term × Term)),
+      body.HasType rT -> SubstOk i ->
+      subst i (Term.abs (Term.var n dT) body) = some t' ->
+      toDB t' = dbSubst i (toDB (Term.abs (Term.var n dT) body))) ->
+    ∀ (t1 t2 : Term) (i : List (Term × Term)),
+      (WellTyped t1 ∨ WellTyped t2) -> SubstOk i -> AlphaEqv t1 t2 ->
+      ∃ t1' t2',
+        subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
+  intro hAbs
+  apply subst_alpha_of_SubstOk_of_toDB_subst
+  intro t t' i hwt hOk hSub
+  exact subst_toDB_commute_of_abs_case hAbs t t' i hwt hOk hSub
+
+theorem subst_alpha_of_SubstOk_of_branches :
+    (∀ (n : String) (dT rT : HOLType) (body body' : Term) (i : List (Term × Term)),
+      body.HasType rT -> SubstOk i ->
+      let i' := i.filter (fun p => !decide (p.fst = Term.var n dT))
+      subst i' body = some body' ->
+      captureRisk (Term.var n dT) body i' = false ->
+      toDB (Term.abs (Term.var n dT) body') = dbSubst i (toDB (Term.abs (Term.var n dT) body))) ->
+    (∀ (n : String) (dT rT : HOLType) (body body' body'' : Term) (i : List (Term × Term)),
+      body.HasType rT -> SubstOk i ->
+      let i' := i.filter (fun p => !decide (p.fst = Term.var n dT))
+      subst i' body = some body' ->
+      captureRisk (Term.var n dT) body i' = true ->
+      let z := Term.var (generateVariant body' n dT) dT
+      let i'' := (Term.var n dT, z) :: i'
+      subst i'' body = some body'' ->
+      toDB (Term.abs (Term.var (generateVariant body' n dT) dT) body'') =
+        dbSubst i (toDB (Term.abs (Term.var n dT) body))) ->
+    ∀ (t1 t2 : Term) (i : List (Term × Term)),
+      (WellTyped t1 ∨ WellTyped t2) -> SubstOk i -> AlphaEqv t1 t2 ->
+      ∃ t1' t2',
+        subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
+  intro hNoCap hCap
+  apply subst_alpha_of_SubstOk_of_abs_case
+  intro n dT rT body t' i hBodyTy hOk hSub
+  exact subst_toDB_abs_case_of_branches hNoCap hCap n dT rT body t' i hBodyTy hOk hSub
 
 /-- Structural size for fuel-based recursion in instantiation. -/
 def Term.size : Term → Nat
