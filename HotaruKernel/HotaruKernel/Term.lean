@@ -93,12 +93,44 @@ inductive IsAlphaTerms : List (Term × Term) -> Term -> Term -> Prop
 | const : ∀ (bv : List (Term × Term)) (c1 c2 : String) (T1 T2 : HOLType),
           IsAlphaVars bv (.const c1 T1) (.const c2 T2) → IsAlphaTerms bv (.const c1 T1) (.const c2 T2)
 | app : ∀ (bv : List (Term × Term)) (s1 s2 t1 t2 : Term),
+          (WellTyped (.app s1 t1) ↔ WellTyped (.app s2 t2)) →
           IsAlphaTerms bv s1 s2 → IsAlphaTerms bv t1 t2 → IsAlphaTerms bv (.app s1 t1) (.app s2 t2)
 | abs : ∀ (bv : List (Term × Term)) (n1 n2 : Term) (t1 t2 : Term),
+          (WellTyped (.abs n1 t1) ↔ WellTyped (.abs n2 t2)) →
           IsAlphaTerms ((n1, n2) :: bv) t1 t2 → IsAlphaTerms bv (.abs n1 t1) (.abs n2 t2)
 
 /-- Predicate for alpha-equivalence of terms. -/
-def AlphaEqv (t1 t2 : Term) : Prop := IsAlphaTerms [] t1 t2
+def AlphaEqv (t1 t2 : Term) : Prop :=
+  IsAlphaTerms [] t1 t2
+
+theorem AlphaEqv.isAlpha : ∀ {t1 t2 : Term}, AlphaEqv t1 t2 → IsAlphaTerms [] t1 t2 := by
+  intro t1 t2 h
+  exact h
+
+theorem IsAlphaTerms_welltyped_iff :
+    ∀ {bv : List (Term × Term)} {t1 t2 : Term}, IsAlphaTerms bv t1 t2 → (WellTyped t1 ↔ WellTyped t2) := by
+  intro bv t1 t2 h
+  induction h with
+  | var bv x1 x2 T1 T2 hv =>
+      constructor <;> intro _ <;> exact ⟨_, Term.HasType.var _ _⟩
+  | const bv c1 c2 T1 T2 hv =>
+      constructor <;> intro _ <;> exact ⟨_, Term.HasType.const _ _⟩
+  | app bv s1 s2 t1 t2 hwt hs ht ihs iht =>
+    exact hwt
+  | abs bv n1 n2 t1 t2 hwt hbody ih =>
+    exact hwt
+
+theorem AlphaEqv.welltyped_iff : ∀ {t1 t2 : Term}, AlphaEqv t1 t2 → (WellTyped t1 ↔ WellTyped t2) := by
+  intro t1 t2 h
+  simpa [AlphaEqv] using IsAlphaTerms_welltyped_iff h
+
+theorem AlphaEqv.welltyped_right : ∀ {t1 t2 : Term}, AlphaEqv t1 t2 → WellTyped t1 → WellTyped t2 := by
+  intro t1 t2 h hwt1
+  exact (AlphaEqv.welltyped_iff h).mp hwt1
+
+theorem AlphaEqv.welltyped_left : ∀ {t1 t2 : Term}, AlphaEqv t1 t2 → WellTyped t2 → WellTyped t1 := by
+  intro t1 t2 h hwt2
+  exact (AlphaEqv.welltyped_iff h).mpr hwt2
 
 def IsTrivialRenaming (bv : List (Term × Term)) : Prop :=
   match bv with
@@ -108,13 +140,18 @@ def IsTrivialRenaming (bv : List (Term × Term)) : Prop :=
 @[aesop safe]
 theorem IsAlphaVars_refl : ∀ (bv : List (Term × Term)) (v : Term), IsTrivialRenaming bv → IsAlphaVars bv v v
     := by
-  intros bv v h
+  intro bv v h
   induction bv with
-  | nil => simp [IsAlphaVars]
-  | cons bv bvs ih =>
-      rcases bv with ⟨b1, b2⟩
+  | nil =>
+      simp [IsAlphaVars]
+  | cons b bvs ih =>
+      rcases b with ⟨b1, b2⟩
       simp [IsTrivialRenaming] at h
-      by_cases hv : v = b1 <;> aesop
+      rcases h with ⟨hb, htriv⟩
+      subst hb
+      by_cases hv : v = b1
+      · exact Or.inl ⟨hv, hv⟩
+      · exact Or.inr ⟨hv, hv, ih htriv⟩
 
 @[aesop safe]
 theorem IsAlphaTerms_refl : ∀ (bv : List (Term × Term)) (t : Term), IsTrivialRenaming bv → IsAlphaTerms bv t t
@@ -128,9 +165,13 @@ theorem IsAlphaTerms_refl : ∀ (bv : List (Term × Term)) (t : Term), IsTrivial
       apply IsAlphaTerms.const
       exact IsAlphaVars_refl bv (.const c T) h
   | app s t ih_s ih_t =>
-      apply IsAlphaTerms.app <;> aesop
+      apply IsAlphaTerms.app
+      · exact Iff.rfl
+      · aesop
+      · aesop
   | abs n t ih_n ih_t =>
       apply IsAlphaTerms.abs
+      · exact Iff.rfl
       have h' : IsTrivialRenaming ((n, n) :: bv) := by
         simp [IsTrivialRenaming, h]
       exact ih_t ((n, n) :: bv) h'
@@ -159,9 +200,13 @@ theorem IsAlphaTerms_symm :
   induction h with
   | var bv x1 x2 T1 T2 hv => apply IsAlphaTerms.var; aesop
   | const bv c1 c2 T1 T2 hv => apply IsAlphaTerms.const; aesop
-  | app bv s1 s2 t1 t2 hs ht ihs iht => apply IsAlphaTerms.app <;> simpa
-  | abs bv n1 n2 t1 t2 hbody ih =>
-      simpa [swap_renaming] using (IsAlphaTerms.abs (swap_renaming bv) n2 n1 t2 t1 ih)
+  | app bv s1 s2 t1 t2 hwt hs ht ihs iht =>
+      apply IsAlphaTerms.app
+      · exact hwt.symm
+      · simpa using ihs
+      · simpa using iht
+  | abs bv n1 n2 t1 t2 hwt hbody ih =>
+      simpa [swap_renaming] using (IsAlphaTerms.abs (swap_renaming bv) n2 n1 t2 t1 hwt.symm ih)
 
 inductive RenamingChain :
   List (Term × Term) -> List (Term × Term) -> List (Term × Term) -> Prop
@@ -181,7 +226,8 @@ theorem IsAlphaVars_trans :
     IsAlphaVars bv13 v1 v3 := by
   intro bv12 bv23 bv13 v1 v2 v3 hchain h12 h23
   induction hchain generalizing v1 v2 v3 with
-  | nil => simpa [IsAlphaVars] using Eq.trans h12 h23
+  | nil =>
+      exact Eq.trans h12 h23
   | cons n1 n2 n3 bv12 bv23 bv13 hchain ih =>
       simp [IsAlphaVars] at h12 h23 ⊢
       aesop
@@ -201,34 +247,35 @@ theorem IsAlphaTerms_trans :
   | const bv c1 c2 T1 T2 hv12 =>
     cases h23 with
     | const => apply IsAlphaTerms.const; aesop
-  | app bv s1 s2 t1 t2 hs12 ht12 ihs iht =>
+  | app bv s1 s2 t1 t2 hwt12 hs12 ht12 ihs iht =>
     cases h23 with
-    | app => apply IsAlphaTerms.app <;> aesop
-  | abs bv n1 n2 t1 t2 hbody12 ih =>
+    | app bv s2 s3 t2 t3 hwt23 hs23 ht23 =>
+      apply IsAlphaTerms.app
+      · exact Iff.trans hwt12 hwt23
+      · aesop
+      · aesop
+  | abs bv n1 n2 t1 t2 hwt12 hbody12 ih =>
     cases h23 with
-    | abs =>
+    | abs bv n2 n3 t2 t3 hwt23 hbody23 =>
       apply IsAlphaTerms.abs
+      · exact Iff.trans hwt12 hwt23
       apply ih <;> try simpa
       apply RenamingChain.cons; simpa
 
 theorem AlphaEqv.refl : ∀ (t : Term), AlphaEqv t t
     := by
   intro t
-  unfold AlphaEqv
-  simpa using IsAlphaTerms_refl [] t (by simp [IsTrivialRenaming])
+  simpa [AlphaEqv] using IsAlphaTerms_refl [] t (by simp [IsTrivialRenaming])
 
 theorem AlphaEqv.symm : ∀ {t1 t2 : Term}, AlphaEqv t1 t2 → AlphaEqv t2 t1
     := by
   intro t1 t2 h
-  unfold AlphaEqv at h ⊢
-  simpa [swap_renaming] using IsAlphaTerms_symm [] t1 t2 h
+  simpa [AlphaEqv, swap_renaming] using IsAlphaTerms_symm [] t1 t2 h
 
 theorem AlphaEqv.trans : ∀ {t1 t2 t3 : Term}, AlphaEqv t1 t2 → AlphaEqv t2 t3 → AlphaEqv t1 t3
     := by
   intro t1 t2 t3 h12 h23
-  unfold AlphaEqv at h12 h23 ⊢
-  apply IsAlphaTerms_trans <;> try simpa
-  apply RenamingChain.nil
+  exact IsAlphaTerms_trans [] [] [] t1 t2 t3 RenamingChain.nil h12 h23
 
 instance : Equivalence AlphaEqv where
   refl := AlphaEqv.refl
@@ -245,26 +292,10 @@ instance : Setoid Term where
   iseqv := ⟨AlphaEqv.refl, AlphaEqv.symm, AlphaEqv.trans⟩
 
 theorem alphaeqv_not_preserve_welltyped_without_rhs_assumption :
-    ∃ t1 t2, AlphaEqv t1 t2 ∧ WellTyped t1 ∧ ¬ WellTyped t2 := by
-  let t1 : Term := Term.abs (Term.var "x" HOLType.bool) (Term.const "k" HOLType.bool)
-  let t2 : Term := Term.abs (Term.const "c" HOLType.bool) (Term.const "k" HOLType.bool)
-  refine ⟨t1, t2, ?_, ?_, ?_⟩
-  · unfold AlphaEqv t1 t2
-    apply IsAlphaTerms.abs
-    apply IsAlphaTerms.const
-    right
-    constructor
-    · simp
-    constructor
-    · simp
-    · simp [IsAlphaVars]
-  · refine ⟨HOLType.fun HOLType.bool HOLType.bool, ?_⟩
-    apply Term.HasType.abs
-    exact Term.HasType.const "k" HOLType.bool
-  · change ¬ WellTyped ((Term.const "c" HOLType.bool).abs (Term.const "k" HOLType.bool))
-    intro hwt2
-    rcases hwt2 with ⟨T, ht⟩
-    cases ht
+    ¬ ∃ t1 t2, AlphaEqv t1 t2 ∧ WellTyped t1 ∧ ¬ WellTyped t2 := by
+  intro h
+  rcases h with ⟨t1, t2, hAlpha, hwt1, hnot2⟩
+  exact hnot2 (AlphaEqv.welltyped_right hAlpha hwt1)
 
 /-- De Bruijn representation used to reason about alpha-equivalence. -/
 inductive DBTerm
@@ -692,7 +723,7 @@ theorem IsAlphaVars_of_toDBAux_var_eq :
       exact toDBAux_var_eq_of_IsAlphaVars bv ctx1 ctx2 x1 x2 T1 T2 hCtx hv
     | const bv c1 c2 T1 T2 hv =>
       exact toDBAux_const_eq_of_IsAlphaVars bv ctx1 ctx2 c1 c2 T1 T2 hCtx hv
-    | app bv s1 s2 t1 t2 hs ht ihs iht =>
+    | app bv s1 s2 t1 t2 hwt hs ht ihs iht =>
       rcases hwt1 with ⟨_, hty1⟩
       rcases hwt2 with ⟨_, hty2⟩
       cases hty1 with
@@ -704,7 +735,7 @@ theorem IsAlphaVars_of_toDBAux_var_eq :
           have htEq : toDBAux ctx1 t1 = toDBAux ctx2 t2 :=
             iht ctx1 ctx2 hCtx ⟨_, ht1⟩ ⟨_, ht2⟩
           simp [toDBAux, hsEq, htEq]
-    | abs bv n1 n2 t1 t2 hbody ih =>
+    | abs bv n1 n2 t1 t2 hwt hbody ih =>
       rcases hwt1 with ⟨_, hty1⟩
       rcases hwt2 with ⟨_, hty2⟩
       cases hty1 with
@@ -726,7 +757,6 @@ theorem IsAlphaVars_of_toDBAux_var_eq :
   theorem toDB_eq_of_AlphaEqv_wt :
     ∀ (t1 t2 : Term), WellTyped t1 -> WellTyped t2 -> AlphaEqv t1 t2 -> toDB t1 = toDB t2 := by
     intro t1 t2 hwt1 hwt2 hAlpha
-    unfold AlphaEqv at hAlpha
     simpa [toDB] using toDBAux_eq_of_IsAlphaTerms_wt [] [] [] t1 t2 DBCtxRel.nil hwt1 hwt2 hAlpha
 
 def Term.IsFreeVarIn (var : Term) : Term -> Prop
@@ -1700,101 +1730,6 @@ theorem subst_alpha_closed_terms_both_closed_of_SubstOkClosed :
       ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
   intro t1 t2 i hOk hClosed1 hClosed2 hAlpha
   exact subst_alpha_closed_terms_both_closed_of_SubstOk t1 t2 i (SubstOkClosed.toSubstOk i hOk) hClosed1 hClosed2 hAlpha
-
-/-- Stronger condition used by the current alpha-preservation proof. -/
-def SubstOkStrong (i : List (Term × Term)) : Prop :=
-  ∀ v t, (v, t) ∈ i → ∃ x T, v = Term.var x T ∧ t = Term.var x T
-
-theorem SubstOkStrong.toSubstOk : ∀ (i : List (Term × Term)),
-    SubstOkStrong i → SubstOk i := by
-  intro i hStrong
-  intro v t hmem
-  rcases hStrong v t hmem with ⟨x, T, hv, ht⟩
-  refine ⟨x, T, hv, ?_⟩
-  simpa [ht] using (Term.HasType.var x T)
-
-theorem SubstOk_filter : ∀ (i : List (Term × Term)) (bvar : Term),
-  SubstOkStrong i → SubstOkStrong (i.filter (fun p => !decide (p.fst = bvar))) := by
-  intro i bvar hOk
-  intro v t hmem
-  exact hOk v t (List.mem_filter.mp hmem).1
-
-theorem captureRisk_false_of_SubstOk_filter :
-    ∀ (bvar body : Term) (i : List (Term × Term)),
-  SubstOkStrong i →
-      captureRisk bvar body (i.filter (fun p => !decide (p.fst = bvar))) = false := by
-  intro bvar body i hOk
-  unfold captureRisk
-  rw [List.any_eq_false]
-  intro p hp
-  rcases p with ⟨v, t⟩
-  have hpInI : (v, t) ∈ i := (List.mem_filter.mp hp).1
-  have hpKeep : (!decide (v = bvar)) = true := (List.mem_filter.mp hp).2
-  have hneq : v ≠ bvar := by
-    by_cases hvb : v = bvar
-    · simp [hvb] at hpKeep
-    · exact hvb
-  intro hcond
-  have hcond' : bvar.IsFreeVarIn t ∧ v.IsFreeVarIn body := by
-    simpa using hcond
-  rcases hOk v t hpInI with ⟨x, T, hv, ht⟩
-  have hbv : bvar = v := by
-    have hbvt : bvar = Term.var x T := by
-      simpa [ht, Term.IsFreeVarIn] using hcond'.1
-    calc
-      bvar = Term.var x T := hbvt
-      _ = v := by simp [hv]
-  exact hneq hbv.symm
-
-theorem subst_self_of_SubstOk : ∀ (t : Term) (i : List (Term × Term)),
-  SubstOkStrong i → subst i t = some t := by
-  intro t
-  induction t with
-  | var x ty =>
-      intro i hOk
-      unfold subst
-      cases hfind : i.find? (fun (y, _) => y = Term.var x ty) with
-      | none =>
-          simp
-      | some p =>
-          rcases p with ⟨v, t⟩
-          have hmem : (v, t) ∈ i := List.mem_of_find?_eq_some hfind
-          have hpred : (fun q : Term × Term => decide (q.fst = Term.var x ty)) (v, t) = true := by
-            exact (List.find?_some (p := fun q : Term × Term => decide (q.fst = Term.var x ty)) hfind)
-          have hv : v = Term.var x ty := by
-            simp at hpred
-            exact hpred
-          rcases hOk v t hmem with ⟨x', T', hv', ht'⟩
-          have ht : t = Term.var x ty := by
-            calc
-              t = Term.var x' T' := ht'
-              _ = v := by simp [hv']
-              _ = Term.var x ty := hv
-          simp [ht]
-  | const c ty =>
-      intro i hOk
-      simp [subst]
-  | app s t ihs iht =>
-      intro i hOk
-      have hs : subst i s = some s := ihs i hOk
-      have ht : subst i t = some t := iht i hOk
-      simp [subst, hs, ht]
-  | abs n t ihn iht =>
-      intro i hOk
-      let i' := i.filter (fun p => !decide (p.fst = n))
-      have hOk' : SubstOkStrong i' := SubstOk_filter i n hOk
-      have ht : subst i' t = some t := iht i' hOk'
-      have hcap : captureRisk n t i' = false := by
-        simpa [i'] using captureRisk_false_of_SubstOk_filter n t i hOk
-      simp [subst, i', ht, hcap]
-
-theorem subst_alpha_strong : ∀ (t1 t2 : Term) (i : List (Term × Term)),
-  WellTyped t1 → WellTyped t2 → SubstOkStrong i → AlphaEqv t1 t2 →
-    ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
-  intro t1 t2 i hwt1 hwt2 hOk hAlpha
-  refine ⟨t1, t2, ?_, ?_, hAlpha⟩
-  · exact subst_self_of_SubstOk t1 i hOk
-  · exact subst_self_of_SubstOk t2 i hOk
 
 theorem SubstNoHit.right_of_free_iff :
     ∀ (t1 t2 : Term) (i : List (Term × Term)),
