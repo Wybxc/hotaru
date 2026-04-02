@@ -58,15 +58,27 @@ theorem toDB_bvar : ∀ (ctx : List (String × HOLType)) (t : Term) (n : Nat),
 
 theorem toDB_fvar : ∀ (ctx : List (String × HOLType)) (t : Term) (x : String) (T : HOLType),
     toDBAux ctx t = some (DBTerm.fvar x T) →
-    (ctx.findIdx? (fun (y, yT) => x = y ∧ T = yT) = none) ∧ t = .var x T := by
-  intros ctx t x T h
-  induction t generalizing ctx with try simp at h
+    (x, T) ∉ ctx ∧ t = .var x T := by
+  intro ctx t x T h
+  cases t with try simp at h
   | var y U =>
-      sorry
-  | app s t ihs iht =>
-      sorry
-  | abs n t ih =>
-      sorry
+      cases hidx : ctx.idxOf? (y, U) with
+      | none =>
+          have hNot : (y, U) ∉ ctx :=
+            (List.idxOf?_eq_none_iff (l := ctx) (a := (y, U))).1 hidx
+          simp [hidx] at h
+          rcases h with ⟨hx, hT⟩
+          subst hx
+          subst hT
+          exact ⟨hNot, rfl⟩
+      | some n =>
+          simp [hidx] at h
+  | app s u =>
+      cases hs : toDBAux ctx s <;> simp [hs] at h
+      cases hu : toDBAux ctx u <;> simp [hu] at h
+  | abs n body =>
+      cases n with try simp at h
+      | var y U => cases hb : toDBAux ((y, U) :: ctx) body <;> simp [hb] at h
 
 theorem toDB_const : ∀ (ctx : List (String × HOLType)) (t : Term) (c : String) (T : HOLType),
     toDBAux ctx t = some (DBTerm.const c T) →
