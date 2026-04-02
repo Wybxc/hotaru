@@ -166,16 +166,6 @@ theorem welltyped_body : ∀ (x t : Term), WellTyped (Term.abs x t) → WellType
 -- /-- Convert a named term to de Bruijn form. -/
 -- def toDB (t : Term) : DBTerm := toDBAux [] t
 
--- /-- Substitute free variables in de Bruijn terms according to a named substitution list. -/
--- def dbSubst (i : List (Term × Term)) : DBTerm -> DBTerm
--- | .bvar n => .bvar n
--- | .fvar x T =>
---     match i.find? (fun p => p.fst = Term.var x T) with
---     | some (_, t) => toDB t
---     | none => .fvar x T
--- | .const c T => .const c T
--- | .app s t => .app (dbSubst i s) (dbSubst i t)
--- | .abs t => .abs (dbSubst i t)
 
 -- /-- Context-aware de Bruijn substitution: RHS terms are translated under the given context. -/
 -- def dbSubstAux (ctx : List (String × HOLType)) (i : List (Term × Term)) : DBTerm -> DBTerm
@@ -1432,43 +1422,7 @@ theorem VariantFresh : ∀ t x T, ¬(Term.var (generateVariant t x T) T).IsFreeV
   let best := chooseMinFreshSuffix t x T (t.maxVarNameLen + 1) (t.maxVarNameLen + 1) hbound
   simpa [variantFreshAt] using best.2
 
-/-- Term variable substitution: applies a list of term substitutions to a term -/
-private def captureRisk (bvar body : Term) (i : List (Term × Term)) : Bool :=
-  i.any (fun p => decide (bvar.IsFreeVarIn p.2 ∧ p.1.IsFreeVarIn body))
 
--- /-- Context-aware term substitution.
---     Variables already bound in `ctx` are preserved (not replaced by `i`). -/
--- def substAux (ctx : List (String × HOLType)) (i : List (Term × Term)) : Term → Option Term
--- | .var x ty =>
---     match lookupBVar ctx x ty with
---     | some _ => some (.var x ty)
---     | none =>
---         match i.find? (fun (y, _) => y = .var x ty) with
---         | some (_, t) => some t
---         | none => some (.var x ty)
--- | .const c ty => some (.const c ty)
--- | .app s t => do
---     let s' ← substAux ctx i s
---     let t' ← substAux ctx i t
---     some (.app s' t')
--- | .abs bvar t => do
---     let i' := i.filter (fun p => !decide (p.fst = bvar))
---     let ctx' :=
---       match bvar with
---       | .var x ty => (x, ty) :: ctx
---       | _ => ctx
---     let t' ← substAux ctx' i' t
---     if captureRisk bvar t i' then
---       match bvar with
---       | .var x ty => do
---           let freshName := generateVariant t' x ty
---           let z := Term.var freshName ty
---           let i'' := (bvar, z) :: i'
---           let t'' ← substAux [] i'' t
---           some (.abs z t'')
---       | _ => none
---     else
---       some (.abs bvar t')
 
 -- /-- Term variable substitution: now defined as `substAux` under empty context. -/
 -- def subst (i : List (Term × Term)) : Term → Option Term := substAux [] i
