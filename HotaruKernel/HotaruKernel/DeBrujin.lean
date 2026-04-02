@@ -171,15 +171,44 @@ private theorem toDBAux_var_eq_of_IsAlphaVars :
       IsAlphaVars bv (.var x1 T1) (.var x2 T2) ->
       toDBAux env1 (.var x1 T1) = toDBAux env2 (.var x2 T2) := by
   intro bv env1 env2 x1 x2 T1 T2 hRel hAlpha
-  induction bv generalizing env1 env2 with cases hRel
+  induction hRel generalizing x1 x2 T1 T2 with
   | nil =>
-      simp at hAlpha
-      simpa
-  | cons b bvs ih =>
-      simp at hAlpha
-      rename_i x y T1_1 T2_1 env1 env2 a
-      simp_all
-      sorry
+      change (Term.var x1 T1 = Term.var x2 T2) at hAlpha
+      cases hAlpha
+      simp [toDBAux]
+  | cons x y TL TR bv env1 env2 hRel ih =>
+      change
+        ((Term.var x1 T1 = Term.var x TL ∧ Term.var x2 T2 = Term.var y TR) ∨
+          (Term.var x1 T1 ≠ Term.var x TL ∧ Term.var x2 T2 ≠ Term.var y TR ∧
+            IsAlphaVars bv (Term.var x1 T1) (Term.var x2 T2))) at hAlpha
+      rcases hAlpha with hHit | hMiss
+      · rcases hHit with ⟨h1, h2⟩
+        cases h1
+        cases h2
+        simp [toDBAux, List.idxOf?_cons]
+      · rcases hMiss with ⟨hneq1, hneq2, hTail⟩
+        have hTailEq : toDBAux env1 (.var x1 T1) = toDBAux env2 (.var x2 T2) :=
+          ih x1 x2 T1 T2 hTail
+        have hbeq1 : ((x, TL) == (x1, T1)) = false := (beq_eq_false_iff_ne).2 (by aesop)
+        have hbeq2 : ((y, TR) == (x2, T2)) = false := (beq_eq_false_iff_ne).2 (by aesop)
+        cases hidx1 : env1.idxOf? (x1, T1) with
+        | none =>
+            cases hidx2 : env2.idxOf? (x2, T2) with
+            | none =>
+                have hEqVar : x1 = x2 ∧ T1 = T2 := by
+                  simpa [toDBAux, hidx1, hidx2] using hTailEq
+                rcases hEqVar with ⟨hx, hT⟩
+                subst hx hT
+                simp [toDBAux, List.idxOf?_cons, hbeq1, hbeq2, hidx1, hidx2]
+            | some n2 => aesop
+        | some n1 =>
+            cases hidx2 : env2.idxOf? (x2, T2) with
+            | none => aesop
+            | some n2 =>
+                have hn : n1 = n2 := by
+                  simpa [toDBAux, hidx1, hidx2] using hTailEq
+                subst hn
+                simp [toDBAux, List.idxOf?_cons, hbeq1, hbeq2, hidx1, hidx2]
 
 /-- Forward direction core lemma under related contexts. -/
 private theorem toDBAux_eq_of_IsAlphaTerms :
