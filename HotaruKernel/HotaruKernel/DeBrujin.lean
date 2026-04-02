@@ -118,15 +118,22 @@ theorem toDB_app : ∀ (ctx : List (String × HOLType)) (t : Term) (s' t' : DBTe
 
 theorem toDB_abs : ∀ (ctx : List (String × HOLType)) (t : Term) (t' : DBTerm),
     toDBAux ctx t = some (DBTerm.abs t') →
-    ∃ x T, t = .abs (.var x T) t'' ∧ toDBAux ((x, T) :: ctx) t'' = some t' := by
-  intros ctx t t' h
-  induction t generalizing ctx with try simp at h
-  | var x T =>
-      sorry
-  | app s t ihs iht =>
-      sorry
-  | abs n t ih =>
-      sorry
+    ∃ x T t'', t = .abs (.var x T) t'' ∧ toDBAux ((x, T) :: ctx) t'' = some t' := by
+  intro ctx t t' h
+  cases t with try simp at h
+  | var x U => cases hidx : ctx.idxOf? (x, U) <;> simp [hidx] at h
+  | app s u =>
+      cases hs : toDBAux ctx s <;> simp [hs] at h
+      cases hu : toDBAux ctx u <;> simp [hu] at h
+  | abs n body =>
+      cases n with try simp at h
+      | var x U =>
+          cases hb : toDBAux ((x, U) :: ctx) body with simp [hb] at h
+          | some db =>
+              have hdb : db = t' := by
+                simpa [toDBAux, hb] using h
+              subst hdb
+              exact ⟨x, U, body, rfl, hb⟩
 
 /-- Proof skeleton: relation between alpha-renaming environment and de Bruijn contexts. -/
 private inductive DBCtxRel :
