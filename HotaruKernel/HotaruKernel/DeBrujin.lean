@@ -189,13 +189,40 @@ private theorem toDBAux_eq_of_IsAlphaTerms :
       IsAlphaTerms bv t1 t2 ->
       ∃ dt, toDBAux env1 t1 = some dt ∧ toDBAux env2 t2 = some dt := by
   intro bv env1 env2 t1 t2 hRel hAlpha
-  induction hAlpha generalizing env1 env2 with try simp
-  | var hRel hAlpha =>
-      sorry
-  | app hRel hAlpha ih1 ih2 =>
-      sorry
-  | abs hRel hAlpha ih =>
-      sorry
+  induction hAlpha generalizing env1 env2 with
+  | var bv x1 x2 T1 T2 hAlphaVar =>
+      have hEq := toDBAux_var_eq_of_IsAlphaVars bv env1 env2 x1 x2 T1 T2 hRel hAlphaVar
+      cases hidx1 : env1.idxOf? (x1, T1) with
+      | none =>
+          refine ⟨DBTerm.fvar x1 T1, ?_, ?_⟩
+          · simp [toDBAux, hidx1]
+          · calc
+              toDBAux env2 (.var x2 T2) = toDBAux env1 (.var x1 T1) := by simpa using hEq.symm
+              _ = some (DBTerm.fvar x1 T1) := by simp [toDBAux, hidx1]
+      | some n =>
+          refine ⟨DBTerm.bvar n, ?_, ?_⟩
+          · simp [toDBAux, hidx1]
+          · calc
+              toDBAux env2 (.var x2 T2) = toDBAux env1 (.var x1 T1) := by simpa using hEq.symm
+              _ = some (DBTerm.bvar n) := by simp [toDBAux, hidx1]
+  | const bv c T =>
+      refine ⟨DBTerm.const c T, ?_, ?_⟩ <;> simp [toDBAux]
+  | app bv s1 s2 t1 t2 hAlphaS hAlphaT ihS ihT =>
+      rcases ihS env1 env2 hRel with ⟨ds, hs1, hs2⟩
+      rcases ihT env1 env2 hRel with ⟨dt, ht1, ht2⟩
+      refine ⟨DBTerm.app ds dt, ?_, ?_⟩
+      · simp [toDBAux, hs1, ht1]
+      · simp [toDBAux, hs2, ht2]
+  | abs bv n1 n2 t1 t2 hNames hBody ih =>
+      rcases hNames with ⟨m1, m2, T, hn1, hn2⟩
+      subst hn1 hn2
+      have hRel' :
+          DBCtxRel ((.var m1 T, .var m2 T) :: bv) ((m1, T) :: env1) ((m2, T) :: env2) :=
+        DBCtxRel.cons m1 m2 T T bv env1 env2 hRel
+      rcases ih ((m1, T) :: env1) ((m2, T) :: env2) hRel' with ⟨db, hb1, hb2⟩
+      refine ⟨DBTerm.abs T db, ?_, ?_⟩
+      · simp [toDBAux, hb1]
+      · simp [toDBAux, hb2]
 
 /-- Reverse direction core lemma under related contexts. -/
 private theorem IsAlphaVars_of_DBCtxRel_idxOf_eq :
