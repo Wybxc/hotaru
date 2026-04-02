@@ -147,22 +147,6 @@ private inductive DBCtxRel :
       DBCtxRel bv env1 env2 ->
       DBCtxRel ((.var x T1, .var y T2) :: bv) ((x, T1) :: env1) ((y, T2) :: env2)
 
-/-- Key lookup lemma: head hit gives index 0. -/
-private theorem findIdx_cons_hit
-    (env : List (String × HOLType)) (x : String) (T : HOLType) :
-    ((x, T) :: env).findIdx? (fun (y, yT) => x = y ∧ T = yT) = some 0 := by
-  simp [List.findIdx?, List.findIdx?.go]
-
-/-- Key lookup lemma: head miss reduces to tail with succ. -/
-private theorem findIdx_cons_miss
-    (env : List (String × HOLType))
-    (x y : String) (T U : HOLType)
-    (hmiss : x ≠ y ∨ T ≠ U) :
-    ((y, U) :: env).findIdx? (fun (z, zT) => x = z ∧ T = zT) =
-      Option.map Nat.succ (env.findIdx? (fun (z, zT) => x = z ∧ T = zT)) := by
-  simp [List.findIdx?, List.findIdx?.go, Option.map]
-  sorry
-
 /-- Variable case bridge: alpha-variable relation implies equal de Bruijn translation. -/
 private theorem toDBAux_var_eq_of_IsAlphaVars :
     ∀ (bv : List (Term × Term)) (env1 env2 : List (String × HOLType))
