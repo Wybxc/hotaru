@@ -34,7 +34,70 @@ def Term.toDB (t : Term) : Option DBTerm := toDBAux [] t
 theorem toDB_bvar : ∀ (ctx : List (String × HOLType)) (t : Term) (n : Nat),
     toDBAux ctx t = some (DBTerm.bvar n) →
     ∃ x T, ctx[n]? = some (x, T) ∧ t = .var x T := by
-  intros ctx t n h
+  intro ctx t n h
+  cases t with try simp at h
+  | var x T =>
+      cases hidx : ctx.idxOf? (x, T) with
+      | none =>
+          simp [hidx] at h
+      | some m =>
+          have hm : m = n := by
+            simpa [hidx] using h
+          have hidx' : ctx.idxOf? (x, T) = some n := by
+            simpa [hm] using hidx
+          rcases (List.idxOf?_eq_some_iff (l := ctx) (a := (x, T)) (i := n)).1 hidx' with
+            ⟨hn, hget, _⟩
+          refine ⟨x, T, ?_, rfl⟩
+          simpa [hget] using (List.getElem?_eq_getElem (l := ctx) (i := n) hn)
+  | app s u =>
+      cases hs : toDBAux ctx s <;> simp [hs] at h
+      cases hu : toDBAux ctx u <;> simp [hu] at h
+  | abs n1 body =>
+      cases n1 with try simp at h
+      | var x T => cases hb : toDBAux ((x, T) :: ctx) body <;> simp [hb] at h
+
+theorem toDB_fvar : ∀ (ctx : List (String × HOLType)) (t : Term) (x : String) (T : HOLType),
+    toDBAux ctx t = some (DBTerm.fvar x T) →
+    (ctx.findIdx? (fun (y, yT) => x = y ∧ T = yT) = none) ∧ t = .var x T := by
+  intros ctx t x T h
+  induction t generalizing ctx with try simp at h
+  | var y U =>
+      sorry
+  | app s t ihs iht =>
+      sorry
+  | abs n t ih =>
+      sorry
+
+theorem toDB_const : ∀ (ctx : List (String × HOLType)) (t : Term) (c : String) (T : HOLType),
+    toDBAux ctx t = some (DBTerm.const c T) →
+    t = .const c T := by
+  intros ctx t c T h
+  induction t generalizing ctx with try simp at h
+  | var x U =>
+      sorry
+  | const c' T' =>
+      sorry
+  | app s t ihs iht =>
+      sorry
+  | abs n t ih =>
+      sorry
+
+theorem toDB_app : ∀ (ctx : List (String × HOLType)) (t : Term) (s' t' : DBTerm),
+    toDBAux ctx t = some (DBTerm.app s' t') →
+    ∃ s t, toDBAux ctx s = some s' ∧ toDBAux ctx t = some t' ∧ t = .app s t := by
+  intros ctx t s' t' h
+  induction t generalizing ctx with try simp at h
+  | var x T =>
+      sorry
+  | app s t ihs iht =>
+      sorry
+  | abs n t ih =>
+      sorry
+
+theorem toDB_abs : ∀ (ctx : List (String × HOLType)) (t : Term) (t' : DBTerm),
+    toDBAux ctx t = some (DBTerm.abs t') →
+    ∃ x T, t = .abs (.var x T) t'' ∧ toDBAux ((x, T) :: ctx) t'' = some t' := by
+  intros ctx t t' h
   induction t generalizing ctx with try simp at h
   | var x T =>
       sorry
