@@ -200,6 +200,72 @@ private theorem toDBAux_eq_of_IsAlphaTerms :
       sorry
 
 /-- Reverse direction core lemma under related contexts. -/
+private theorem IsAlphaVars_of_DBCtxRel_idxOf_eq :
+    ∀ (bv : List (Term × Term)) (env1 env2 : List (String × HOLType))
+      (x1 x2 : String) (T1 T2 : HOLType) (n : Nat),
+      DBCtxRel bv env1 env2 ->
+      env1.idxOf? (x1, T1) = some n ->
+      env2.idxOf? (x2, T2) = some n ->
+      IsAlphaVars bv (.var x1 T1) (.var x2 T2) := by
+  intro bv env1 env2 x1 x2 T1 T2 n hRel
+  induction hRel generalizing n x1 x2 T1 T2 with
+  | nil => aesop
+  | cons x y TL TR bv env1 env2 hRel ih =>
+      intro hIdx1 hIdx2
+      cases n with
+      | zero =>
+          rcases (List.idxOf?_eq_some_iff (l := (x, TL) :: env1) (a := (x1, T1)) (i := 0)).1 hIdx1 with
+            ⟨_, hGet1, _⟩
+          rcases (List.idxOf?_eq_some_iff (l := (y, TR) :: env2) (a := (x2, T2)) (i := 0)).1 hIdx2 with
+            ⟨_, hGet2, _⟩
+          simp at hGet1 hGet2
+          rcases hGet1 with ⟨hx1, hT1⟩
+          rcases hGet2 with ⟨hx2, hT2⟩
+          subst hx1 hT1 hx2 hT2
+          simp [IsAlphaVars]
+      | succ n =>
+          rcases (List.idxOf?_eq_some_iff (l := (x, TL) :: env1) (a := (x1, T1)) (i := n.succ)).1 hIdx1 with
+            ⟨_, _, hFirst1⟩
+          rcases (List.idxOf?_eq_some_iff (l := (y, TR) :: env2) (a := (x2, T2)) (i := n.succ)).1 hIdx2 with
+            ⟨_, _, hFirst2⟩
+          have hneq1 : (Term.var x1 T1) ≠ (Term.var x TL) := by
+            intro hEq
+            have hPairEq : (x, TL) = (x1, T1) := by aesop
+            exact (hFirst1 0 (Nat.succ_pos _)) (by simpa using hPairEq)
+          have hneq2 : (Term.var x2 T2) ≠ (Term.var y TR) := by
+            intro hEq
+            have hPairEq : (y, TR) = (x2, T2) := by
+              cases hEq
+              rfl
+            exact (hFirst2 0 (Nat.succ_pos _)) (by simpa using hPairEq)
+          have hbeq1 : ((x, TL) == (x1, T1)) = false :=
+            (beq_eq_false_iff_ne).2 (by exact fun hEq => hneq1 (by cases hEq; rfl))
+          have hbeq2 : ((y, TR) == (x2, T2)) = false :=
+            (beq_eq_false_iff_ne).2 (by exact fun hEq => hneq2 (by cases hEq; rfl))
+          have hTailIdx1 : env1.idxOf? (x1, T1) = some n := by
+            simpa [List.idxOf?_cons, hbeq1] using hIdx1
+          have hTailIdx2 : env2.idxOf? (x2, T2) = some n := by
+            simpa [List.idxOf?_cons, hbeq2] using hIdx2
+          exact Or.inr ⟨hneq1, hneq2, ih x1 x2 T1 T2 n hTailIdx1 hTailIdx2⟩
+
+private theorem IsAlphaVars_of_DBCtxRel_notin :
+    ∀ (bv : List (Term × Term)) (env1 env2 : List (String × HOLType))
+      (x : String) (T : HOLType),
+      DBCtxRel bv env1 env2 ->
+      (x, T) ∉ env1 ->
+      (x, T) ∉ env2 ->
+      IsAlphaVars bv (.var x T) (.var x T) := by
+  intro bv env1 env2 x T hRel
+  induction hRel generalizing x T with
+  | nil => aesop
+  | cons xL xR TL TR bv env1 env2 hRel ih =>
+      intro hNot1 hNot2
+      have hneq1 : (Term.var x T) ≠ (Term.var xL TL) := by aesop
+      have hneq2 : (Term.var x T) ≠ (Term.var xR TR) := by aesop
+      have hTailNot1 : (x, T) ∉ env1 := by aesop
+      have hTailNot2 : (x, T) ∉ env2 := by aesop
+      aesop
+
 private theorem IsAlphaTerms_of_toDBAux_eq :
     ∀ (bv : List (Term × Term)) (env1 env2 : List (String × HOLType))
       (t1 t2 : Term) (dt : DBTerm),
@@ -207,22 +273,58 @@ private theorem IsAlphaTerms_of_toDBAux_eq :
       toDBAux env1 t1 = some dt ->
       toDBAux env2 t2 = some dt ->
       IsAlphaTerms bv t1 t2 := by
-  intro bv env1 env2 t1 t2 dt hRel h1 h2
-  induction dt generalizing t1 t2 env1 env2 with
+  intro bv env1 env2 t1 t2 dt
+  induction dt generalizing bv env1 env2 t1 t2 with
   | bvar n =>
+      intro hRel h1 h2
       have ⟨x1, T1, hEnv1, hVar1⟩ := toDB_bvar env1 t1 n h1
       have ⟨x2, T2, hEnv2, hVar2⟩ := toDB_bvar env2 t2 n h2
       subst hVar1 hVar2
+      have hIdx1 : env1.idxOf? (x1, T1) = some n := by
+        cases hidx1 : env1.idxOf? (x1, T1) with
+        | none =>
+            simp [toDBAux, hidx1] at h1
+        | some m =>
+            have hm : m = n := by
+              simpa [toDBAux, hidx1] using h1
+            simp [hm]
+      have hIdx2 : env2.idxOf? (x2, T2) = some n := by
+        cases hidx2 : env2.idxOf? (x2, T2) <;> aesop
       apply IsAlphaTerms.var
-      sorry
+      apply IsAlphaVars_of_DBCtxRel_idxOf_eq <;> aesop
   | fvar x T =>
-      sorry
+      intro hRel h1 h2
+      have ⟨hNot1, hVar1⟩ := toDB_fvar env1 t1 x T h1
+      have ⟨hNot2, hVar2⟩ := toDB_fvar env2 t2 x T h2
+      subst hVar1 hVar2
+      apply IsAlphaTerms.var
+      apply IsAlphaVars_of_DBCtxRel_notin <;> aesop
   | const c T =>
-      sorry
+      intro hRel h1 h2
+      have hConst1 : t1 = .const c T := toDB_const env1 t1 c T h1
+      have hConst2 : t2 = .const c T := toDB_const env2 t2 c T h2
+      subst hConst1 hConst2
+      apply IsAlphaTerms.const
   | app s t ihs iht =>
-      sorry
-    | abs dT t ih =>
-            sorry
+      intro hRel h1 h2
+      rcases toDB_app env1 t1 s t h1 with ⟨s1, t1', hs1, ht1, ht1eq⟩
+      rcases toDB_app env2 t2 s t h2 with ⟨s2, t2', hs2, ht2, ht2eq⟩
+      subst ht1eq ht2eq
+      apply IsAlphaTerms.app
+      apply ihs <;> aesop
+      apply iht <;> aesop
+  | abs dT t ih =>
+      intro hRel h1 h2
+      rcases toDB_abs env1 t1 dT t h1 with ⟨x1, b1, ht1eq, hb1⟩
+      rcases toDB_abs env2 t2 dT t h2 with ⟨x2, b2, ht2eq, hb2⟩
+      subst ht1eq ht2eq
+      have hBody : IsAlphaTerms ((Term.var x1 dT, Term.var x2 dT) :: bv) b1 b2 :=
+        ih ((Term.var x1 dT, Term.var x2 dT) :: bv)
+          ((x1, dT) :: env1) ((x2, dT) :: env2) b1 b2
+          (DBCtxRel.cons x1 x2 dT dT bv env1 env2 hRel) hb1 hb2
+      have hTy : ∃ T, (Term.var x1 dT).HasType T ∧ (Term.var x2 dT).HasType T :=
+        ⟨dT, Term.HasType.var x1 dT, Term.HasType.var x2 dT⟩
+      apply IsAlphaTerms.abs <;> aesop
 
 theorem alpha_debrujin :
   ∀ t1 t2 : Term,
