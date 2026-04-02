@@ -118,8 +118,8 @@ theorem welltyped_body : ∀ (x t : Term), WellTyped (Term.abs x t) → WellType
 inductive IsAlphaTerms : List (Term × Term) -> Term -> Term -> Prop
 | var : ∀ (bv : List (Term × Term)) (x1 x2 : String) (T1 T2 : HOLType),
           IsAlphaVars bv (.var x1 T1) (.var x2 T2) → IsAlphaTerms bv (.var x1 T1) (.var x2 T2)
-| const : ∀ (bv : List (Term × Term)) (c1 c2 : String) (T1 T2 : HOLType),
-          IsAlphaVars bv (.const c1 T1) (.const c2 T2) → IsAlphaTerms bv (.const c1 T1) (.const c2 T2)
+| const : ∀ (bv : List (Term × Term)) (c : String) (T : HOLType),
+          IsAlphaTerms bv (.const c T) (.const c T)
 | app : ∀ (bv : List (Term × Term)) (s1 s2 t1 t2 : Term),
           IsAlphaTerms bv s1 s2 → IsAlphaTerms bv t1 t2 → IsAlphaTerms bv (.app s1 t1) (.app s2 t2)
 | abs : ∀ (bv : List (Term × Term)) (n1 n2 : Term) (t1 t2 : Term),
@@ -198,8 +198,7 @@ theorem IsAlphaTerms_refl : ∀ (bv : List (Term × Term)) (t : Term), IsTrivial
       exact IsAlphaVars_refl bv (Term.var x T) h
   | const c T =>
       intro h _
-      apply IsAlphaTerms.const
-      exact IsAlphaVars_refl bv (Term.const c T) h
+      exact IsAlphaTerms.const bv c T
   | app s t ih_s ih_t =>
       intro h hwt
       apply IsAlphaTerms.app
@@ -244,7 +243,7 @@ theorem IsAlphaTerms_symm :
   intro bv t1 t2 h
   induction h with
   | var bv x1 x2 T1 T2 hv => apply IsAlphaTerms.var; aesop
-  | const bv c1 c2 T1 T2 hv => apply IsAlphaTerms.const; aesop
+  | const bv c T => apply IsAlphaTerms.const
   | app bv s1 s2 t1 t2 hs ht ihs iht =>
       apply IsAlphaTerms.app
       · simpa using ihs
@@ -290,9 +289,9 @@ theorem IsAlphaTerms_trans :
   | var bv x1 x2 T1 T2 hv12 =>
     cases h23 with
     | var => apply IsAlphaTerms.var; aesop
-  | const bv c1 c2 T1 T2 hv12 =>
+  | const bv c T =>
     cases h23 with
-    | const => apply IsAlphaTerms.const; aesop
+    | const => apply IsAlphaTerms.const
   | app bv s1 s2 t1 t2 hs12 ht12 ihs iht =>
     cases h23 with
     | app bv s2 s3 t2 t3 hs23 ht23 =>
