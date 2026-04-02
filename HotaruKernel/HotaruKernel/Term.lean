@@ -122,8 +122,8 @@ inductive IsAlphaTerms : List (Term × Term) -> Term -> Term -> Prop
           IsAlphaTerms bv (.const c T) (.const c T)
 | app : ∀ (bv : List (Term × Term)) (s1 s2 t1 t2 : Term),
           IsAlphaTerms bv s1 s2 → IsAlphaTerms bv t1 t2 → IsAlphaTerms bv (.app s1 t1) (.app s2 t2)
-| abs : ∀ (bv : List (Term × Term)) (n1 n2 : Term) (t1 t2 : Term),
-          (∃ T, n1.HasType T ∧ n2.HasType T) →
+| abs : ∀ (bv : List (Term × Term)) (n1 n2 t1 t2 : Term),
+          (∃ m1 m2 T, n1 = Term.var m1 T ∧ n2 = Term.var m2 T) →
           IsAlphaTerms ((n1, n2) :: bv) t1 t2 → IsAlphaTerms bv (.abs n1 t1) (.abs n2 t2)
 
 /-- Predicate for alpha-equivalence of terms. -/
@@ -213,7 +213,7 @@ theorem IsAlphaTerms_refl : ∀ (bv : List (Term × Term)) (t : Term), IsTrivial
       apply IsAlphaTerms.abs
       · rcases welltyped_bind n t hwt with ⟨n', dT, hn⟩
         subst hn
-        exact ⟨dT, Term.HasType.var n' dT, Term.HasType.var n' dT⟩
+        exact ⟨n', n', dT, rfl, rfl⟩
       · have h' : IsTrivialRenaming ((n, n) :: bv) := by
           simp [IsTrivialRenaming, h]
         apply ih_t
@@ -249,9 +249,9 @@ theorem IsAlphaTerms_symm :
       · simpa using ihs
       · simpa using iht
   | abs bv n1 n2 t1 t2 hwt hbody ih =>
-      rcases hwt with ⟨T, hn1, hn2⟩
+      rcases hwt with ⟨m1, m2, T, hn1, hn2⟩
       simpa [swap_renaming] using
-      (IsAlphaTerms.abs (swap_renaming bv) n2 n1 t2 t1 ⟨T, hn2, hn1⟩ ih)
+      (IsAlphaTerms.abs (swap_renaming bv) n2 n1 t2 t1 ⟨m2, m1, T, hn2, hn1⟩ ih)
 
 inductive RenamingChain :
   List (Term × Term) -> List (Term × Term) -> List (Term × Term) -> Prop
@@ -300,15 +300,17 @@ theorem IsAlphaTerms_trans :
     cases h23 with
     | abs bv n2 n3 t2 t3 hwt23 hbody23 =>
       apply IsAlphaTerms.abs
-      · rcases hwt12 with ⟨T12, hn1, hn2l⟩
-        rcases hwt23 with ⟨T23, hn2r, hn3⟩
+      · rcases hwt12 with ⟨m1, m2, T12, hn1, hn2l⟩
+        rcases hwt23 with ⟨m2', m3, T23, hn2r, hn3⟩
+        have hEqN2 : Term.var m2 T12 = Term.var m2' T23 := by
+            calc
+              Term.var m2 T12 = n2 := by simpa using hn2l.symm
+              _ = Term.var m2' T23 := by simpa using hn2r
         have hTyEq : T12 = T23 := by
-          have hL : typeof n2 = some T12 := welltyped_typeof n2 T12 hn2l
-          have hR : typeof n2 = some T23 := welltyped_typeof n2 T23 hn2r
-          rw [hL] at hR
-          injection hR
+            cases hEqN2
+            rfl
         cases hTyEq
-        exact ⟨T12, hn1, hn3⟩
+        exact ⟨m1, m3, T12, hn1, hn3⟩
       apply ih <;> try simpa
       apply RenamingChain.cons; simpa
 

@@ -148,14 +148,12 @@ private inductive DBCtxRel :
       DBCtxRel ((.var x T1, .var y T2) :: bv) ((x, T1) :: env1) ((y, T2) :: env2)
 
 /-- Key lookup lemma: head hit gives index 0. -/
-@[aesop safe]
 private theorem findIdx_cons_hit
     (env : List (String × HOLType)) (x : String) (T : HOLType) :
     ((x, T) :: env).findIdx? (fun (y, yT) => x = y ∧ T = yT) = some 0 := by
   simp [List.findIdx?, List.findIdx?.go]
 
 /-- Key lookup lemma: head miss reduces to tail with succ. -/
-@[aesop unsafe]
 private theorem findIdx_cons_miss
     (env : List (String × HOLType))
     (x y : String) (T U : HOLType)
