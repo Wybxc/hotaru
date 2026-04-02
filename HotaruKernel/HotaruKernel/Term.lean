@@ -79,6 +79,22 @@ theorem welltyped_typeof_iff : ∀ (t : Term) (T : HOLType), t.HasType T ↔ typ
   · apply welltyped_typeof
   · apply typeof_welltyped
 
+theorem welltyped_fun : ∀ (s t : Term), WellTyped (Term.app s t) → WellTyped s := by
+  intros s t h
+  sorry
+
+theorem welltyped_arg : ∀ (s t : Term), WellTyped (Term.app s t) → WellTyped t := by
+  intros s t h
+  sorry
+
+theorem welltyped_bind : ∀ (x t : Term), WellTyped (Term.abs x t) → ∃ n T, x = Term.var n T := by
+  intros x t h
+  sorry
+
+theorem welltyped_body : ∀ (x t : Term), WellTyped (Term.abs x t) → WellTyped t := by
+  intros x t h
+  sorry
+
 /-- Alpha-equivalence for variables under a list of renamings. -/
 @[simp] def IsAlphaVars (bv : List (Term × Term)) (v1 v2 : Term) : Prop :=
   match bv with
@@ -93,10 +109,9 @@ inductive IsAlphaTerms : List (Term × Term) -> Term -> Term -> Prop
 | const : ∀ (bv : List (Term × Term)) (c1 c2 : String) (T1 T2 : HOLType),
           IsAlphaVars bv (.const c1 T1) (.const c2 T2) → IsAlphaTerms bv (.const c1 T1) (.const c2 T2)
 | app : ∀ (bv : List (Term × Term)) (s1 s2 t1 t2 : Term),
-          (WellTyped (.app s1 t1) ↔ WellTyped (.app s2 t2)) →
           IsAlphaTerms bv s1 s2 → IsAlphaTerms bv t1 t2 → IsAlphaTerms bv (.app s1 t1) (.app s2 t2)
 | abs : ∀ (bv : List (Term × Term)) (n1 n2 : Term) (t1 t2 : Term),
-          (WellTyped (.abs n1 t1) ↔ WellTyped (.abs n2 t2)) →
+          (∃ T, n1.HasType T ∧ n2.HasType T) →
           IsAlphaTerms ((n1, n2) :: bv) t1 t2 → IsAlphaTerms bv (.abs n1 t1) (.abs n2 t2)
 
 /-- Predicate for alpha-equivalence of terms. -/
@@ -107,37 +122,37 @@ theorem AlphaEqv.isAlpha : ∀ {t1 t2 : Term}, AlphaEqv t1 t2 → IsAlphaTerms [
   intro t1 t2 h
   exact h
 
-theorem IsAlphaTerms_welltyped_iff :
-    ∀ {bv : List (Term × Term)} {t1 t2 : Term}, IsAlphaTerms bv t1 t2 → (WellTyped t1 ↔ WellTyped t2) := by
-  intro bv t1 t2 h
-  induction h with
-  | var bv x1 x2 T1 T2 hv =>
-      constructor <;> intro _ <;> exact ⟨_, Term.HasType.var _ _⟩
-  | const bv c1 c2 T1 T2 hv =>
-      constructor <;> intro _ <;> exact ⟨_, Term.HasType.const _ _⟩
-  | app bv s1 s2 t1 t2 hwt hs ht ihs iht =>
-    exact hwt
-  | abs bv n1 n2 t1 t2 hwt hbody ih =>
-    exact hwt
+-- theorem IsAlphaTerms_welltyped_iff :
+--     ∀ {bv : List (Term × Term)} {t1 t2 : Term}, IsAlphaTerms bv t1 t2 → (WellTyped t1 ↔ WellTyped t2) := by
+--   intro bv t1 t2 h
+--   induction h with
+--   | var bv x1 x2 T1 T2 hv =>
+--       constructor <;> intro _ <;> exact ⟨_, Term.HasType.var _ _⟩
+--   | const bv c1 c2 T1 T2 hv =>
+--       constructor <;> intro _ <;> exact ⟨_, Term.HasType.const _ _⟩
+--   | app bv s1 s2 t1 t2 hs ht ihs iht =>
+--     exact hwt
+--   | abs bv n1 n2 t1 t2 hwt hbody ih =>
+--     exact hwt
 
-theorem AlphaEqv.welltyped_iff : ∀ {t1 t2 : Term}, AlphaEqv t1 t2 → (WellTyped t1 ↔ WellTyped t2) := by
-  intro t1 t2 h
-  simpa [AlphaEqv] using IsAlphaTerms_welltyped_iff h
+-- theorem AlphaEqv.welltyped_iff : ∀ {t1 t2 : Term}, AlphaEqv t1 t2 → (WellTyped t1 ↔ WellTyped t2) := by
+--   intro t1 t2 h
+--   simpa [AlphaEqv] using IsAlphaTerms_welltyped_iff h
 
-theorem AlphaEqv.welltyped_right : ∀ {t1 t2 : Term}, AlphaEqv t1 t2 → WellTyped t1 → WellTyped t2 := by
-  intro t1 t2 h hwt1
-  exact (AlphaEqv.welltyped_iff h).mp hwt1
+-- theorem AlphaEqv.welltyped_right : ∀ {t1 t2 : Term}, AlphaEqv t1 t2 → WellTyped t1 → WellTyped t2 := by
+--   intro t1 t2 h hwt1
+--   exact (AlphaEqv.welltyped_iff h).mp hwt1
 
-theorem AlphaEqv.welltyped_left : ∀ {t1 t2 : Term}, AlphaEqv t1 t2 → WellTyped t2 → WellTyped t1 := by
-  intro t1 t2 h hwt2
-  exact (AlphaEqv.welltyped_iff h).mpr hwt2
+-- theorem AlphaEqv.welltyped_left : ∀ {t1 t2 : Term}, AlphaEqv t1 t2 → WellTyped t2 → WellTyped t1 := by
+--   intro t1 t2 h hwt2
+--   exact (AlphaEqv.welltyped_iff h).mpr hwt2
 
-theorem AlphaEqv.welltyped_both_of_either :
-    ∀ {t1 t2 : Term}, AlphaEqv t1 t2 → (WellTyped t1 ∨ WellTyped t2) → (WellTyped t1 ∧ WellTyped t2) := by
-  intro t1 t2 hAlpha hEither
-  cases hEither with
-  | inl hwt1 => exact ⟨hwt1, AlphaEqv.welltyped_right hAlpha hwt1⟩
-  | inr hwt2 => exact ⟨AlphaEqv.welltyped_left hAlpha hwt2, hwt2⟩
+-- theorem AlphaEqv.welltyped_both_of_either :
+--     ∀ {t1 t2 : Term}, AlphaEqv t1 t2 → (WellTyped t1 ∨ WellTyped t2) → (WellTyped t1 ∧ WellTyped t2) := by
+--   intro t1 t2 hAlpha hEither
+--   cases hEither with
+--   | inl hwt1 => exact ⟨hwt1, AlphaEqv.welltyped_right hAlpha hwt1⟩
+--   | inr hwt2 => exact ⟨AlphaEqv.welltyped_left hAlpha hwt2, hwt2⟩
 
 def IsTrivialRenaming (bv : List (Term × Term)) : Prop :=
   match bv with
@@ -161,27 +176,33 @@ theorem IsAlphaVars_refl : ∀ (bv : List (Term × Term)) (v : Term), IsTrivialR
       · exact Or.inr ⟨hv, hv, ih htriv⟩
 
 @[aesop safe]
-theorem IsAlphaTerms_refl : ∀ (bv : List (Term × Term)) (t : Term), IsTrivialRenaming bv → IsAlphaTerms bv t t
+theorem IsAlphaTerms_refl : ∀ (bv : List (Term × Term)) (t : Term), IsTrivialRenaming bv → WellTyped t → IsAlphaTerms bv t t
     := by
-  intro bv t
-  induction t generalizing bv with intro h
+  intro bv t h
+  induction t generalizing bv with intros
   | var x T =>
       apply IsAlphaTerms.var
-      exact IsAlphaVars_refl bv (.var x T) h
+      exact IsAlphaVars_refl bv (Term.var x T) h
   | const c T =>
       apply IsAlphaTerms.const
-      exact IsAlphaVars_refl bv (.const c T) h
+      exact IsAlphaVars_refl bv (Term.const c T) h
   | app s t ih_s ih_t =>
       apply IsAlphaTerms.app
-      · exact Iff.rfl
-      · aesop
-      · aesop
+      · apply ih_s <;> try simp_all only [forall_exists_index]
+        apply welltyped_fun
+        aesop
+      · apply ih_t <;> try simp_all only [forall_exists_index]
+        apply welltyped_arg
+        aesop
   | abs n t ih_n ih_t =>
       apply IsAlphaTerms.abs
-      · exact Iff.rfl
       have h' : IsTrivialRenaming ((n, n) :: bv) := by
         simp [IsTrivialRenaming, h]
-      exact ih_t ((n, n) :: bv) h'
+      · sorry
+      · apply ih_t
+        · simp [IsTrivialRenaming, h]
+        · apply welltyped_body
+          aesop
 
 def swap_renaming : List (Term × Term) -> List (Term × Term)
 | [] => []
@@ -207,9 +228,8 @@ theorem IsAlphaTerms_symm :
   induction h with
   | var bv x1 x2 T1 T2 hv => apply IsAlphaTerms.var; aesop
   | const bv c1 c2 T1 T2 hv => apply IsAlphaTerms.const; aesop
-  | app bv s1 s2 t1 t2 hwt hs ht ihs iht =>
+  | app bv s1 s2 t1 t2 hs ht ihs iht =>
       apply IsAlphaTerms.app
-      · exact hwt.symm
       · simpa using ihs
       · simpa using iht
   | abs bv n1 n2 t1 t2 hwt hbody ih =>
@@ -254,18 +274,17 @@ theorem IsAlphaTerms_trans :
   | const bv c1 c2 T1 T2 hv12 =>
     cases h23 with
     | const => apply IsAlphaTerms.const; aesop
-  | app bv s1 s2 t1 t2 hwt12 hs12 ht12 ihs iht =>
+  | app bv s1 s2 t1 t2 hs12 ht12 ihs iht =>
     cases h23 with
-    | app bv s2 s3 t2 t3 hwt23 hs23 ht23 =>
+    | app bv s2 s3 t2 t3 hs23 ht23 =>
       apply IsAlphaTerms.app
-      · exact Iff.trans hwt12 hwt23
       · aesop
       · aesop
   | abs bv n1 n2 t1 t2 hwt12 hbody12 ih =>
     cases h23 with
     | abs bv n2 n3 t2 t3 hwt23 hbody23 =>
       apply IsAlphaTerms.abs
-      · exact Iff.trans hwt12 hwt23
+      · sorry
       apply ih <;> try simpa
       apply RenamingChain.cons; simpa
 
