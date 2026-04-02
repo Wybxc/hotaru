@@ -1878,6 +1878,48 @@ def subst (i : List (Term × Term)) : Term → Option Term
     else
       some (.abs bvar t')
 
+/-- Context-aware term substitution.
+    Variables already bound in `ctx` are preserved (not replaced by `i`). -/
+def substAux (ctx : List (String × HOLType)) (i : List (Term × Term)) : Term → Option Term
+| .var x ty =>
+    match lookupBVar ctx x ty with
+    | some _ => some (.var x ty)
+    | none =>
+        match i.find? (fun (y, _) => y = .var x ty) with
+        | some (_, t) => some t
+        | none => some (.var x ty)
+| .const c ty => some (.const c ty)
+| .app s t => do
+    let s' ← substAux ctx i s
+    let t' ← substAux ctx i t
+    some (.app s' t')
+| .abs bvar t => do
+    let i' := i.filter (fun p => !decide (p.fst = bvar))
+    let ctx' :=
+      match bvar with
+      | .var x ty => (x, ty) :: ctx
+      | _ => ctx
+    let t' ← substAux ctx' i' t
+    if captureRisk bvar t i' then
+      match bvar with
+      | .var x ty => do
+          let freshName := generateVariant t' x ty
+          let z := Term.var freshName ty
+          let i'' := (bvar, z) :: i'
+          -- Reuse existing capture-avoiding renaming step.
+          let t'' ← subst i'' t
+          some (.abs z t'')
+      | _ => none
+    else
+      some (.abs bvar t')
+
+theorem substAux_bound_var_self :
+    ∀ (ctx : List (String × HOLType)) (i : List (Term × Term)) (x : String) (T : HOLType),
+      lookupBVar ctx x T = some 0 ->
+      substAux ctx i (Term.var x T) = some (Term.var x T) := by
+  intro ctx i x T hLookup
+  simp [substAux, hLookup]
+
 theorem welltyped_subst : ∀ (t : Term) (i : List (Term × Term)),
     WellTyped t → ∃ t', subst i t = some t' := by
   intro t i hwt
@@ -2139,6 +2181,66 @@ theorem subst_pair_welltyped_of_SubstOk :
     | abs n dT rT body hbody ihbody =>
       intro t' i hOk hSub
       exact hAbs n dT rT body t' i hbody hOk hSub
+
+  theorem substAux_toDBAux_commute_of_abs_case :
+    (∀ (ctx : List (String × HOLType)) (n : String) (dT rT : HOLType) (body t' : Term) (i : List (Term × Term)),
+      body.HasType rT -> SubstOk i ->
+      substAux ctx i (Term.abs (Term.var n dT) body) = some t' ->
+      toDBAux ctx t' = dbSubstAux ctx i (toDBAux ctx (Term.abs (Term.var n dT) body))) ->
+    ∀ (ctx : List (String × HOLType)) (t t' : Term) (i : List (Term × Term)),
+      WellTyped t -> SubstOk i -> substAux ctx i t = some t' ->
+      toDBAux ctx t' = dbSubstAux ctx i (toDBAux ctx t) := by
+    intro hAbs ctx t t' i hwt hOk hSub
+    rcases hwt with ⟨T, hty⟩
+    revert t' i hOk hSub
+    induction hty with
+    | var x T =>
+      intro t' i hOk hSub
+      unfold substAux at hSub
+      cases hLookup : lookupBVar ctx x T with
+      | some n =>
+        simp [hLookup] at hSub
+        cases hSub
+        simp [toDBAux, hLookup, dbSubstAux]
+      | none =>
+        cases hfind : i.find? (fun (y, _) => y = Term.var x T) with
+        | none =>
+          simp [hLookup, hfind] at hSub
+          cases hSub
+          simp [toDBAux, dbSubstAux, hLookup, hfind]
+        | some p =>
+          simp [hLookup, hfind] at hSub
+          cases hSub
+          simp [toDBAux, dbSubstAux, hLookup, hfind]
+    | const c T =>
+      intro t' i hOk hSub
+      simp [substAux] at hSub
+      cases hSub
+      rfl
+    | app s t dT rT hs ht ihs iht =>
+      intro t' i hOk hSub
+      unfold substAux at hSub
+      cases hs' : substAux ctx i s with
+      | none =>
+        simp [hs'] at hSub
+      | some s' =>
+        cases ht' : substAux ctx i t with
+        | none =>
+          simp [hs', ht'] at hSub
+        | some t'' =>
+          simp [hs', ht'] at hSub
+          cases hSub
+          have hS : toDBAux ctx s' = dbSubstAux ctx i (toDBAux ctx s) := ihs s' i hOk hs'
+          have hT : toDBAux ctx t'' = dbSubstAux ctx i (toDBAux ctx t) := iht t'' i hOk ht'
+          calc
+          toDBAux ctx (Term.app s' t'') = DBTerm.app (toDBAux ctx s') (toDBAux ctx t'') := by rfl
+          _ = DBTerm.app (dbSubstAux ctx i (toDBAux ctx s)) (dbSubstAux ctx i (toDBAux ctx t)) := by
+            simp [hS, hT]
+          _ = dbSubstAux ctx i (toDBAux ctx (Term.app s t)) := by
+            rfl
+    | abs n dT rT body hbody ihbody =>
+      intro t' i hOk hSub
+      exact hAbs ctx n dT rT body t' i hbody hOk hSub
 
 theorem subst_toDB_abs_case_of_branches :
     (∀ (n : String) (dT rT : HOLType) (body body' : Term) (i : List (Term × Term)),
@@ -2464,6 +2566,29 @@ theorem subst_alpha_of_SubstOk_of_toDBAux_subst_and_ctx_bridge :
       simpa [i'] using hBodySub
     simpa [i', i'', z] using hBridge n dT rT body body' i hBodyTy hOk hBodySub'
   exact Eq.trans hComm hBridge'
+
+theorem toDBAux_subst_commute_counterexample :
+    ∃ (ctx : List (String × HOLType)) (i : List (Term × Term)) (t t' : Term),
+      subst i t = some t' ∧
+      toDBAux ctx t' ≠ dbSubstAux ctx i (toDBAux ctx t) := by
+  refine ⟨[("x", HOLType.bool)],
+    [(Term.var "x" HOLType.bool, Term.const "c" HOLType.bool)],
+    Term.var "x" HOLType.bool,
+    Term.const "c" HOLType.bool,
+    ?_, ?_⟩
+  · simp [subst]
+  · unfold dbSubstAux
+    unfold toDBAux
+    unfold lookupBVar
+    simp
+
+theorem toDBAux_substAux_commute_bound_var_example :
+    let ctx : List (String × HOLType) := [("x", HOLType.bool)]
+    let i : List (Term × Term) := [(Term.var "x" HOLType.bool, Term.const "c" HOLType.bool)]
+    let t : Term := Term.var "x" HOLType.bool
+    toDBAux ctx (match substAux ctx i t with | some t' => t' | none => t) =
+      dbSubstAux ctx i (toDBAux ctx t) := by
+  simp [substAux, toDBAux, dbSubstAux, lookupBVar]
 
 /-- Structural size for fuel-based recursion in instantiation. -/
 def Term.size : Term → Nat
