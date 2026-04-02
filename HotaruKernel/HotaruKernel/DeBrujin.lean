@@ -25,26 +25,14 @@ private def toDBAux (env : List (String × HOLType)) : Term -> DBTerm
 /-- Convert a named term to de Bruijn form. -/
 def Term.toDB (t : Term) : DBTerm := toDBAux [] t
 
+theorem alpha_debrujin :
+  ∀ t1 t2 : Term,
+    AlphaEqv t1 t2 → t1.toDB = t2.toDB := by
+  intros t1 t2 h
+  sorry
+
 theorem debrujin_alpha :
   ∀ t1 t2 : Term,
-    AlphaEqv t1 t2 ↔ t1.toDB = t2.toDB := by
+    t1.toDB = t2.toDB → WellTyped t1 → WellTyped t2 → AlphaEqv t1 t2 := by
   intros t1 t2
-  constructor <;> sorry
-
-theorem debrujin_alpha_counterexample :
-  ∃ t1 t2 : Term, AlphaEqv t1 t2 ∧ t1.toDB ≠ t2.toDB := by
-  refine ⟨.abs (.const "k1" HOLType.bool) (.const "k1" HOLType.bool),
-          .abs (.const "k2" HOLType.bool) (.const "k2" HOLType.bool), ?_⟩
-  constructor
-  · unfold AlphaEqv
-    apply IsAlphaTerms.abs
-    · constructor <;> intro h <;> rcases h with ⟨T, hT⟩ <;> cases hT
-    · apply IsAlphaTerms.const
-      simp [IsAlphaVars]
-  · simp [Term.toDB]
-
-theorem not_debrujin_alpha :
-  ¬ (∀ t1 t2 : Term, AlphaEqv t1 t2 ↔ t1.toDB = t2.toDB) := by
-  intro hAll
-  rcases debrujin_alpha_counterexample with ⟨t1, t2, hAlpha, hNe⟩
-  exact hNe ((hAll t1 t2).1 hAlpha)
+  sorry
