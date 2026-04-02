@@ -296,9 +296,7 @@ theorem IsAlphaTerms_trans :
   | app bv s1 s2 t1 t2 hs12 ht12 ihs iht =>
     cases h23 with
     | app bv s2 s3 t2 t3 hs23 ht23 =>
-      apply IsAlphaTerms.app
-      · aesop
-      · aesop
+      apply IsAlphaTerms.app <;> aesop
   | abs bv n1 n2 t1 t2 hwt12 hbody12 ih =>
     cases h23 with
     | abs bv n2 n3 t2 t3 hwt23 hbody23 =>
