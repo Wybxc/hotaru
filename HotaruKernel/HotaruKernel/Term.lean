@@ -81,19 +81,31 @@ theorem welltyped_typeof_iff : ∀ (t : Term) (T : HOLType), t.HasType T ↔ typ
 
 theorem welltyped_fun : ∀ (s t : Term), WellTyped (Term.app s t) → WellTyped s := by
   intros s t h
-  sorry
+  rcases h with ⟨T, hT⟩
+  cases hT with
+  | app _ _ dT rT hs _ =>
+  exact ⟨_, hs⟩
 
 theorem welltyped_arg : ∀ (s t : Term), WellTyped (Term.app s t) → WellTyped t := by
   intros s t h
-  sorry
+  rcases h with ⟨_, hT⟩
+  cases hT with
+  | app _ _ dT _ _ ht =>
+      exact ⟨dT, ht⟩
 
 theorem welltyped_bind : ∀ (x t : Term), WellTyped (Term.abs x t) → ∃ n T, x = Term.var n T := by
   intros x t h
-  sorry
+  rcases h with ⟨_, hT⟩
+  cases hT with
+  | abs n dT _ _ _ =>
+      exact ⟨n, dT, rfl⟩
 
 theorem welltyped_body : ∀ (x t : Term), WellTyped (Term.abs x t) → WellTyped t := by
   intros x t h
-  sorry
+  rcases h with ⟨_, hT⟩
+  cases hT with
+  | abs _ _ rT _ ht =>
+      exact ⟨rT, ht⟩
 
 /-- Alpha-equivalence for variables under a list of renamings. -/
 @[simp] def IsAlphaVars (bv : List (Term × Term)) (v1 v2 : Term) : Prop :=
@@ -178,31 +190,36 @@ theorem IsAlphaVars_refl : ∀ (bv : List (Term × Term)) (v : Term), IsTrivialR
 @[aesop safe]
 theorem IsAlphaTerms_refl : ∀ (bv : List (Term × Term)) (t : Term), IsTrivialRenaming bv → WellTyped t → IsAlphaTerms bv t t
     := by
-  intro bv t h
-  induction t generalizing bv with intros
+  intro bv t
+  induction t generalizing bv with
   | var x T =>
+      intro h _
       apply IsAlphaTerms.var
       exact IsAlphaVars_refl bv (Term.var x T) h
   | const c T =>
+      intro h _
       apply IsAlphaTerms.const
       exact IsAlphaVars_refl bv (Term.const c T) h
   | app s t ih_s ih_t =>
+      intro h hwt
       apply IsAlphaTerms.app
-      · apply ih_s <;> try simp_all only [forall_exists_index]
-        apply welltyped_fun
-        aesop
-      · apply ih_t <;> try simp_all only [forall_exists_index]
-        apply welltyped_arg
-        aesop
-  | abs n t ih_n ih_t =>
-      apply IsAlphaTerms.abs
-      have h' : IsTrivialRenaming ((n, n) :: bv) := by
-        simp [IsTrivialRenaming, h]
-      · sorry
+      · apply ih_s
+        · exact h
+        · exact welltyped_fun s t hwt
       · apply ih_t
-        · simp [IsTrivialRenaming, h]
-        · apply welltyped_body
-          aesop
+        · exact h
+        · exact welltyped_arg s t hwt
+  | abs n t ih_n ih_t =>
+      intro h hwt
+      apply IsAlphaTerms.abs
+      · rcases welltyped_bind n t hwt with ⟨n', dT, hn⟩
+        subst hn
+        exact ⟨dT, Term.HasType.var n' dT, Term.HasType.var n' dT⟩
+      · have h' : IsTrivialRenaming ((n, n) :: bv) := by
+          simp [IsTrivialRenaming, h]
+        apply ih_t
+        · exact h'
+        · exact welltyped_body n t hwt
 
 def swap_renaming : List (Term × Term) -> List (Term × Term)
 | [] => []
@@ -233,7 +250,9 @@ theorem IsAlphaTerms_symm :
       · simpa using ihs
       · simpa using iht
   | abs bv n1 n2 t1 t2 hwt hbody ih =>
-      simpa [swap_renaming] using (IsAlphaTerms.abs (swap_renaming bv) n2 n1 t2 t1 hwt.symm ih)
+      rcases hwt with ⟨T, hn1, hn2⟩
+      simpa [swap_renaming] using
+      (IsAlphaTerms.abs (swap_renaming bv) n2 n1 t2 t1 ⟨T, hn2, hn1⟩ ih)
 
 inductive RenamingChain :
   List (Term × Term) -> List (Term × Term) -> List (Term × Term) -> Prop
@@ -284,14 +303,22 @@ theorem IsAlphaTerms_trans :
     cases h23 with
     | abs bv n2 n3 t2 t3 hwt23 hbody23 =>
       apply IsAlphaTerms.abs
-      · sorry
+      · rcases hwt12 with ⟨T12, hn1, hn2l⟩
+        rcases hwt23 with ⟨T23, hn2r, hn3⟩
+        have hTyEq : T12 = T23 := by
+          have hL : typeof n2 = some T12 := welltyped_typeof n2 T12 hn2l
+          have hR : typeof n2 = some T23 := welltyped_typeof n2 T23 hn2r
+          rw [hL] at hR
+          injection hR
+        cases hTyEq
+        exact ⟨T12, hn1, hn3⟩
       apply ih <;> try simpa
       apply RenamingChain.cons; simpa
 
-theorem AlphaEqv.refl : ∀ (t : Term), AlphaEqv t t
+theorem AlphaEqv.refl : ∀ (t : Term), WellTyped t → AlphaEqv t t
     := by
-  intro t
-  simpa [AlphaEqv] using IsAlphaTerms_refl [] t (by simp [IsTrivialRenaming])
+  intro t hwt
+  simpa [AlphaEqv] using IsAlphaTerms_refl [] t (by simp [IsTrivialRenaming]) hwt
 
 theorem AlphaEqv.symm : ∀ {t1 t2 : Term}, AlphaEqv t1 t2 → AlphaEqv t2 t1
     := by
@@ -303,19 +330,21 @@ theorem AlphaEqv.trans : ∀ {t1 t2 t3 : Term}, AlphaEqv t1 t2 → AlphaEqv t2 t
   intro t1 t2 t3 h12 h23
   exact IsAlphaTerms_trans [] [] [] t1 t2 t3 RenamingChain.nil h12 h23
 
-instance : Equivalence AlphaEqv where
-  refl := AlphaEqv.refl
-  symm := AlphaEqv.symm
-  trans := AlphaEqv.trans
-
 noncomputable instance : DecidableRel AlphaEqv := by
   intro t1 t2
   classical
   infer_instance
 
-instance : Setoid Term where
-  r := AlphaEqv
-  iseqv := ⟨AlphaEqv.refl, AlphaEqv.symm, AlphaEqv.trans⟩
+instance : Setoid { t : Term // WellTyped t } where
+  r x y := AlphaEqv x.1 y.1
+  iseqv := by
+    refine ⟨?refl, ?symm, ?trans⟩
+    · intro x
+      exact AlphaEqv.refl x.1 x.2
+    · intro x y h
+      exact AlphaEqv.symm h
+    · intro x y z hxy hyz
+      exact AlphaEqv.trans hxy hyz
 
 
 -- /-- Lookup binder depth in a de Bruijn context. -/
