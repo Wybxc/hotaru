@@ -12,18 +12,18 @@ deriving Repr, DecidableEq
 
 /-- Convert a named term to de Bruijn form under a context. -/
 @[simp]
-private def toDBAux (env : List (String × HOLType)) : Term -> Option DBTerm
+private def toDBAux (ctx : List (String × HOLType)) : Term -> Option DBTerm
 | .var x T =>
-    match env.findIdx? (fun (y, yT) => x = y ∧ T = yT) with
+    match ctx.findIdx? (fun (y, yT) => x = y ∧ T = yT) with
     | some n => some (DBTerm.bvar n)
     | none => some (DBTerm.fvar x T)
 | .const c T => some (DBTerm.const c T)
 | .app s t => do
-    let s' ← toDBAux env s
-    let t' ← toDBAux env t
+    let s' ← toDBAux ctx s
+    let t' ← toDBAux ctx t
     some (DBTerm.app s' t')
 | .abs (.var x T) t => do
-    let t' ← toDBAux ((x, T) :: env) t
+    let t' ← toDBAux ((x, T) :: ctx) t
     some (DBTerm.abs t')
 | .abs _ _ => none
 
