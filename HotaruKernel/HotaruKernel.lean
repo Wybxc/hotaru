@@ -1,3 +1,4 @@
 import HotaruKernel.Type
 import HotaruKernel.Term
-import HotaruKernel.DeBrujin
+import HotaruKernel.Alpha
+import HotaruKernel.Subst
