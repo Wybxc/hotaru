@@ -347,6 +347,33 @@ def dbSubst (i : List (Term × Term)) : DBTerm -> DBTerm
 | .app s t => .app (dbSubst i s) (dbSubst i t)
 | .abs t => .abs (dbSubst i t)
 
+/-- Context-aware de Bruijn substitution: RHS terms are translated under the given context. -/
+def dbSubstAux (ctx : List (String × HOLType)) (i : List (Term × Term)) : DBTerm -> DBTerm
+| .bvar n => .bvar n
+| .fvar x T =>
+  match i.find? (fun p => p.fst = Term.var x T) with
+  | some (_, t) => toDBAux ctx t
+  | none => .fvar x T
+| .const c T => .const c T
+| .app s t => .app (dbSubstAux ctx i s) (dbSubstAux ctx i t)
+| .abs t => .abs (dbSubstAux ctx i t)
+
+theorem dbSubstAux_nil_eq_dbSubst :
+  ∀ (i : List (Term × Term)) (t : DBTerm), dbSubstAux [] i t = dbSubst i t := by
+  intro i t
+  induction t with
+  | bvar n =>
+    rfl
+  | fvar x T =>
+    unfold dbSubstAux dbSubst
+    split <;> simp [toDB]
+  | const c T =>
+    rfl
+  | app s t ihs iht =>
+    simp [dbSubstAux, dbSubst, ihs, iht]
+  | abs t iht =>
+    simp [dbSubstAux, dbSubst, iht]
+
 theorem dbSubst_refl : ∀ (t : DBTerm), dbSubst [] t = t := by
   intro t
   induction t with
@@ -376,6 +403,23 @@ theorem dbSubst_fvar_eq_of_find_none :
       dbSubst i (DBTerm.fvar x T) = DBTerm.fvar x T := by
   intro i x T hFind
   unfold dbSubst
+  simp [hFind]
+
+theorem dbSubstAux_fvar_eq_of_find_some :
+    ∀ (ctx : List (String × HOLType)) (i : List (Term × Term))
+      (x : String) (T : HOLType) (v s : Term),
+      i.find? (fun p => p.fst = Term.var x T) = some (v, s) ->
+      dbSubstAux ctx i (DBTerm.fvar x T) = toDBAux ctx s := by
+  intro ctx i x T v s hFind
+  unfold dbSubstAux
+  simp [hFind]
+
+theorem dbSubstAux_fvar_eq_of_find_none :
+    ∀ (ctx : List (String × HOLType)) (i : List (Term × Term)) (x : String) (T : HOLType),
+      i.find? (fun p => p.fst = Term.var x T) = none ->
+      dbSubstAux ctx i (DBTerm.fvar x T) = DBTerm.fvar x T := by
+  intro ctx i x T hFind
+  unfold dbSubstAux
   simp [hFind]
 
 theorem find?_filter_eq_find?_of_var_ne :
@@ -1324,6 +1368,98 @@ theorem dbSubst_filter_eq_under_bound :
   apply dbSubst_filter_eq_of_no_DBHasFVar
   exact no_DBHasFVar_under_bound ctx body x T
 
+theorem dbSubstAux_filter_eq_of_no_DBHasFVar :
+    ∀ (ctx : List (String × HOLType)) (d : DBTerm) (i : List (Term × Term)) (x : String) (T : HOLType),
+      ¬ DBHasFVar x T d ->
+      dbSubstAux ctx (i.filter (fun p => !decide (p.fst = Term.var x T))) d = dbSubstAux ctx i d := by
+  intro ctx d
+  induction d with
+  | bvar n =>
+      intro i x T _
+      rfl
+  | fvar y U =>
+      intro i x T hNo
+      have hneq : Term.var y U ≠ Term.var x T := by
+        intro hEq
+        apply hNo
+        cases hEq
+        exact And.intro rfl rfl
+      unfold dbSubstAux
+      rw [find?_filter_eq_find?_of_var_ne i x y T U hneq]
+  | const c U =>
+      intro i x T _
+      rfl
+  | app a b iha ihb =>
+      intro i x T hNo
+      have hNoA : ¬ DBHasFVar x T a := by
+        intro ha
+        exact hNo (Or.inl ha)
+      have hNoB : ¬ DBHasFVar x T b := by
+        intro hb
+        exact hNo (Or.inr hb)
+      simp [dbSubstAux, iha i x T hNoA, ihb i x T hNoB]
+  | abs body ih =>
+      intro i x T hNo
+      simp [dbSubstAux, ih i x T hNo]
+
+theorem dbSubstAux_cons_eq_of_no_DBHasFVar :
+    ∀ (ctx : List (String × HOLType)) (d : DBTerm) (i : List (Term × Term))
+      (x : String) (T : HOLType) (s : Term),
+      ¬ DBHasFVar x T d ->
+      dbSubstAux ctx ((Term.var x T, s) :: i) d = dbSubstAux ctx i d := by
+  intro ctx d
+  induction d with
+  | bvar n =>
+      intro i x T s _
+      rfl
+  | fvar y U =>
+      intro i x T s hNo
+      have hneq : Term.var y U ≠ Term.var x T := by
+        intro hEq
+        apply hNo
+        cases hEq
+        exact And.intro rfl rfl
+      unfold dbSubstAux
+      have hxyu : ¬ (x = y ∧ T = U) := by
+        intro h
+        rcases h with ⟨hxy, hTU⟩
+        apply hneq
+        subst hxy
+        subst hTU
+        rfl
+      simp [List.find?, hxyu]
+  | const c U =>
+      intro i x T s _
+      rfl
+  | app a b iha ihb =>
+      intro i x T s hNo
+      have hNoA : ¬ DBHasFVar x T a := by
+        intro ha
+        exact hNo (Or.inl ha)
+      have hNoB : ¬ DBHasFVar x T b := by
+        intro hb
+        exact hNo (Or.inr hb)
+      simp [dbSubstAux, iha i x T s hNoA, ihb i x T s hNoB]
+  | abs body ih =>
+      intro i x T s hNo
+      simp [dbSubstAux, ih i x T s hNo]
+
+theorem dbSubstAux_filter_eq_under_bound :
+    ∀ (ctx : List (String × HOLType)) (body : Term) (i : List (Term × Term)) (x : String) (T : HOLType),
+      dbSubstAux ((x, T) :: ctx) (i.filter (fun p => !decide (p.fst = Term.var x T))) (toDBAux ((x, T) :: ctx) body) =
+        dbSubstAux ((x, T) :: ctx) i (toDBAux ((x, T) :: ctx) body) := by
+  intro ctx body i x T
+  apply dbSubstAux_filter_eq_of_no_DBHasFVar
+  exact no_DBHasFVar_under_bound ctx body x T
+
+theorem dbSubstAux_cons_eq_under_bound :
+    ∀ (ctx : List (String × HOLType)) (body : Term) (i : List (Term × Term)) (x : String) (T : HOLType) (s : Term),
+      dbSubstAux ((x, T) :: ctx) ((Term.var x T, s) :: i) (toDBAux ((x, T) :: ctx) body) =
+        dbSubstAux ((x, T) :: ctx) i (toDBAux ((x, T) :: ctx) body) := by
+  intro ctx body i x T s
+  apply dbSubstAux_cons_eq_of_no_DBHasFVar
+  exact no_DBHasFVar_under_bound ctx body x T
+
 theorem free_of_DBHasFVar_toDBAux :
     ∀ (ctx : List (String × HOLType)) (t : Term) (x : String) (T : HOLType),
       CtxDisjoint ctx x T -> DBHasFVar x T (toDBAux ctx t) -> (Term.var x T).IsFreeVarIn t := by
@@ -2141,6 +2277,20 @@ theorem subst_alpha_of_SubstOk_of_toDB_subst :
   have hAlphaOut : AlphaEqv t1' t2' := AlphaEqv_of_toDB_eq_wt t1' t2' hwt1' hwt2' hEqOut
   exact ⟨t1', t2', hs1, hs2, hAlphaOut⟩
 
+theorem subst_alpha_of_SubstOk_of_toDBAux_substAux :
+    (∀ (ctx : List (String × HOLType)) (t t' : Term) (i : List (Term × Term)),
+      WellTyped t -> SubstOk i -> subst i t = some t' ->
+      toDBAux ctx t' = dbSubstAux ctx i (toDBAux ctx t)) ->
+    ∀ (t1 t2 : Term) (i : List (Term × Term)),
+      (WellTyped t1 ∨ WellTyped t2) -> SubstOk i -> AlphaEqv t1 t2 ->
+      ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
+  intro hCtxComm
+  apply subst_alpha_of_SubstOk_of_toDB_subst
+  intro t t' i hwt hOk hSub
+  have hAux : toDBAux [] t' = dbSubstAux [] i (toDBAux [] t) :=
+    hCtxComm [] t t' i hwt hOk hSub
+  simpa [toDB] using (Eq.trans hAux (by simp [dbSubstAux_nil_eq_dbSubst]))
+
 theorem subst_alpha_of_SubstOk_of_abs_case :
     (∀ (n : String) (dT rT : HOLType) (body t' : Term) (i : List (Term × Term)),
       body.HasType rT -> SubstOk i ->
@@ -2271,6 +2421,49 @@ theorem subst_alpha_of_SubstOk_of_toDBAux_subst :
           (i.filter (fun p => !decide (p.fst = Term.var n dT)))) body = some body'' := by
       simpa [i', i'', z] using hBodySub2
     exact hCapBridge n dT rT body body' body'' i hBodyTy hOk hBodySub' hRisk' hBodySub2'
+
+theorem subst_alpha_of_SubstOk_of_toDBAux_subst_and_ctx_bridge :
+    (∀ (ctx : List (String × HOLType)) (t t' : Term) (i : List (Term × Term)),
+      WellTyped t -> SubstOk i -> subst i t = some t' ->
+      toDBAux ctx t' = dbSubst i (toDBAux ctx t)) ->
+    (∀ (n : String) (dT rT : HOLType) (body body' : Term) (i : List (Term × Term)),
+      body.HasType rT -> SubstOk i ->
+      let i' := i.filter (fun p => !decide (p.fst = Term.var n dT))
+      subst i' body = some body' ->
+      let z := Term.var (generateVariant body' n dT) dT
+      let i'' := (Term.var n dT, z) :: i'
+      dbSubst i'' (toDBAux ((generateVariant body' n dT, dT) :: []) body) =
+        dbSubst i'' (toDBAux ((n, dT) :: []) body)) ->
+    ∀ (t1 t2 : Term) (i : List (Term × Term)),
+      (WellTyped t1 ∨ WellTyped t2) -> SubstOk i -> AlphaEqv t1 t2 ->
+      ∃ t1' t2', subst i t1 = some t1' ∧ subst i t2 = some t2' ∧ AlphaEqv t1' t2' := by
+  intro hCtxComm hBridge
+  apply subst_alpha_of_SubstOk_of_toDBAux_subst hCtxComm
+  intro n dT rT body body' body'' i hBodyTy hOk i' hBodySub hRisk z i'' hBodySub2
+  have hOk' : SubstOk i' := by
+    simpa [i'] using SubstOk.filter i (Term.var n dT) hOk
+  have hzTy : z.HasType dT := by
+    simpa [z] using (Term.HasType.var (generateVariant body' n dT) dT)
+  have hOk'' : SubstOk i'' := by
+    intro v t hmem
+    have hmem' : (v, t) ∈ (Term.var n dT, z) :: i' := by
+      simpa [i''] using hmem
+    rcases List.mem_cons.mp hmem' with hhead | htail
+    · cases hhead
+      exact ⟨n, dT, rfl, hzTy⟩
+    · exact hOk' v t htail
+  have hComm :
+      toDBAux ((generateVariant body' n dT, dT) :: []) body'' =
+        dbSubst i'' (toDBAux ((generateVariant body' n dT, dT) :: []) body) :=
+    hCtxComm ((generateVariant body' n dT, dT) :: []) body body'' i'' ⟨rT, hBodyTy⟩ hOk'' hBodySub2
+  have hBridge' :
+      dbSubst i'' (toDBAux ((generateVariant body' n dT, dT) :: []) body) =
+        dbSubst i'' (toDBAux ((n, dT) :: []) body) := by
+    have hBodySub' :
+        subst (i.filter (fun p => !decide (p.fst = Term.var n dT))) body = some body' := by
+      simpa [i'] using hBodySub
+    simpa [i', i'', z] using hBridge n dT rT body body' i hBodyTy hOk hBodySub'
+  exact Eq.trans hComm hBridge'
 
 /-- Structural size for fuel-based recursion in instantiation. -/
 def Term.size : Term → Nat
