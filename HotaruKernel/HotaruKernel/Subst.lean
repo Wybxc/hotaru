@@ -2,6 +2,7 @@ import HotaruKernel.Type
 import HotaruKernel.Term
 import HotaruKernel.Alpha
 import HotaruKernel.DBTerm
+import Mathlib.Data.List.Defs
 import Aesop
 
 @[simp] def Term.isFreeVarIn : Term -> Term -> Bool
@@ -52,8 +53,7 @@ theorem varNotFreeOfNameLengthGt :
         simp [Term.IsFreeVarIn, Term.isFreeVarIn] at hfree
         rcases hfree with ⟨_, ht⟩
         exact Nat.le_trans (ih x T ht) (Nat.le_max_right (String.length n) t.maxVarNameLen)
-  intro t
-  intro x T hlen hfree
+  intro t x T hlen hfree
   have hle : String.length x ≤ t.maxVarNameLen := freeVarNameLen_le t x T hfree
   exact (Nat.not_lt_of_ge hle) hlen
 
@@ -113,6 +113,37 @@ private def captureRisk (x : String) (T : HOLType) (body : Term) (i : List (Term
   let bvar := Term.var x T
   i.any (fun p => decide (bvar.IsFreeVarIn p.2 ∧ p.1.IsFreeVarIn body))
 
+private theorem captureRisk_eq_true_iff_exists :
+  ∀ (x : String) (T : HOLType) (body : Term) (i : List (Term × Term)),
+    captureRisk x T body i = true ↔
+      ∃ p ∈ i, (Term.var x T).IsFreeVarIn p.2 ∧ p.1.IsFreeVarIn body := by
+  intro x T body i
+  induction i with
+  | nil =>
+      simp [captureRisk]
+  | cons p ps ih =>
+      simp [captureRisk]
+
+private theorem captureRisk_eq_false_iff_forall_not :
+  ∀ (x : String) (T : HOLType) (body : Term) (i : List (Term × Term)),
+    captureRisk x T body i = false ↔
+      ∀ p ∈ i, ¬((Term.var x T).IsFreeVarIn p.2 ∧ p.1.IsFreeVarIn body) := by
+  intro x T body i
+  constructor
+  · intro hFalse p hp hPair
+    have hTrue : captureRisk x T body i = true :=
+      (captureRisk_eq_true_iff_exists x T body i).2 ⟨p, hp, hPair⟩
+    simp [hFalse] at hTrue
+  · intro hNoPair
+    by_cases hTrue : captureRisk x T body i = true
+    · rcases (captureRisk_eq_true_iff_exists x T body i).1 hTrue with ⟨p, hp, hPair⟩
+      exact False.elim ((hNoPair p hp) hPair)
+    · cases hVal : captureRisk x T body i with
+      | false => rfl
+      | true =>
+          exfalso
+          exact hTrue hVal
+
 def subst (i : List (Term × Term)) : Term → Term
 | .var x ty =>
     match i.find? (fun (y, _) => y = Term.var x ty) with
@@ -152,8 +183,7 @@ def SubstOk (i : List (Term × Term)) : Prop :=
 
 theorem SubstOk.filter : ∀ (i : List (Term × Term)) (bvar : Term),
     SubstOk i -> SubstOk (i.filter (fun p => !decide (p.fst = bvar))) := by
-  intro i bvar hOk
-  intro v t hmem
+  intro i bvar hOk v t hmem
   exact hOk v t (List.mem_filter.mp hmem).1
 
 private theorem dbSubst_filter_shadowed_predEq :
@@ -234,6 +264,7 @@ private theorem subst_toDB_comm_abs_no_capture :
     SubstOk i ->
     captureRisk x T body (i.filter (fun p => !decide (p.fst = Term.var x T))) = false ->
     (subst i (Term.abs x T body)).toDB = dbSubst i (Term.abs x T body).toDB := by
+  intro i x T body hOk hNoCap
   sorry
 
 /-- capture branch gives alpha-equivalent abstractions after renaming. -/

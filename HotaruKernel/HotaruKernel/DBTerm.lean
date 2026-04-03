@@ -1,6 +1,7 @@
 import HotaruKernel.Type
 import HotaruKernel.Term
 import HotaruKernel.Alpha
+import Mathlib.Data.List.Defs
 import Aesop
 
 /-- De Bruijn representation used to reason about alpha-equivalence. -/

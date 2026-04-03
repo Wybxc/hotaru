@@ -1,3 +1,5 @@
+import Mathlib.Data.String.Basic
+
 mutual
 /-- HOL types.
     The `app` variant is defined with a mutual inductive `HOLTypeList` to avoid issues with nested inductives. -/

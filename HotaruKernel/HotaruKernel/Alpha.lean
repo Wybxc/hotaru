@@ -1,5 +1,6 @@
 import HotaruKernel.Type
 import HotaruKernel.Term
+import Mathlib.Data.List.Defs
 import Aesop
 
 /-- Alpha-equivalence for variables under a list of renamings. -/

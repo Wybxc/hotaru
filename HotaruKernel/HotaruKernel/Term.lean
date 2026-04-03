@@ -1,4 +1,5 @@
 import HotaruKernel.Type
+import Mathlib.Data.String.Basic
 import Aesop
 
 /-- HOL terms. -/
