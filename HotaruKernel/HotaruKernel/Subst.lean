@@ -189,12 +189,34 @@ private theorem subst_abs_capture_alpha :
   sorry
 
 /-- use alpha_debrujin to close the capture branch. -/
+private theorem subst_toDB_comm_abs_capture_core :
+  ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
+    SubstOk i ->
+    captureRisk x T body (i.filter (fun p => !decide (p.fst = Term.var x T))) = true ->
+    let fresh := generateVariant (subst (i.filter (fun p => !decide (p.fst = Term.var x T))) body) x T
+    (Term.abs fresh T
+      (subst
+        ((Term.var x T, Term.var fresh T) :: i.filter (fun p => !decide (p.fst = Term.var x T)))
+        body)).toDB
+      = dbSubst i (Term.abs x T body).toDB := by
+  sorry
+
+ /-- use alpha_debrujin to close the capture branch. -/
 private theorem subst_toDB_comm_abs_capture :
   ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
     SubstOk i ->
     captureRisk x T body (i.filter (fun p => !decide (p.fst = Term.var x T))) = true ->
     (subst i (Term.abs x T body)).toDB = dbSubst i (Term.abs x T body).toDB := by
-  sorry
+  intro i x T body hOk hCap
+  let fresh := generateVariant (subst (i.filter (fun p => !decide (p.fst = Term.var x T))) body) x T
+  have hCore :
+      (Term.abs fresh T
+        (subst
+          ((Term.var x T, Term.var fresh T) :: i.filter (fun p => !decide (p.fst = Term.var x T)))
+          body)).toDB
+        = dbSubst i (Term.abs x T body).toDB := by
+    simpa [fresh] using subst_toDB_comm_abs_capture_core i x T body hOk hCap
+  simpa [subst, hCap, fresh] using hCore
 
 /-- split abstraction branch by captureRisk. -/
 private theorem subst_toDB_comm_abs_split :
