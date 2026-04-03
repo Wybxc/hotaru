@@ -246,7 +246,79 @@ private theorem subst_toDBAux_comm :
       captureRisk x T body i = false ∧ i.find? (fun p => p.fst = Term.var x T) = none) →
     toDBAux ctx (subst i body) = dbSubst i (toDBAux ctx body) := by
   intro ctx i body hOk hNoCap
-  sorry
+  induction body generalizing ctx i with
+  | var y U =>
+      cases hidx : ctx.idxOf? (y, U) with
+      | some n =>
+          have hMem : (y, U) ∈ ctx := by
+            rcases (List.idxOf?_eq_some_iff (l := ctx) (a := (y, U)) (i := n)).1 hidx with
+              ⟨hn, hget, _⟩
+            simpa [hget] using (List.getElem_mem (l := ctx) (n := n) hn)
+          have hNoFind : i.find? (fun p => p.fst = Term.var y U) = none := (hNoCap y U hMem).2
+          simp [subst, dbSubst, toDBAux, hidx, hNoFind]
+      | none =>
+          cases hfind : i.find? (fun p => p.fst = Term.var y U) with
+          | none =>
+              simp [subst, dbSubst, toDBAux, hidx, hfind]
+          | some p =>
+              rcases p with ⟨v, t⟩
+              have hClosedRhs : toDBAux ctx t = t.toDB := by
+                -- TODO: prove substituted RHS does not reference variables bound in ctx.
+                sorry
+              simp [subst, dbSubst, toDBAux, hidx, hfind, hClosedRhs]
+  | const c U =>
+      simp [subst, dbSubst, toDBAux]
+  | app s t ihs iht =>
+      have hCtxS :
+          ∀ (x : String) (T : HOLType), (x, T) ∈ ctx →
+            captureRisk x T s i = false ∧ i.find? (fun p => p.fst = Term.var x T) = none := by
+        intro x T hmem
+        have hAll := hNoCap x T hmem
+        refine ⟨?_, hAll.2⟩
+        -- TODO: derive from captureRisk x T (Term.app s t) i = false.
+        sorry
+      have hCtxT :
+          ∀ (x : String) (T : HOLType), (x, T) ∈ ctx →
+            captureRisk x T t i = false ∧ i.find? (fun p => p.fst = Term.var x T) = none := by
+        intro x T hmem
+        have hAll := hNoCap x T hmem
+        refine ⟨?_, hAll.2⟩
+        -- TODO: derive from captureRisk x T (Term.app s t) i = false.
+        sorry
+      have hs := ihs ctx i hOk hCtxS
+      have ht := iht ctx i hOk hCtxT
+      simp [subst, toDBAux, dbSubst, hs, ht]
+  | abs x T t ih =>
+      set i' := i.filter (fun p => !decide (p.fst = Term.var x T))
+      have hOk' : SubstOk i' := SubstOk.filter i (fun p => !decide (p.fst = Term.var x T)) hOk
+      by_cases hCap : captureRisk x T t i' = true
+      · -- TODO: capture branch requires alpha/renaming bridge under extended context.
+        simp only [subst, hCap, ↓reduceIte, toDBAux, dbSubst, DBTerm.abs.injEq, true_and, i']
+        set i' := i.filter (fun p => !decide (p.fst = Term.var x T))
+        set fresh := generateVariant (subst i' t) x T
+        apply ih
+        sorry
+      · have hShadow :
+            dbSubst i (toDBAux ((x, T) :: ctx) t) = dbSubst i' (toDBAux ((x, T) :: ctx) t) := by
+          simpa [i'] using dbSubst_filter_shadowed_ctx i x T ((x, T) :: ctx) t (by simp)
+        simp only [subst, hCap, Bool.false_eq_true, ↓reduceIte, toDBAux, dbSubst, DBTerm.abs.injEq,
+          true_and, i']
+        calc
+            toDBAux ((x, T) :: ctx) (subst i' t)
+          = dbSubst i' (toDBAux ((x, T) :: ctx) t) := by
+              apply ih
+              · exact hOk'
+              · intro y U hmem
+                cases hmem with
+                | head => constructor <;> aesop
+                | tail _ hmemTail =>
+                  have hOrig := hNoCap y U hmemTail
+                  constructor
+                  · -- TODO: preserve no-capture under filtering by the abstraction binder.
+                    sorry
+                  · aesop
+        _ = dbSubst i (toDBAux ((x, T) :: ctx) t) := by
+              simpa using hShadow.symm
 
 /-- abstraction branch when no capture risk. -/
 private theorem subst_toDB_comm_abs_no_capture :
