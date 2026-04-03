@@ -290,6 +290,19 @@ private theorem subst_toDB_comm_abs_no_capture :
   _ = dbSubst i' (Term.abs x T body).toDB := hAbsBound
   _ = dbSubst i (Term.abs x T body).toDB := by simpa [i'] using hShadow.symm
 
+private theorem subst_toDB_comm_abs_capture_core :
+  ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
+    SubstOk i ->
+    captureRisk x T body (i.filter (fun p => !decide (p.fst = Term.var x T))) = true ->
+    let fresh := generateVariant (subst (i.filter (fun p => !decide (p.fst = Term.var x T))) body) x T
+    (Term.abs fresh T
+      (subst
+        ((Term.var x T, Term.var fresh T) :: i.filter (fun p => !decide (p.fst = Term.var x T)))
+        body)).toDB
+      = dbSubst i (Term.abs x T body).toDB := by
+  intro i x T body hOk hCap
+  sorry
+
 /-- use alpha_debrujin to close the capture branch. -/
 private theorem subst_toDB_comm_abs_capture :
   ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
@@ -298,13 +311,7 @@ private theorem subst_toDB_comm_abs_capture :
     (subst i (Term.abs x T body)).toDB = dbSubst i (Term.abs x T body).toDB := by
   intro i x T body hOk hCap
   let fresh := generateVariant (subst (i.filter (fun p => !decide (p.fst = Term.var x T))) body) x T
-  have hCore :
-      (Term.abs fresh T
-        (subst
-          ((Term.var x T, Term.var fresh T) :: i.filter (fun p => !decide (p.fst = Term.var x T)))
-          body)).toDB
-        = dbSubst i (Term.abs x T body).toDB := by
-    sorry
+  have hCore := subst_toDB_comm_abs_capture_core i x T body hOk hCap
   simpa [subst, hCap, fresh] using hCore
 
 /-- split abstraction branch by captureRisk. -/
@@ -407,6 +414,27 @@ private theorem subst_toDBAux_comm_ctx :
         _ = dbSubst i (toDBAux ctx (Term.abs x T body)) := by
               simp [toDBAux, dbSubst]
 
+private theorem ctxCompatible_singleton_filtered_from_substOk :
+  ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
+    SubstOk i ->
+    CtxCompatible [(x, T)] (i.filter (fun p => !decide (p.fst = Term.var x T))) body := by
+  intro i x T body hOk
+  sorry
+
+private theorem ctxCompatible_singleton_filtered_from_substOk_counterexample :
+  ∃ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
+    SubstOk i ∧
+      ¬CtxCompatible [(x, T)] (i.filter (fun p => !decide (p.fst = Term.var x T))) body := by
+  refine ⟨[(Term.var "x" HOLType.bool, Term.var "y" HOLType.bool)], "y", HOLType.bool,
+    Term.var "x" HOLType.bool, ?_⟩
+  constructor
+  · intro v t hmem
+    have hEq : (v, t) = (Term.var "x" HOLType.bool, Term.var "y" HOLType.bool) := by
+      simpa using hmem
+    rcases hEq with ⟨rfl, rfl⟩
+    exact ⟨"x", HOLType.bool, rfl, Term.HasType.var "y" HOLType.bool⟩
+  · simp [CtxCompatible, Term.toDB, toDBAux]
+
 theorem subst_toDB_comm :
   ∀ (i : List (Term × Term)) (t : Term),
     SubstOk i → (subst i t).toDB = dbSubst i t.toDB := by
@@ -438,4 +466,4 @@ theorem subst_toDB_comm :
       apply subst_toDB_comm_abs_split <;> try assumption
       apply subst_toDBAux_comm_ctx
       · exact SubstOk.filter i (Term.var x T) hOk
-      · sorry
+      · exact ctxCompatible_singleton_filtered_from_substOk i x T body hOk
