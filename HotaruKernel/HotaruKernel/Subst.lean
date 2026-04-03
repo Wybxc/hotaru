@@ -185,45 +185,25 @@ def dbSubst (i : List (Term × Term)) : DBTerm -> DBTerm
 def SubstOk (i : List (Term × Term)) : Prop :=
   ∀ v t, (v, t) ∈ i → ∃ x T, v = Term.var x T ∧ t.HasType T
 
-theorem SubstOk.filter : ∀ (i : List (Term × Term)) (bvar : Term),
-    SubstOk i -> SubstOk (i.filter (fun p => !decide (p.fst = bvar))) := by
-  intro i bvar hOk v t hmem
-  exact hOk v t (List.mem_filter.mp hmem).1
-
-private theorem dbSubst_filter_shadowed_predEq :
-  ∀ (x y : String) (T U : HOLType) (a : Term × Term),
-    Term.var y U ≠ Term.var x T ->
-    (!decide (a.fst = Term.var x T) && decide (a.fst = Term.var y U)) =
-      decide (a.fst = Term.var y U)
-    := by
-  intro x y T U a hneq
-  by_cases hy : a.fst = Term.var y U
-  · have hxFalse : decide (a.fst = Term.var x T) = false := by
-      apply (decide_eq_false_iff_not).2
-      intro hx
-      have hEq : Term.var y U = Term.var x T := by aesop
-      exact hneq hEq
-    have hdy : decide (a.fst = Term.var y U) = true := (decide_eq_true_iff).2 hy
-    simp [hdy, hxFalse]
-  · simp [hy]
-
-private theorem dbSubst_filter_shadowed_findEq :
-  ∀ (l : List (Term × Term)) (x y : String) (T U : HOLType),
-    Term.var y U ≠ Term.var x T ->
-    List.find? (fun p => decide (p.fst = Term.var y U)) l =
-      List.find? (fun a => !decide (a.fst = Term.var x T) && decide (a.fst = Term.var y U)) l := by
-  intro l x y T U hneq
-  induction l with
-  | nil => rfl
-  | cons a l ih => simp [List.find?, dbSubst_filter_shadowed_predEq x y T U a hneq, ih]
-
 private theorem dbSubst_filter_shadowed_lookup :
   ∀ (l : List (Term × Term)) (x y : String) (T U : HOLType),
     Term.var y U ≠ Term.var x T ->
     dbSubst l (DBTerm.fvar y U) =
       dbSubst (l.filter (fun p => !decide (p.fst = Term.var x T))) (DBTerm.fvar y U) := by
   intro l x y T U hneq
-  simp [dbSubst, List.find?_filter, dbSubst_filter_shadowed_predEq x y T U _ hneq]
+  have hPredEq :
+    ∀ t, (!decide (t = Term.var x T) && decide (t = Term.var y U)) = decide (t = Term.var y U) := by
+    intro t
+    by_cases hy : t = Term.var y U
+    · have hxFalse : decide (t = Term.var x T) = false := by
+        apply (decide_eq_false_iff_not).2
+        intro hx
+        have hEq : Term.var y U = Term.var x T := by aesop
+        exact hneq hEq
+      have hdy : decide (t = Term.var y U) = true := (decide_eq_true_iff).2 hy
+      simp [hdy, hxFalse]
+    · simp [hy]
+  simp [dbSubst, List.find?_filter, hPredEq]
 
 private theorem dbSubst_filter_shadowed_ctx :
   ∀ (i : List (Term × Term)) (x : String) (T : HOLType)
@@ -268,143 +248,29 @@ private theorem dbSubst_filter_shadowed_on_abs :
 /-- abstraction branch when no capture risk. -/
 private theorem subst_toDB_comm_abs_no_capture :
   ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
-    SubstOk i ->
-    toDBAux [(x, T)] (subst (i.filter (fun p => !decide (p.fst = Term.var x T))) body) =
-      dbSubst (i.filter (fun p => !decide (p.fst = Term.var x T))) (toDBAux [(x, T)] body) ->
-    captureRisk x T body (i.filter (fun p => !decide (p.fst = Term.var x T))) = false ->
-    (subst i (Term.abs x T body)).toDB = dbSubst i (Term.abs x T body).toDB := by
-  intro i x T body hOk hBodyBound hNoCap
-  let i' := i.filter (fun p => !decide (p.fst = Term.var x T))
-  have hBodyBound' :
-      toDBAux [(x, T)] (subst i' body) = dbSubst i' (toDBAux [(x, T)] body) := by
-    simpa [i'] using hBodyBound
-  have hAbsBound :
-      (Term.abs x T (subst i' body)).toDB = dbSubst i' (Term.abs x T body).toDB := by
-    simpa [Term.toDB, dbSubst] using congrArg (DBTerm.abs T) hBodyBound'
-  have hShadow := dbSubst_filter_shadowed_on_abs i x T body
-  have hSubstNoCap : subst i (Term.abs x T body) = Term.abs x T (subst i' body) := by
-    simp [subst, hNoCap, i']
+    let i' := i.filter (fun p => !decide (p.fst = Term.var x T))
+    toDBAux [(x, T)] (subst i' body) = dbSubst i' (toDBAux [(x, T)] body) ->
+    toDBAux [(x, T)] (subst i' body) = dbSubst i (toDBAux [(x, T)] body) := by
+  intro i x T body i' hBody
+  have hShadow : dbSubst i (toDBAux [(x, T)] body) = dbSubst i' (toDBAux [(x, T)] body) :=
+    dbSubst_filter_shadowed_ctx i x T [(x, T)] body (by simp)
   calc
-      (subst i (Term.abs x T body)).toDB
-    = (Term.abs x T (subst i' body)).toDB := by simp [hSubstNoCap]
-  _ = dbSubst i' (Term.abs x T body).toDB := hAbsBound
-  _ = dbSubst i (Term.abs x T body).toDB := by simpa [i'] using hShadow.symm
-
-private theorem subst_toDB_comm_abs_capture_core :
-  ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
-    SubstOk i ->
-    captureRisk x T body (i.filter (fun p => !decide (p.fst = Term.var x T))) = true ->
-    let fresh := generateVariant (subst (i.filter (fun p => !decide (p.fst = Term.var x T))) body) x T
-    (Term.abs fresh T
-      (subst
-        ((Term.var x T, Term.var fresh T) :: i.filter (fun p => !decide (p.fst = Term.var x T)))
-        body)).toDB
-      = dbSubst i (Term.abs x T body).toDB := by
-  intro i x T body hOk hCap
-  sorry
+      toDBAux [(x, T)] (subst i' body)
+    = dbSubst i' (toDBAux [(x, T)] body) := hBody
+  _ = dbSubst i (toDBAux [(x, T)] body) := by aesop
 
 /-- use alpha_debrujin to close the capture branch. -/
 private theorem subst_toDB_comm_abs_capture :
   ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
     SubstOk i ->
-    captureRisk x T body (i.filter (fun p => !decide (p.fst = Term.var x T))) = true ->
-    (subst i (Term.abs x T body)).toDB = dbSubst i (Term.abs x T body).toDB := by
-  intro i x T body hOk hCap
-  let fresh := generateVariant (subst (i.filter (fun p => !decide (p.fst = Term.var x T))) body) x T
-  have hCore := subst_toDB_comm_abs_capture_core i x T body hOk hCap
-  simpa [subst, hCap, fresh] using hCore
-
-/-- split abstraction branch by captureRisk. -/
-private theorem subst_toDB_comm_abs_split :
-  ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
-    SubstOk i ->
-    toDBAux [(x, T)] (subst (i.filter (fun p => !decide (p.fst = Term.var x T))) body) =
-      dbSubst (i.filter (fun p => !decide (p.fst = Term.var x T))) (toDBAux [(x, T)] body) ->
-    (subst i (Term.abs x T body)).toDB = dbSubst i (Term.abs x T body).toDB := by
-  intro i x T body hOk hBodyBound
-  by_cases hCap : captureRisk x T body (i.filter (fun p => !decide (p.fst = Term.var x T))) = true
-  · exact subst_toDB_comm_abs_capture i x T body hOk hCap
-  · have hNoCap : captureRisk x T body (i.filter (fun p => !decide (p.fst = Term.var x T))) = false
-        := by
-      cases hVal : captureRisk x T body (i.filter (fun p => !decide (p.fst = Term.var x T))) <;>
-        simp [hVal] at hCap ⊢
-    exact subst_toDB_comm_abs_no_capture i x T body hOk hBodyBound hNoCap
-
-private def CtxCompatible (ctx : List (String × HOLType)) (i : List (Term × Term)) : Prop :=
-  ∀ x T s t, (x, T) ∈ ctx → (s, t) ∈ i →
-    ¬(Term.var x T).IsFreeVarIn s ∧ ¬(Term.var x T).IsFreeVarIn t
-
-/-- Generalized commutation under an arbitrary de Bruijn context,
-    provided context variables are not substituted. -/
-private theorem subst_toDBAux_comm_ctx :
-  ∀ (ctx : List (String × HOLType)) (i : List (Term × Term)) (t : Term),
-    SubstOk i -> CtxCompatible ctx i ->
-    toDBAux ctx (subst i t) = dbSubst i (toDBAux ctx t) := by
-  intro ctx i t hOk hCompat
-  induction t generalizing ctx i with
-  | var x T =>
-      cases hidx : ctx.idxOf? (x, T) with
-      | some n =>
-          have hFindNone : List.find? (fun p => p.fst = Term.var x T) i = none := by
-            simp only [List.find?_eq_none, decide_eq_true_eq, Prod.forall]
-            intro s t hMemI hs
-            have hNotCompat : ∃ x T s t, (x, T) ∈ ctx ∧ (s, t) ∈ i ∧ (Term.var x T).IsFreeVarIn s := by
-              exists x, T, s, t
-              subst hs
-              simp
-              have := List.isSome_idxOf?.mp (by rw [hidx]; rfl)
-              aesop
-            unfold CtxCompatible at hCompat
-            sorry
-          simp [subst, dbSubst, toDBAux, hidx, hFindNone]
-      | none =>
-          cases hfind : i.find? (fun p => p.fst = Term.var x T) with
-          | none =>
-              simp [subst, dbSubst, toDBAux, hidx, hfind]
-          | some p =>
-              rcases p with ⟨v, u⟩
-              have hEqU : toDBAux ctx u = u.toDB := by
-                sorry
-              simp [subst, dbSubst, toDBAux, hidx, hfind, hEqU]
-  | const c T =>
-      simp [subst, dbSubst, toDBAux]
-  | app s t ihs iht =>
-      simp only [subst, toDBAux, dbSubst, DBTerm.app.injEq]
-      constructor
-      · apply ihs <;> aesop
-      · apply iht <;> aesop
-  | abs x T body ih =>
-      let i' := i.filter (fun p => !decide (p.fst = Term.var x T))
-      by_cases hCap : captureRisk x T body i' = true
-      · let fresh := generateVariant (subst i' body) x T
-        have hCore :
-            toDBAux ((fresh, T) :: ctx)
-                (subst ((Term.var x T, Term.var fresh T) :: i') body)
-              = dbSubst i (toDBAux ((x, T) :: ctx) body) := by
-          sorry
-        simp [subst, toDBAux, dbSubst, i', hCap, fresh, hCore]
-      · have hCompatBody : CtxCompatible ((x, T) :: ctx) i' := by
-          simp_all [CtxCompatible, i']
-          sorry
-        have hOk' : SubstOk i' := SubstOk.filter i (Term.var x T) hOk
-        have hBody := ih ((x, T) :: ctx) i' hOk' hCompatBody
-        have hCapFalse : captureRisk x T body i' = false := by
-          cases hVal : captureRisk x T body i' <;> simp [hVal] at hCap ⊢
-        have hShadow :
-            dbSubst i' (toDBAux ((x, T) :: ctx) body) =
-              dbSubst i (toDBAux ((x, T) :: ctx) body) := by
-          simpa [i'] using
-            (dbSubst_filter_shadowed_ctx i x T ((x, T) :: ctx) body (by simp)).symm
-        calc
-            toDBAux ctx (subst i (Term.abs x T body))
-          = DBTerm.abs T (toDBAux ((x, T) :: ctx) (subst i' body)) := by
-              simp [subst, toDBAux, i', hCapFalse]
-        _ = DBTerm.abs T (dbSubst i' (toDBAux ((x, T) :: ctx) body)) := by
-              simp [hBody]
-        _ = DBTerm.abs T (dbSubst i (toDBAux ((x, T) :: ctx) body)) := by
-              simp [hShadow]
-        _ = dbSubst i (toDBAux ctx (Term.abs x T body)) := by
-              simp [toDBAux, dbSubst]
+    let i' := i.filter (fun p => !decide (p.fst = Term.var x T))
+    captureRisk x T body i' = true ->
+    let fresh := generateVariant (subst i' body) x T
+    toDBAux [(fresh, T)] (subst ((Term.var x T, Term.var fresh T) :: i') body)
+      = dbSubst i (toDBAux [(x, T)] body) := by
+  intro i x T body hOk i' hCap
+  let fresh := generateVariant (subst i' body) x T
+  sorry
 
 theorem subst_toDB_comm :
   ∀ (i : List (Term × Term)) (t : Term),
@@ -426,15 +292,18 @@ theorem subst_toDB_comm :
       have hToDBApp : (Term.app s t).toDB = DBTerm.app s.toDB t.toDB := by rfl
       calc
           (subst i (Term.app s t)).toDB
-        = DBTerm.app (subst i s).toDB (subst i t).toDB := by
-            exact hSubstApp
-      _ = DBTerm.app (dbSubst i s.toDB) (dbSubst i t.toDB) := by
-            simp [ihs i hOk, iht i hOk]
-      _ = dbSubst i (Term.app s t).toDB := by
-            rw [hToDBApp]
-            rfl
+        = DBTerm.app (subst i s).toDB (subst i t).toDB := by exact hSubstApp
+      _ = DBTerm.app (dbSubst i s.toDB) (dbSubst i t.toDB) := by aesop
+      _ = dbSubst i (Term.app s t).toDB := by aesop
   | abs x T body ih =>
-      apply subst_toDB_comm_abs_split <;> try assumption
-      apply subst_toDBAux_comm_ctx
-      · exact SubstOk.filter i (Term.var x T) hOk
-      · sorry
+      simp only [Term.toDB, subst, toDBAux, dbSubst]
+      set i' := i.filter (fun p ↦ !decide (p.fst = Term.var x T))
+      set fresh := generateVariant (subst i' body) x T
+      by_cases hCap : captureRisk x T body i' = true
+      · simp only [hCap, ↓reduceIte, toDBAux, DBTerm.abs.injEq, true_and]
+        apply subst_toDB_comm_abs_capture
+        · exact hOk
+        · simpa [i'] using hCap
+      · simp only [hCap, Bool.false_eq_true, ↓reduceIte, toDBAux, DBTerm.abs.injEq, true_and]
+        apply subst_toDB_comm_abs_no_capture
+        sorry
