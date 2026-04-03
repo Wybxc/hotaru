@@ -159,7 +159,33 @@ theorem SubstOk.filter : ∀ (i : List (Term × Term)) (bvar : Term),
 theorem subst_toDB_comm :
   ∀ (i : List (Term × Term)) (t : Term),
     SubstOk i → (subst i t).toDB = dbSubst i t.toDB := by
-  sorry
+  intro i t hOk
+  induction t generalizing i with
+  | var x T =>
+      cases hfind : i.find? (fun p => p.fst = Term.var x T) with
+      | none =>
+        simp [subst, dbSubst, Term.toDB, hfind]
+      | some p =>
+        rcases p with ⟨v, u⟩
+        simp [subst, dbSubst, Term.toDB, hfind]
+  | const c T =>
+      simp [subst, dbSubst, Term.toDB]
+  | app s t ihs iht =>
+      have hSubstApp : (subst i (Term.app s t)).toDB = DBTerm.app (subst i s).toDB (subst i t).toDB := by
+        rfl
+      have hToDBApp : (Term.app s t).toDB = DBTerm.app s.toDB t.toDB := by
+        rfl
+      calc
+        (subst i (Term.app s t)).toDB
+        = DBTerm.app (subst i s).toDB (subst i t).toDB := by
+                exact hSubstApp
+      _ = DBTerm.app (dbSubst i s.toDB) (dbSubst i t.toDB) := by
+          simp [ihs i hOk, iht i hOk]
+        _ = dbSubst i (Term.app s t).toDB := by
+              rw [hToDBApp]
+              rfl
+  | abs x T body ih =>
+        sorry
 
 -- /-!
 -- Proof roadmap: `subst` and `dbSubst` are consistent through `toDB`.
