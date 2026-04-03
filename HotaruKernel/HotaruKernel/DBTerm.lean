@@ -14,7 +14,7 @@ deriving Repr, DecidableEq
 
 /-- Convert a named term to de Bruijn form under a context. -/
 @[simp]
-private def toDBAux (ctx : List (String × HOLType)) : Term -> DBTerm
+def toDBAux (ctx : List (String × HOLType)) : Term -> DBTerm
 | .var x T =>
     match ctx.idxOf? (x, T) with
     | some n => DBTerm.bvar n

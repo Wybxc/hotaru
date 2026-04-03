@@ -156,6 +156,53 @@ theorem SubstOk.filter : ∀ (i : List (Term × Term)) (bvar : Term),
   intro v t hmem
   exact hOk v t (List.mem_filter.mp hmem).1
 
+/-- removing substitutions for the bound variable does not change dbSubst on a bound body. -/
+private theorem dbSubst_filter_shadowed_on_abs :
+  ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
+    dbSubst i (Term.abs x T body).toDB =
+      dbSubst (i.filter (fun p => !decide (p.fst = Term.var x T))) (Term.abs x T body).toDB := by
+  sorry
+
+/-- abstraction branch when no capture risk. -/
+private theorem subst_toDB_comm_abs_no_capture :
+  ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
+    SubstOk i ->
+    captureRisk x T body (i.filter (fun p => !decide (p.fst = Term.var x T))) = false ->
+    (subst i (Term.abs x T body)).toDB = dbSubst i (Term.abs x T body).toDB := by
+  sorry
+
+/-- capture branch gives alpha-equivalent abstractions after renaming. -/
+private theorem subst_abs_capture_alpha :
+  ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
+    SubstOk i ->
+    captureRisk x T body (i.filter (fun p => !decide (p.fst = Term.var x T))) = true ->
+    AlphaEqv
+      (subst i (Term.abs x T body))
+      (Term.abs
+        (generateVariant (subst (i.filter (fun p => !decide (p.fst = Term.var x T))) body) x T)
+        T
+        (subst
+          ((Term.var x T,
+            Term.var (generateVariant (subst (i.filter (fun p => !decide (p.fst = Term.var x T))) body) x T) T)
+            :: i.filter (fun p => !decide (p.fst = Term.var x T)))
+          body)) := by
+  sorry
+
+/-- use alpha_debrujin to close the capture branch. -/
+private theorem subst_toDB_comm_abs_capture :
+  ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
+    SubstOk i ->
+    captureRisk x T body (i.filter (fun p => !decide (p.fst = Term.var x T))) = true ->
+    (subst i (Term.abs x T body)).toDB = dbSubst i (Term.abs x T body).toDB := by
+  sorry
+
+/-- split abstraction branch by captureRisk. -/
+private theorem subst_toDB_comm_abs_split :
+  ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
+    SubstOk i ->
+    (subst i (Term.abs x T body)).toDB = dbSubst i (Term.abs x T body).toDB := by
+  sorry
+
 theorem subst_toDB_comm :
   ∀ (i : List (Term × Term)) (t : Term),
     SubstOk i → (subst i t).toDB = dbSubst i t.toDB := by
@@ -185,108 +232,4 @@ theorem subst_toDB_comm :
               rw [hToDBApp]
               rfl
   | abs x T body ih =>
-        sorry
-
--- /-!
--- Proof roadmap: `subst` and `dbSubst` are consistent through `toDB`.
-
--- The target commutation statement is written directly in monadic form:
--- - left pipeline: `do let t' ← subst i t; t'.toDB`
--- - right pipeline: `do let dt ← t.toDB; dbSubst i dt`
-
--- The final theorem `subst_dbSubst_toDB_consistent` is intended to be proved by structural
--- induction on `t`, with abstraction split into no-capture and capture-avoidance branches.
--- -/
-
--- /-- Useful bridge: alpha-equivalent terms have identical de Bruijn encodings. -/
--- theorem toDB_eq_of_alpha {t1 t2 : Term} (h : AlphaEqv t1 t2) : t1.toDB = t2.toDB := by
---     rcases alpha_debrujin t1 t2 h with ⟨dt, h1, h2⟩
---     exact h1.trans h2.symm
-
--- /-- Lemma 1 (variable case): commutation on free-variable leaves. -/
--- theorem subst_dbSubst_var_comm :
---         ∀ (i : List (Term × Term)) (x : String) (T : HOLType),
---             (do
---                 let t' ← subst? i (.var x T)
---                 t'.toDB) = dbSubst i (.fvar x T) := by
---     intro i x T
---     -- `subst` and `dbSubst` both consult the same lookup list; replacement terms are related by `toDB`.
---     sorry
-
--- /-- Lemma 2 (application case): commutation distributes over application. -/
--- theorem subst_dbSubst_app_comm :
---         ∀ (i : List (Term × Term)) (s t : Term),
---             (do
---                 let t' ← subst? i (Term.app s t)
---                 t'.toDB) =
---             (do
---                 let dt ← (Term.app s t).toDB
---                 dbSubst i dt) := by
---     intro i s t
---     -- Reduce to IH on `s` and `t` and reassemble with monadic congruence.
---     sorry
-
--- /-- Lemma 3 (abstraction, no capture): filtered substitution commutes under binders. -/
--- theorem subst_dbSubst_abs_no_capture :
---         ∀ (i : List (Term × Term)) (bvar body : Term),
---             captureRisk bvar body (i.filter (fun p => !decide (p.fst = bvar))) = false ->
---             (do
---                 let t' ← subst? i (Term.abs bvar body)
---                 t'.toDB) =
---             (do
---                 let dt ← (Term.abs bvar body).toDB
---                 dbSubst i dt) := by
---     intro i bvar body hNoCap
---     -- After dropping shadowed substitution entries, the binder case is an IH application on `body`.
---     sorry
-
--- /-- Turn an existential common `some` witness into option equality. -/
--- theorem option_eq_of_exists_common :
---                 ∀ {a b : Option DBTerm},
---                         (∃ dt, a = some dt ∧ b = some dt) -> a = b := by
---         intro a b h
---         rcases h with ⟨dt, ha, hb⟩
---         simpa [ha, hb]
-
--- /-- Lemma 4 (abstraction, capture branch): produce a common DB witness directly. -/
--- theorem subst_dbSubst_abs_capture_exists :
---                 ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
---                         captureRisk (Term.var x T) body
---                             (i.filter (fun p => !decide (p.fst = Term.var x T))) = true ->
---                         ∃ dt,
---                             (do
---                                 let t' ← subst? i (Term.abs (Term.var x T) body)
---                                 t'.toDB) = some dt ∧
---                             (do
---                                 let dta ← (Term.abs (Term.var x T) body).toDB
---                                 dbSubst i dta) = some dt := by
---         intro i x T body hCap
---         -- Key idea: avoid the invalid alpha-bridge. Prove both pipelines compute the same DB term
---         -- in capture mode, then conclude by `option_eq_of_exists_common` in the main theorem.
---         sorry
-
--- /-- Main theorem: `subst` and `dbSubst` are consistent under `toDB`. -/
--- theorem subst_dbSubst_toDB_consistent :
---         ∀ (i : List (Term × Term)) (t : Term),
---             (do
---                 let t' ← subst? i t
---                 t'.toDB) =
---             (do
---                 let dt ← t.toDB
---                 dbSubst i dt) := by
---     intro i t
---     induction t generalizing i with
---     | var x T =>
---             simpa using subst_dbSubst_var_comm i x T
---     | const c T =>
---           sorry
---     | app s t ihS ihT =>
---             -- Use `subst_dbSubst_app_comm` (or directly IH + simp) to combine both subterms.
---             simpa using subst_dbSubst_app_comm i s t
---     | abs bvar body ih =>
---             -- Split on capture risk:
---             -- 1) no-capture: apply `subst_dbSubst_abs_no_capture`;
---             -- 2) capture and binder `.var x T`: use `subst_dbSubst_abs_capture_exists`
---             --    then close with `option_eq_of_exists_common`.
---             -- 3) capture and non-variable binder: both sides evaluate to `none`.
---             sorry
+      sorry
