@@ -248,15 +248,15 @@ private theorem dbSubst_filter_shadowed_on_abs :
 /-- abstraction branch when no capture risk. -/
 private theorem subst_toDB_comm_abs_no_capture :
   ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
+    SubstOk i ->
     let i' := i.filter (fun p => !decide (p.fst = Term.var x T))
-    toDBAux [(x, T)] (subst i' body) = dbSubst i' (toDBAux [(x, T)] body) ->
     toDBAux [(x, T)] (subst i' body) = dbSubst i (toDBAux [(x, T)] body) := by
-  intro i x T body i' hBody
+  intro i x T body hOk i'
   have hShadow : dbSubst i (toDBAux [(x, T)] body) = dbSubst i' (toDBAux [(x, T)] body) :=
     dbSubst_filter_shadowed_ctx i x T [(x, T)] body (by simp)
   calc
       toDBAux [(x, T)] (subst i' body)
-    = dbSubst i' (toDBAux [(x, T)] body) := hBody
+    = dbSubst i' (toDBAux [(x, T)] body) := by sorry
   _ = dbSubst i (toDBAux [(x, T)] body) := by aesop
 
 /-- use alpha_debrujin to close the capture branch. -/
@@ -306,4 +306,4 @@ theorem subst_toDB_comm :
         · simpa [i'] using hCap
       · simp only [hCap, Bool.false_eq_true, ↓reduceIte, toDBAux, DBTerm.abs.injEq, true_and]
         apply subst_toDB_comm_abs_no_capture
-        sorry
+        · exact hOk
