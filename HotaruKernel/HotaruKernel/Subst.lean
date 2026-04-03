@@ -285,10 +285,10 @@ private theorem subst_toDB_comm_abs_no_capture :
   have hSubstNoCap : subst i (Term.abs x T body) = Term.abs x T (subst i' body) := by
     simp [subst, hNoCap, i']
   calc
-    (subst i (Term.abs x T body)).toDB
-      = (Term.abs x T (subst i' body)).toDB := by simp [hSubstNoCap]
-    _ = dbSubst i' (Term.abs x T body).toDB := hAbsBound
-    _ = dbSubst i (Term.abs x T body).toDB := by simpa [i'] using hShadow.symm
+      (subst i (Term.abs x T body)).toDB
+    = (Term.abs x T (subst i' body)).toDB := by simp [hSubstNoCap]
+  _ = dbSubst i' (Term.abs x T body).toDB := hAbsBound
+  _ = dbSubst i (Term.abs x T body).toDB := by simpa [i'] using hShadow.symm
 
 /-- use alpha_debrujin to close the capture branch. -/
 private theorem subst_toDB_comm_abs_capture :
@@ -344,7 +344,8 @@ private def CtxCompatible :
     else
       CtxCompatible ((x, T) :: ctx) i' body
 
-/-- Generalized commutation under an arbitrary de Bruijn context, provided context variables are not substituted. -/
+/-- Generalized commutation under an arbitrary de Bruijn context,
+    provided context variables are not substituted. -/
 private theorem subst_toDBAux_comm_ctx :
   ∀ (ctx : List (String × HOLType)) (i : List (Term × Term)) (t : Term),
     SubstOk i -> CtxCompatible ctx i t ->
@@ -396,15 +397,15 @@ private theorem subst_toDBAux_comm_ctx :
           simpa [i'] using
             (dbSubst_filter_shadowed_ctx i x T ((x, T) :: ctx) body (by simp)).symm
         calc
-              toDBAux ctx (subst i (Term.abs x T body))
-            = DBTerm.abs T (toDBAux ((x, T) :: ctx) (subst i' body)) := by
-                simp [subst, toDBAux, i', hCapFalse]
-          _ = DBTerm.abs T (dbSubst i' (toDBAux ((x, T) :: ctx) body)) := by
-                simp [hBody]
-          _ = DBTerm.abs T (dbSubst i (toDBAux ((x, T) :: ctx) body)) := by
-                simp [hShadow]
-          _ = dbSubst i (toDBAux ctx (Term.abs x T body)) := by
-                simp [toDBAux, dbSubst]
+            toDBAux ctx (subst i (Term.abs x T body))
+          = DBTerm.abs T (toDBAux ((x, T) :: ctx) (subst i' body)) := by
+              simp [subst, toDBAux, i', hCapFalse]
+        _ = DBTerm.abs T (dbSubst i' (toDBAux ((x, T) :: ctx) body)) := by
+              simp [hBody]
+        _ = DBTerm.abs T (dbSubst i (toDBAux ((x, T) :: ctx) body)) := by
+              simp [hShadow]
+        _ = dbSubst i (toDBAux ctx (Term.abs x T body)) := by
+              simp [toDBAux, dbSubst]
 
 theorem subst_toDB_comm :
   ∀ (i : List (Term × Term)) (t : Term),
