@@ -243,6 +243,7 @@ private theorem subst_toDBAux_comm :
   ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
     SubstOk i ->
     captureRisk x T body i = false ->
+    i.find? (fun p => p.fst = Term.var x T) = none ->
     toDBAux [(x, T)] (subst i body) = dbSubst i (toDBAux [(x, T)] body) := by
   sorry
 
@@ -262,7 +263,8 @@ private theorem subst_toDB_comm_abs_no_capture :
         apply subst_toDBAux_comm
         · apply SubstOk.filter
           exact hOk
-        · simpa using hNoCap
+        · aesop
+        · aesop
   _ = dbSubst i (toDBAux [(x, T)] body) := by aesop
 
 /-- use alpha_debrujin to close the capture branch. -/
