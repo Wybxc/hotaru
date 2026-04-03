@@ -236,20 +236,20 @@ private theorem IsAlphaVars_of_DBCtxRel_idxOf_eq :
       intro hIdx1 hIdx2
       cases n with
       | zero =>
-          rcases (List.idxOf?_eq_some_iff (l := (x, TL) :: env1) (a := (x1, T1)) (i := 0)).1 hIdx1 with
-            ⟨_, hGet1, _⟩
-          rcases (List.idxOf?_eq_some_iff (l := (y, TR) :: env2) (a := (x2, T2)) (i := 0)).1 hIdx2 with
-            ⟨_, hGet2, _⟩
-          simp at hGet1 hGet2
+          have hGet1 : ((x, TL) :: env1)[0] = (x1, T1) := by
+            simpa [List.idxOf?_cons, beq_eq_false_iff_ne] using hIdx1
+          have hGet2 : ((y, TR) :: env2)[0] = (x2, T2) := by
+            simpa [List.idxOf?_cons, beq_eq_false_iff_ne] using hIdx2
+          simp only [List.getElem_cons_zero, Prod.mk.injEq] at hGet1 hGet2
           rcases hGet1 with ⟨hx1, hT1⟩
           rcases hGet2 with ⟨hx2, hT2⟩
           subst hx1 hT1 hx2 hT2
           simp [IsAlphaVars]
       | succ n =>
-          rcases (List.idxOf?_eq_some_iff (l := (x, TL) :: env1) (a := (x1, T1)) (i := n.succ)).1 hIdx1 with
-            ⟨_, _, hFirst1⟩
-          rcases (List.idxOf?_eq_some_iff (l := (y, TR) :: env2) (a := (x2, T2)) (i := n.succ)).1 hIdx2 with
-            ⟨_, _, hFirst2⟩
+          rcases (List.idxOf?_eq_some_iff
+            (l := (x, TL) :: env1) (a := (x1, T1)) (i := n.succ)).1 hIdx1 with ⟨_, _, hFirst1⟩
+          rcases (List.idxOf?_eq_some_iff
+            (l := (y, TR) :: env2) (a := (x2, T2)) (i := n.succ)).1 hIdx2 with ⟨_, _, hFirst2⟩
           have hneq1 : (Term.var x1 T1) ≠ (Term.var x TL) := by
             intro hEq
             have hPairEq : (x, TL) = (x1, T1) := by aesop

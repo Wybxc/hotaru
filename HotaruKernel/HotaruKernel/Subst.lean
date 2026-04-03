@@ -35,8 +35,9 @@ theorem varNotFreeOfNameLengthGt :
     induction t with
     | var y Ty =>
         intro x T hfree
-        simp [Term.IsFreeVarIn, Term.isFreeVarIn] at hfree
-        rcases hfree with ⟨hx, hT⟩
+        have ⟨hx, hT⟩ : x = y ∧ T = Ty := by
+          unfold Term.IsFreeVarIn Term.isFreeVarIn at hfree
+          aesop
         subst hx hT
         simp [Term.maxVarNameLen]
     | const c Ty =>
@@ -44,14 +45,16 @@ theorem varNotFreeOfNameLengthGt :
         simp [Term.IsFreeVarIn, Term.isFreeVarIn] at hfree
     | app s t ihs iht =>
         intro x T hfree
-        simp [Term.IsFreeVarIn, Term.isFreeVarIn] at hfree
+        unfold Term.IsFreeVarIn Term.isFreeVarIn at hfree
+        simp only [Bool.or_eq_true] at hfree
         rcases hfree with hs | ht
         · exact Nat.le_trans (ihs x T hs) (Nat.le_max_left s.maxVarNameLen t.maxVarNameLen)
         · exact Nat.le_trans (iht x T ht) (Nat.le_max_right s.maxVarNameLen t.maxVarNameLen)
     | abs n Ty t ih =>
         intro x T hfree
-        simp [Term.IsFreeVarIn, Term.isFreeVarIn] at hfree
-        rcases hfree with ⟨_, ht⟩
+        have ht : (Term.var x T).isFreeVarIn t = true := by
+          unfold Term.IsFreeVarIn Term.isFreeVarIn at hfree
+          aesop
         exact Nat.le_trans (ih x T ht) (Nat.le_max_right (String.length n) t.maxVarNameLen)
   intro t x T hlen hfree
   have hle : String.length x ≤ t.maxVarNameLen := freeVarNameLen_le t x T hfree
@@ -72,7 +75,8 @@ instance (term : Term) (baseName : String) (ty : HOLType) (k : Nat) :
 
 /-- Scan suffix lengths from `k` down to `0`, keeping the smallest fresh one found. -/
 private def chooseMinFreshSuffix (term : Term) (baseName : String) (ty : HOLType) :
-    (k best : Nat) → variantFreshAt term baseName ty best → {n : Nat // variantFreshAt term baseName ty n}
+    (k best : Nat) → variantFreshAt term baseName ty best →
+      {n : Nat // variantFreshAt term baseName ty n}
 | 0, best, hbest =>
     if h0 : variantFreshAt term baseName ty 0 then ⟨0, h0⟩ else ⟨best, hbest⟩
 | k + 1, best, hbest =>
@@ -84,15 +88,15 @@ private def chooseMinFreshSuffix (term : Term) (baseName : String) (ty : HOLType
     chooseMinFreshSuffix term baseName ty k next.1 next.2
 
 /-- Generate a variable variant with the shortest suffix that avoids capture. -/
-def generateVariant (term : Term) (baseName : String) (ty : HOLType) : String :=
-  let bound := term.maxVarNameLen + 1
-  let hbound : variantFreshAt term baseName ty bound := by
+def generateVariant (t : Term) (baseName : String) (ty : HOLType) : String :=
+  let bound := t.maxVarNameLen + 1
+  let hbound : variantFreshAt t baseName ty bound := by
     apply varNotFreeOfNameLengthGt
-    have h1 : term.maxVarNameLen < term.maxVarNameLen + 1 := Nat.lt_succ_self _
-    have h2 : term.maxVarNameLen + 1 ≤ String.length (variantCandidate baseName bound) := by
-      simp [bound, variantCandidate, Nat.le_add_left (term.maxVarNameLen + 1) (String.length baseName)]
+    have h1 : t.maxVarNameLen < t.maxVarNameLen + 1 := Nat.lt_succ_self _
+    have h2 : t.maxVarNameLen + 1 ≤ String.length (variantCandidate baseName bound) := by
+      simp [bound, variantCandidate, Nat.le_add_left (t.maxVarNameLen + 1) (String.length baseName)]
     exact Nat.lt_of_lt_of_le h1 h2
-  let best := chooseMinFreshSuffix term baseName ty bound bound hbound
+  let best := chooseMinFreshSuffix t baseName ty bound bound hbound
   variantCandidate baseName best.1
 
 theorem VariantFresh : ∀ t x T, ¬(Term.var (generateVariant t x T) T).IsFreeVarIn t
@@ -189,7 +193,8 @@ theorem SubstOk.filter : ∀ (i : List (Term × Term)) (bvar : Term),
 private theorem dbSubst_filter_shadowed_predEq :
   ∀ (x y : String) (T U : HOLType) (a : Term × Term),
     Term.var y U ≠ Term.var x T ->
-    (!decide (a.fst = Term.var x T) && decide (a.fst = Term.var y U)) = decide (a.fst = Term.var y U) := by
+    (!decide (a.fst = Term.var x T) && decide (a.fst = Term.var y U)) = decide (a.fst = Term.var y U)
+    := by
   intro x y T U a hneq
   by_cases hy : a.fst = Term.var y U
   · have hxFalse : decide (a.fst = Term.var x T) = false := by
@@ -214,7 +219,8 @@ private theorem dbSubst_filter_shadowed_findEq :
 private theorem dbSubst_filter_shadowed_lookup :
   ∀ (l : List (Term × Term)) (x y : String) (T U : HOLType),
     Term.var y U ≠ Term.var x T ->
-    dbSubst l (DBTerm.fvar y U) = dbSubst (l.filter (fun p => !decide (p.fst = Term.var x T))) (DBTerm.fvar y U) := by
+    dbSubst l (DBTerm.fvar y U) =
+      dbSubst (l.filter (fun p => !decide (p.fst = Term.var x T))) (DBTerm.fvar y U) := by
   intro l x y T U hneq
   simp [dbSubst, List.find?_filter, dbSubst_filter_shadowed_predEq x y T U _ hneq]
 
@@ -284,7 +290,7 @@ private theorem subst_abs_capture_alpha :
           body)) := by
   sorry
 
- /-- use alpha_debrujin to close the capture branch. -/
+/-- use alpha_debrujin to close the capture branch. -/
 private theorem subst_toDB_comm_abs_capture :
   ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
     SubstOk i ->
@@ -309,7 +315,8 @@ private theorem subst_toDB_comm_abs_split :
   intro i x T body hOk
   by_cases hCap : captureRisk x T body (i.filter (fun p => !decide (p.fst = Term.var x T))) = true
   · exact subst_toDB_comm_abs_capture i x T body hOk hCap
-  · have hNoCap : captureRisk x T body (i.filter (fun p => !decide (p.fst = Term.var x T))) = false := by
+  · have hNoCap : captureRisk x T body (i.filter (fun p => !decide (p.fst = Term.var x T))) = false
+        := by
       cases hVal : captureRisk x T body (i.filter (fun p => !decide (p.fst = Term.var x T))) <;>
         simp [hVal] at hCap ⊢
     exact subst_toDB_comm_abs_no_capture i x T body hOk hNoCap
@@ -329,10 +336,9 @@ theorem subst_toDB_comm :
   | const c T =>
       simp [subst, dbSubst, Term.toDB]
   | app s t ihs iht =>
-      have hSubstApp : (subst i (Term.app s t)).toDB = DBTerm.app (subst i s).toDB (subst i t).toDB := by
-        rfl
-      have hToDBApp : (Term.app s t).toDB = DBTerm.app s.toDB t.toDB := by
-        rfl
+      have hSubstApp : (subst i (Term.app s t)).toDB = DBTerm.app (subst i s).toDB (subst i t).toDB
+        := by rfl
+      have hToDBApp : (Term.app s t).toDB = DBTerm.app s.toDB t.toDB := by rfl
       calc
         (subst i (Term.app s t)).toDB
         = DBTerm.app (subst i s).toDB (subst i t).toDB := by

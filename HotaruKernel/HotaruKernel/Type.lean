@@ -2,7 +2,8 @@ import Mathlib.Data.String.Basic
 
 mutual
 /-- HOL types.
-    The `app` variant is defined with a mutual inductive `HOLTypeList` to avoid issues with nested inductives. -/
+    The `app` variant is defined with a mutual inductive `HOLTypeList` to avoid
+    issues with nested inductives. -/
 inductive HOLType
 | var : String -> HOLType
 | app : String -> HOLTypeList -> HOLType
@@ -33,7 +34,8 @@ abbrev HOLType.bool : HOLType := .var "bool"
 abbrev HOLType.fun (x y : HOLType) : HOLType := .app "fun" (.fromList [x, y])
 
 mutual
-/-- Type substitution: given an instaniation `i` mapping type variables to types, apply it to a type. -/
+/-- Type substitution: given an instaniation `i` mapping type variables to types,
+    apply it to a type. -/
 def typeSubst (i : List (String × HOLType)) : HOLType → HOLType
 | .var x => match i.find? (fun (y, _) => y = x) with
     | some (_, T) => T

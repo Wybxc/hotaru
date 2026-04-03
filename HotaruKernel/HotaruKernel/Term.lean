@@ -50,14 +50,14 @@ theorem welltyped_typeof? : ∀ (t : Term) (T : HOLType), Term.HasType t T → t
 theorem typeof?_welltyped : ∀ (t : Term) (T : HOLType), typeof? t = some T → t.HasType T
     := by
   intros t T h
-  induction t generalizing T with try simp [typeof?] at h; subst h
+  induction t generalizing T with try simp only [typeof?, Option.some.injEq] at h; subst h
   | var x T' => apply Term.HasType.var
   | const c T' => apply Term.HasType.const
   | app s t ih_s ih_t =>
       unfold typeof? at h
       split at h
       · rename_i dT rT tT heq_s heq_t
-        split at h <;> simp at h
+        split at h <;> simp only [reduceCtorEq, Option.some.injEq] at h
         subst h
         apply Term.HasType.app
         · exact ih_s (.fun dT rT) heq_s
@@ -69,7 +69,7 @@ theorem typeof?_welltyped : ∀ (t : Term) (T : HOLType), typeof? t = some T →
       unfold typeof? at h
       split at h
       · rename_i rT hBody
-        simp at h
+        simp only [Option.some.injEq] at h
         subst h
         exact Term.HasType.abs n dT rT t (ih_t rT hBody)
       · simp at h

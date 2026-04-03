@@ -19,7 +19,8 @@ inductive IsAlphaTerms : List (Term × Term) -> Term -> Term -> Prop
 | app : ∀ (bv : List (Term × Term)) (s1 s2 t1 t2 : Term),
           IsAlphaTerms bv s1 s2 → IsAlphaTerms bv t1 t2 → IsAlphaTerms bv (.app s1 t1) (.app s2 t2)
 | abs : ∀ (bv : List (Term × Term)) (n1 n2 : String) (T : HOLType) (t1 t2 : Term),
-          IsAlphaTerms (((.var n1 T), (.var n2 T)) :: bv) t1 t2 → IsAlphaTerms bv (.abs n1 T t1) (.abs n2 T t2)
+          IsAlphaTerms (((.var n1 T), (.var n2 T)) :: bv) t1 t2 →
+          IsAlphaTerms bv (.abs n1 T t1) (.abs n2 T t2)
 
 /-- Predicate for alpha-equivalence of terms. -/
 def AlphaEqv (t1 t2 : Term) : Prop :=
@@ -30,7 +31,8 @@ def IsTrivialRenaming (bv : List (Term × Term)) : Prop :=
   | [] => true
   | (b1, b2) :: bvs => b1 = b2 ∧ IsTrivialRenaming bvs
 
-theorem IsAlphaVars_refl : ∀ (bv : List (Term × Term)) (v : Term), IsTrivialRenaming bv → IsAlphaVars bv v v
+theorem IsAlphaVars_refl : ∀ (bv : List (Term × Term)) (v : Term),
+  IsTrivialRenaming bv → IsAlphaVars bv v v
     := by
   intro bv v h
   induction bv with
@@ -38,14 +40,15 @@ theorem IsAlphaVars_refl : ∀ (bv : List (Term × Term)) (v : Term), IsTrivialR
       simp [IsAlphaVars]
   | cons b bvs ih =>
       rcases b with ⟨b1, b2⟩
-      simp [IsTrivialRenaming] at h
+      simp only [IsTrivialRenaming] at h
       rcases h with ⟨hb, htriv⟩
       subst hb
       by_cases hv : v = b1
       · exact Or.inl ⟨hv, hv⟩
       · exact Or.inr ⟨hv, hv, ih htriv⟩
 
-theorem IsAlphaTerms_refl : ∀ (bv : List (Term × Term)) (t : Term), IsTrivialRenaming bv → WellTyped t → IsAlphaTerms bv t t
+theorem IsAlphaTerms_refl : ∀ (bv : List (Term × Term)) (t : Term),
+  IsTrivialRenaming bv → WellTyped t → IsAlphaTerms bv t t
     := by
   intro bv t
   induction t generalizing bv with
@@ -89,7 +92,8 @@ theorem IsAlphaTerms_symm :
   intro bv t1 t2 h
   induction h with
   | var bv x1 x2 T1 T2 hv =>
-      exact IsAlphaTerms.var (swap_renaming bv) x2 x1 T2 T1 (IsAlphaVars_symm bv (.var x1 T1) (.var x2 T2) hv)
+      apply IsAlphaTerms.var (swap_renaming bv) x2 x1 T2 T1
+      exact IsAlphaVars_symm bv (Term.var x1 T1) (Term.var x2 T2) hv
   | const bv c T =>
       exact IsAlphaTerms.const (swap_renaming bv) c T
   | app bv s1 s2 t1 t2 hs ht ihs iht =>
