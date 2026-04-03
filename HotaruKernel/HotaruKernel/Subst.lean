@@ -176,10 +176,7 @@ private theorem dbSubst_filter_shadowed_on_abs :
       · have hxFalse : decide (a.fst = Term.var x T) = false := by
           apply (decide_eq_false_iff_not).2
           intro hx
-          have hEq : Term.var y U = Term.var x T := by
-            calc
-              Term.var y U = a.fst := by simp [hy]
-              _ = Term.var x T := hx
+          have hEq : Term.var y U = Term.var x T := by aesop
           exact hneq hEq
         have hdy : decide (a.fst = Term.var y U) = true := (decide_eq_true_iff).2 hy
         simp [hdy, hxFalse]
@@ -205,13 +202,7 @@ private theorem dbSubst_filter_shadowed_on_abs :
         | none =>
             have hNotMem : (y, U) ∉ ctx :=
               (List.idxOf?_eq_none_iff (l := ctx) (a := (y, U))).1 hidx
-            have hneq : Term.var y U ≠ Term.var x T := by
-              intro hEq
-              have hPair : (y, U) = (x, T) := by
-                cases hEq
-                rfl
-              apply hNotMem
-              simpa [hPair] using hmem
+            have hneq : Term.var y U ≠ Term.var x T := by aesop
             simpa [toDBAux, dbSubst, i', hidx] using hLookup i y U hneq
     | const c U =>
         simp [toDBAux, dbSubst]
