@@ -192,7 +192,7 @@ noncomputable instance : DecidableRel AlphaEqv := by
   classical
   infer_instance
 
-instance : Setoid { t : Term // WellTyped t } where
+instance : Setoid WellTypedTerm where
   r x y := AlphaEqv x.1 y.1
   iseqv := by
     refine ⟨?refl, ?symm, ?trans⟩
@@ -230,7 +230,35 @@ private def toDBAux (ctx : List (String × HOLType)) : Term -> Option DBTerm
 | .abs _ _ => none
 
 /-- Convert a named term to de Bruijn form. -/
-def Term.toDB (t : Term) : Option DBTerm := toDBAux [] t
+def Term.toDB? (t : Term) : Option DBTerm := toDBAux [] t
+
+def WellTypedTerm.toDB (t : WellTypedTerm) : DBTerm :=
+  Option.get (t.1.toDB?) <| by
+  have hSomeCtx :
+    ∀ (ctx : List (String × HOLType)) (tm : Term) (T : HOLType),
+      tm.HasType T → ∃ dt, toDBAux ctx tm = some dt := by
+    intro ctx tm T hHasType
+    induction hHasType generalizing ctx with
+    | var x T =>
+      cases hidx : ctx.idxOf? (x, T) with
+      | none =>
+        exact ⟨DBTerm.fvar x T, by simp [toDBAux, hidx]⟩
+      | some n =>
+        exact ⟨DBTerm.bvar n, by simp [toDBAux, hidx]⟩
+    | const c T =>
+      exact ⟨DBTerm.const c T, by simp [toDBAux]⟩
+    | app s u dT rT hs ht ihs iht =>
+      rcases ihs ctx with ⟨ds, hds⟩
+      rcases iht ctx with ⟨du, hdu⟩
+      exact ⟨DBTerm.app ds du, by simp [toDBAux, hds, hdu]⟩
+    | abs n dT rT body hBody ih =>
+      rcases ih ((n, dT) :: ctx) with ⟨db, hdb⟩
+      exact ⟨DBTerm.abs dT db, by simp [toDBAux, hdb]⟩
+  rcases t with ⟨tm, hwt⟩
+  rcases hwt with ⟨T, hHasType⟩
+  rcases hSomeCtx [] tm T hHasType with ⟨dt, hdt⟩
+  have hSome : tm.toDB? = some dt := by simpa [Term.toDB?] using hdt
+  simp [hSome]
 
 theorem toDB_bvar : ∀ (ctx : List (String × HOLType)) (t : Term) (n : Nat),
     toDBAux ctx t = some (DBTerm.bvar n) →
@@ -566,16 +594,26 @@ private theorem IsAlphaTerms_of_toDBAux_eq :
       apply IsAlphaTerms.abs <;> aesop
 
 theorem alpha_debrujin :
-  ∀ t1 t2 : Term,
-    AlphaEqv t1 t2 → ∃ dt, t1.toDB = some dt ∧ t2.toDB = some dt := by
+  ∀ t1 t2 : WellTypedTerm,
+    AlphaEqv t1 t2 → t1.toDB = t2.toDB := by
   intros t1 t2 hAlpha
-  rcases toDBAux_eq_of_IsAlphaTerms [] [] [] t1 t2 DBCtxRel.nil hAlpha with ⟨dt, h1, h2⟩
-  exact ⟨dt, by simpa [Term.toDB] using h1, by simpa [Term.toDB] using h2⟩
+  rcases toDBAux_eq_of_IsAlphaTerms [] [] [] t1.1 t2.1 DBCtxRel.nil hAlpha with ⟨dt, h1, h2⟩
+  have h1' : t1.1.toDB? = some dt := by simpa [Term.toDB?] using h1
+  have h2' : t2.1.toDB? = some dt := by simpa [Term.toDB?] using h2
+  have ht1 : t1.toDB = dt := by simp [WellTypedTerm.toDB, h1']
+  have ht2 : t2.toDB = dt := by simp [WellTypedTerm.toDB, h2']
+  exact ht1.trans ht2.symm
 
 theorem debrujin_alpha :
-  ∀ (t1 t2 : Term) (dt : DBTerm),
-    t1.toDB = some dt → t2.toDB = some dt → AlphaEqv t1 t2 := by
-  intro t1 t2 dt h1 h2
-  exact IsAlphaTerms_of_toDBAux_eq [] [] [] t1 t2 dt DBCtxRel.nil
-    (by simpa [Term.toDB] using h1)
-    (by simpa [Term.toDB] using h2)
+  ∀ (t1 t2 : WellTypedTerm),
+    t1.toDB = t2.toDB → AlphaEqv t1 t2 := by
+  intro t1 t2 hEq
+  have h1 : t1.1.toDB? = some t1.toDB := by
+    simp [WellTypedTerm.toDB]
+  have h2 : t2.1.toDB? = some t1.toDB := by
+    calc
+      t2.1.toDB? = some t2.toDB := by simp [WellTypedTerm.toDB]
+      _ = some t1.toDB := by simp [hEq]
+  exact IsAlphaTerms_of_toDBAux_eq [] [] [] t1.1 t2.1 t1.toDB DBCtxRel.nil
+    (by simpa [Term.toDB?] using h1)
+    (by simpa [Term.toDB?] using h2)
