@@ -192,10 +192,10 @@ theorem SubstOk.filter : ∀ (i : List (Term × Term)) (f : Term × Term → Boo
   exact hOk v t (List.mem_filter.mp hmem).1
 
 private theorem dbSubst_filter_shadowed_lookup :
-  ∀ (l : List (Term × Term)) (x y : String) (T U : HOLType),
+  ∀ (i : List (Term × Term)) (x y : String) (T U : HOLType),
     Term.var y U ≠ Term.var x T ->
-    dbSubst l (DBTerm.fvar y U) =
-      dbSubst (l.filter (fun p => !decide (p.fst = Term.var x T))) (DBTerm.fvar y U) := by
+    let i' := i.filter (fun p => !decide (p.fst = Term.var x T))
+    dbSubst i (DBTerm.fvar y U) = dbSubst i' (DBTerm.fvar y U) := by
   intro l x y T U hneq
   have hPredEq :
     ∀ t, (!decide (t = Term.var x T) && decide (t = Term.var y U)) = decide (t = Term.var y U) := by
@@ -215,8 +215,8 @@ private theorem dbSubst_filter_shadowed_ctx :
   ∀ (i : List (Term × Term)) (x : String) (T : HOLType)
     (ctx : List (String × HOLType)) (t : Term),
     (x, T) ∈ ctx ->
-    dbSubst i (toDBAux ctx t) =
-      dbSubst (i.filter (fun p => !decide (p.fst = Term.var x T))) (toDBAux ctx t) := by
+    let i' := i.filter (fun p => !decide (p.fst = Term.var x T))
+    dbSubst i (toDBAux ctx t) = dbSubst i' (toDBAux ctx t) := by
   intro i x T ctx t hmem
   induction t generalizing ctx with
   | var y U =>
@@ -238,18 +238,6 @@ private theorem dbSubst_filter_shadowed_ctx :
       have hmem' : (x, T) ∈ ((y, U) :: ctx) := List.mem_cons_of_mem _ hmem
       have ht := ih ((y, U) :: ctx) hmem'
       simpa [toDBAux, dbSubst] using ht
-
-/-- removing substitutions for the bound variable does not change dbSubst on a bound body. -/
-private theorem dbSubst_filter_shadowed_on_abs :
-  ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
-    dbSubst i (Term.abs x T body).toDB =
-      dbSubst (i.filter (fun p => !decide (p.fst = Term.var x T))) (Term.abs x T body).toDB := by
-  intro i x T body
-  have hBody :
-      dbSubst i (toDBAux [(x, T)] body) =
-        dbSubst (i.filter (fun p => !decide (p.fst = Term.var x T))) (toDBAux [(x, T)] body) :=
-    dbSubst_filter_shadowed_ctx i x T [(x, T)] body (by simp)
-  simpa [Term.toDB, dbSubst] using congrArg (DBTerm.abs T) hBody
 
 /-- abstraction branch when no capture risk. -/
 private theorem subst_toDB_comm_abs_no_capture :
