@@ -201,7 +201,13 @@ private theorem subst_toDB_comm_abs_split :
   ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
     SubstOk i ->
     (subst i (Term.abs x T body)).toDB = dbSubst i (Term.abs x T body).toDB := by
-  sorry
+  intro i x T body hOk
+  by_cases hCap : captureRisk x T body (i.filter (fun p => !decide (p.fst = Term.var x T))) = true
+  · exact subst_toDB_comm_abs_capture i x T body hOk hCap
+  · have hNoCap : captureRisk x T body (i.filter (fun p => !decide (p.fst = Term.var x T))) = false := by
+      cases hVal : captureRisk x T body (i.filter (fun p => !decide (p.fst = Term.var x T))) <;>
+        simp [hVal] at hCap ⊢
+    exact subst_toDB_comm_abs_no_capture i x T body hOk hNoCap
 
 theorem subst_toDB_comm :
   ∀ (i : List (Term × Term)) (t : Term),
@@ -232,4 +238,5 @@ theorem subst_toDB_comm :
               rw [hToDBApp]
               rfl
   | abs x T body ih =>
-      sorry
+      apply subst_toDB_comm_abs_split
+      trivial
