@@ -240,11 +240,12 @@ private theorem dbSubst_filter_shadowed_ctx :
       simpa [toDBAux, dbSubst] using ht
 
 private theorem subst_toDBAux_comm :
-  ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
+  ∀ (ctx : List (String × HOLType)) (i : List (Term × Term)) (body : Term),
     SubstOk i ->
-    captureRisk x T body i = false ->
-    i.find? (fun p => p.fst = Term.var x T) = none ->
-    toDBAux [(x, T)] (subst i body) = dbSubst i (toDBAux [(x, T)] body) := by
+    (∀ (x : String) (T : HOLType), (x, T) ∈ ctx →
+      captureRisk x T body i = false ∧ i.find? (fun p => p.fst = Term.var x T) = none) →
+    toDBAux ctx (subst i body) = dbSubst i (toDBAux ctx body) := by
+  intro ctx i body hOk hNoCap
   sorry
 
 /-- abstraction branch when no capture risk. -/
@@ -263,7 +264,6 @@ private theorem subst_toDB_comm_abs_no_capture :
         apply subst_toDBAux_comm
         · apply SubstOk.filter
           exact hOk
-        · aesop
         · aesop
   _ = dbSubst i (toDBAux [(x, T)] body) := by aesop
 
