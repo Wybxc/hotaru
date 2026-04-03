@@ -330,32 +330,15 @@ private theorem subst_toDB_comm_abs_split :
         simp [hVal] at hCap ⊢
     exact subst_toDB_comm_abs_no_capture i x T body hOk hBodyBound hNoCap
 
-private def CtxCompatible :
-    List (String × HOLType) -> List (Term × Term) -> Term -> Prop
-| ctx, i, .var x T =>
-    match ctx.idxOf? (x, T) with
-    | some _ => List.find? (fun p => p.fst = Term.var x T) i = none
-    | none =>
-        match i.find? (fun p => p.fst = Term.var x T) with
-        | some (_, u) => toDBAux ctx u = u.toDB
-        | none => True
-| _, _, .const _ _ => True
-| ctx, i, .app s t => CtxCompatible ctx i s ∧ CtxCompatible ctx i t
-| ctx, i, .abs x T body =>
-    let i' := i.filter (fun p => !decide (p.fst = Term.var x T))
-    if captureRisk x T body i' then
-      let fresh := generateVariant (subst i' body) x T
-      toDBAux ((fresh, T) :: ctx)
-          (subst ((Term.var x T, Term.var fresh T) :: i') body)
-        = dbSubst i (toDBAux ((x, T) :: ctx) body)
-    else
-      CtxCompatible ((x, T) :: ctx) i' body
+private def CtxCompatible (ctx : List (String × HOLType)) (i : List (Term × Term)) : Prop :=
+  ∀ x T s t, (x, T) ∈ ctx → (s, t) ∈ i →
+    ¬(Term.var x T).IsFreeVarIn s ∧ ¬(Term.var x T).IsFreeVarIn t
 
 /-- Generalized commutation under an arbitrary de Bruijn context,
     provided context variables are not substituted. -/
 private theorem subst_toDBAux_comm_ctx :
   ∀ (ctx : List (String × HOLType)) (i : List (Term × Term)) (t : Term),
-    SubstOk i -> CtxCompatible ctx i t ->
+    SubstOk i -> CtxCompatible ctx i ->
     toDBAux ctx (subst i t) = dbSubst i (toDBAux ctx t) := by
   intro ctx i t hOk hCompat
   induction t generalizing ctx i with
@@ -363,7 +346,16 @@ private theorem subst_toDBAux_comm_ctx :
       cases hidx : ctx.idxOf? (x, T) with
       | some n =>
           have hFindNone : List.find? (fun p => p.fst = Term.var x T) i = none := by
-            simpa [CtxCompatible, hidx] using hCompat
+            simp only [List.find?_eq_none, decide_eq_true_eq, Prod.forall]
+            intro s t hMemI hs
+            have hNotCompat : ∃ x T s t, (x, T) ∈ ctx ∧ (s, t) ∈ i ∧ (Term.var x T).IsFreeVarIn s := by
+              exists x, T, s, t
+              subst hs
+              simp
+              have := List.isSome_idxOf?.mp (by rw [hidx]; rfl)
+              aesop
+            unfold CtxCompatible at hCompat
+            sorry
           simp [subst, dbSubst, toDBAux, hidx, hFindNone]
       | none =>
           cases hfind : i.find? (fun p => p.fst = Term.var x T) with
@@ -372,16 +364,15 @@ private theorem subst_toDBAux_comm_ctx :
           | some p =>
               rcases p with ⟨v, u⟩
               have hEqU : toDBAux ctx u = u.toDB := by
-                simpa [CtxCompatible, hidx, hfind]
-                  using (hCompat : CtxCompatible ctx i (Term.var x T))
+                sorry
               simp [subst, dbSubst, toDBAux, hidx, hfind, hEqU]
   | const c T =>
       simp [subst, dbSubst, toDBAux]
   | app s t ihs iht =>
-      rcases hCompat with ⟨hCompatS, hCompatT⟩
-      have hs := ihs ctx i hOk hCompatS
-      have ht := iht ctx i hOk hCompatT
-      simp [subst, dbSubst, toDBAux, hs, ht]
+      simp only [subst, toDBAux, dbSubst, DBTerm.app.injEq]
+      constructor
+      · apply ihs <;> aesop
+      · apply iht <;> aesop
   | abs x T body ih =>
       let i' := i.filter (fun p => !decide (p.fst = Term.var x T))
       by_cases hCap : captureRisk x T body i' = true
@@ -390,10 +381,11 @@ private theorem subst_toDBAux_comm_ctx :
             toDBAux ((fresh, T) :: ctx)
                 (subst ((Term.var x T, Term.var fresh T) :: i') body)
               = dbSubst i (toDBAux ((x, T) :: ctx) body) := by
-          simpa [CtxCompatible, i', hCap, fresh] using hCompat
+          sorry
         simp [subst, toDBAux, dbSubst, i', hCap, fresh, hCore]
-      · have hCompatBody : CtxCompatible ((x, T) :: ctx) i' body := by
-          simpa [CtxCompatible, i', hCap] using hCompat
+      · have hCompatBody : CtxCompatible ((x, T) :: ctx) i' := by
+          simp_all [CtxCompatible, i']
+          sorry
         have hOk' : SubstOk i' := SubstOk.filter i (Term.var x T) hOk
         have hBody := ih ((x, T) :: ctx) i' hOk' hCompatBody
         have hCapFalse : captureRisk x T body i' = false := by
@@ -413,27 +405,6 @@ private theorem subst_toDBAux_comm_ctx :
               simp [hShadow]
         _ = dbSubst i (toDBAux ctx (Term.abs x T body)) := by
               simp [toDBAux, dbSubst]
-
-private theorem ctxCompatible_singleton_filtered_from_substOk :
-  ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
-    SubstOk i ->
-    CtxCompatible [(x, T)] (i.filter (fun p => !decide (p.fst = Term.var x T))) body := by
-  intro i x T body hOk
-  sorry
-
-private theorem ctxCompatible_singleton_filtered_from_substOk_counterexample :
-  ∃ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
-    SubstOk i ∧
-      ¬CtxCompatible [(x, T)] (i.filter (fun p => !decide (p.fst = Term.var x T))) body := by
-  refine ⟨[(Term.var "x" HOLType.bool, Term.var "y" HOLType.bool)], "y", HOLType.bool,
-    Term.var "x" HOLType.bool, ?_⟩
-  constructor
-  · intro v t hmem
-    have hEq : (v, t) = (Term.var "x" HOLType.bool, Term.var "y" HOLType.bool) := by
-      simpa using hmem
-    rcases hEq with ⟨rfl, rfl⟩
-    exact ⟨"x", HOLType.bool, rfl, Term.HasType.var "y" HOLType.bool⟩
-  · simp [CtxCompatible, Term.toDB, toDBAux]
 
 theorem subst_toDB_comm :
   ∀ (i : List (Term × Term)) (t : Term),
@@ -466,4 +437,4 @@ theorem subst_toDB_comm :
       apply subst_toDB_comm_abs_split <;> try assumption
       apply subst_toDBAux_comm_ctx
       · exact SubstOk.filter i (Term.var x T) hOk
-      · exact ctxCompatible_singleton_filtered_from_substOk i x T body hOk
+      · sorry
