@@ -1,6 +1,7 @@
 import HotaruKernel.Type
 import HotaruKernel.Term
 import HotaruKernel.Alpha
+import Aesop
 
 /-- De Bruijn representation used to reason about alpha-equivalence. -/
 inductive DBTerm
@@ -28,113 +29,109 @@ private def toDBAux (ctx : List (String × HOLType)) : Term -> DBTerm
     DBTerm.abs T t'
 
 /-- Convert a named term to de Bruijn form. -/
-def Term.toDB (t : Term) : Option DBTerm := toDBAux [] t
+def Term.toDB (t : Term) : DBTerm := toDBAux [] t
 
 theorem toDB_bvar : ∀ (ctx : List (String × HOLType)) (t : Term) (n : Nat),
-    toDBAux ctx t = some (DBTerm.bvar n) →
+    toDBAux ctx t = DBTerm.bvar n →
     ∃ x T, ctx[n]? = some (x, T) ∧ t = .var x T := by
   intro ctx t n h
-  cases t with try simp at h
+  cases t with
   | var x T =>
       cases hidx : ctx.idxOf? (x, T) with
       | none =>
-          simp [hidx] at h
+          simp [toDBAux, hidx] at h
       | some m =>
           have hm : m = n := by
-            simpa [hidx] using h
+            simpa [toDBAux, hidx] using h
           have hidx' : ctx.idxOf? (x, T) = some n := by
             simpa [hm] using hidx
           rcases (List.idxOf?_eq_some_iff (l := ctx) (a := (x, T)) (i := n)).1 hidx' with
             ⟨hn, hget, _⟩
           refine ⟨x, T, ?_, rfl⟩
           simpa [hget] using (List.getElem?_eq_getElem (l := ctx) (i := n) hn)
+  | const c T =>
+      simp [toDBAux] at h
   | app s u =>
-      cases hs : toDBAux ctx s <;> simp [hs] at h
-      cases hu : toDBAux ctx u <;> simp [hu] at h
-  | abs n1 body =>
-      cases n1 with try simp at h
-      | var x T => cases hb : toDBAux ((x, T) :: ctx) body <;> simp [hb] at h
+      simp [toDBAux] at h
+  | abs x T body =>
+      simp [toDBAux] at h
 
 theorem toDB_fvar : ∀ (ctx : List (String × HOLType)) (t : Term) (x : String) (T : HOLType),
-    toDBAux ctx t = some (DBTerm.fvar x T) →
+    toDBAux ctx t = DBTerm.fvar x T →
     (x, T) ∉ ctx ∧ t = .var x T := by
   intro ctx t x T h
-  cases t with try simp at h
+  cases t with
   | var y U =>
       cases hidx : ctx.idxOf? (y, U) with
       | none =>
           have hNot : (y, U) ∉ ctx :=
             (List.idxOf?_eq_none_iff (l := ctx) (a := (y, U))).1 hidx
-          simp [hidx] at h
-          rcases h with ⟨hx, hT⟩
+          have hEq : DBTerm.fvar y U = DBTerm.fvar x T := by
+            simpa [toDBAux, hidx] using h
+          injection hEq with hx hT
           subst hx hT
           exact ⟨hNot, rfl⟩
       | some n =>
-          simp [hidx] at h
+          simp [toDBAux, hidx] at h
+  | const c U =>
+      simp [toDBAux] at h
   | app s u =>
-      cases hs : toDBAux ctx s <;> simp [hs] at h
-      cases hu : toDBAux ctx u <;> simp [hu] at h
-  | abs n body =>
-      cases n with try simp at h
-      | var y U => cases hb : toDBAux ((y, U) :: ctx) body <;> simp [hb] at h
+      simp [toDBAux] at h
+  | abs y U body =>
+      simp [toDBAux] at h
 
 theorem toDB_const : ∀ (ctx : List (String × HOLType)) (t : Term) (c : String) (T : HOLType),
-    toDBAux ctx t = some (DBTerm.const c T) →
+    toDBAux ctx t = DBTerm.const c T →
     t = .const c T := by
   intro ctx t c T h
-  cases t with try simp at h
-  | var x U => cases hidx : ctx.idxOf? (x, U) <;> simp [hidx] at h
+  cases t with
+  | var x U =>
+      cases hidx : ctx.idxOf? (x, U) <;> simp [toDBAux, hidx] at h
   | const c' T' =>
-      rcases h with ⟨hc, hT⟩
+      have hEq : DBTerm.const c' T' = DBTerm.const c T := by
+        simpa [toDBAux] using h
+      injection hEq with hc hT
       subst hc hT
       rfl
   | app s u =>
-      cases hs : toDBAux ctx s <;> simp [hs] at h
-      cases hu : toDBAux ctx u <;> simp [hu] at h
-  | abs n body =>
-      cases n with try simp at h
-      | var x U => cases hb : toDBAux ((x, U) :: ctx) body <;> simp [hb] at h
+      simp [toDBAux] at h
+  | abs x U body =>
+      simp [toDBAux] at h
 
 theorem toDB_app : ∀ (ctx : List (String × HOLType)) (t : Term) (s' t' : DBTerm),
-    toDBAux ctx t = some (DBTerm.app s' t') →
-    ∃ s u, toDBAux ctx s = some s' ∧ toDBAux ctx u = some t' ∧ t = .app s u := by
+    toDBAux ctx t = DBTerm.app s' t' →
+    ∃ s u, toDBAux ctx s = s' ∧ toDBAux ctx u = t' ∧ t = .app s u := by
   intros ctx t s' t' h
-  cases t with try simp at h
-  | var x U => cases hidx : ctx.idxOf? (x, U) <;> simp [hidx] at h
+  cases t with
+  | var x U =>
+      cases hidx : ctx.idxOf? (x, U) <;> simp [toDBAux, hidx] at h
+  | const c U =>
+      simp [toDBAux] at h
   | app s u =>
-      cases hs : toDBAux ctx s with simp [hs] at h
-      | some ds =>
-          cases hu : toDBAux ctx u with simp [hu] at h
-          | some du =>
-              have happ : DBTerm.app ds du = DBTerm.app s' t' := by
-                simpa [toDBAux, hs, hu] using h
-              injection happ with hds hdu
-              subst hds hdu
-              exact ⟨s, u, hs, hu, rfl⟩
-  | abs n body =>
-      cases n with try simp at h
-      | var x U => cases hb : toDBAux ((x, U) :: ctx) body <;> simp [hb] at h
+      have happ : DBTerm.app (toDBAux ctx s) (toDBAux ctx u) = DBTerm.app s' t' := by
+        simpa [toDBAux] using h
+      injection happ with hs hu
+      exact ⟨s, u, hs, hu, rfl⟩
+  | abs x U body =>
+      simp [toDBAux] at h
 
 theorem toDB_abs : ∀ (ctx : List (String × HOLType)) (t : Term) (dT : HOLType) (t' : DBTerm),
-    toDBAux ctx t = some (DBTerm.abs dT t') →
-    ∃ x t'', t = .abs (.var x dT) t'' ∧ toDBAux ((x, dT) :: ctx) t'' = some t' := by
+    toDBAux ctx t = DBTerm.abs dT t' →
+    ∃ x t'', t = .abs x dT t'' ∧ toDBAux ((x, dT) :: ctx) t'' = t' := by
   intro ctx t dT t' h
-  cases t with try simp at h
+  cases t with
   | var x U =>
-      cases hidx : ctx.idxOf? (x, U) <;> simp [hidx] at h
+      cases hidx : ctx.idxOf? (x, U) <;> simp [toDBAux, hidx] at h
+  | const c U =>
+      simp [toDBAux] at h
   | app s u =>
-      cases hs : toDBAux ctx s <;> simp [hs] at h
-      cases hu : toDBAux ctx u <;> simp [hu] at h
-  | abs n body =>
-      cases n with try simp at h
-      | var x U =>
-          cases hb : toDBAux ((x, U) :: ctx) body with simp [hb] at h
-          | some db =>
-              have hAbs : DBTerm.abs U db = DBTerm.abs dT t' := by
-                simpa [toDBAux, hb] using h
-              injection hAbs with hU hdb
-              subst hU hdb
-              exact ⟨x, body, rfl, hb⟩
+      simp [toDBAux] at h
+  | abs x U body =>
+      have hAbs : DBTerm.abs U (toDBAux ((x, U) :: ctx) body) = DBTerm.abs dT t' := by
+        simpa [toDBAux] using h
+      injection hAbs with hU hBody
+      subst hU
+      exact ⟨x, body, rfl, hBody⟩
 
 /-- Proof skeleton: relation between alpha-renaming environment and de Bruijn contexts. -/
 private inductive DBCtxRel :
@@ -199,24 +196,13 @@ private theorem toDBAux_eq_of_IsAlphaTerms :
       (t1 t2 : Term),
       DBCtxRel bv env1 env2 ->
       IsAlphaTerms bv t1 t2 ->
-      ∃ dt, toDBAux env1 t1 = some dt ∧ toDBAux env2 t2 = some dt := by
+      ∃ dt, toDBAux env1 t1 = dt ∧ toDBAux env2 t2 = dt := by
   intro bv env1 env2 t1 t2 hRel hAlpha
   induction hAlpha generalizing env1 env2 with
   | var bv x1 x2 T1 T2 hAlphaVar =>
       have hEq := toDBAux_var_eq_of_IsAlphaVars bv env1 env2 x1 x2 T1 T2 hRel hAlphaVar
-      cases hidx1 : env1.idxOf? (x1, T1) with
-      | none =>
-          refine ⟨DBTerm.fvar x1 T1, ?_, ?_⟩
-          · simp [toDBAux, hidx1]
-          · calc
-              toDBAux env2 (.var x2 T2) = toDBAux env1 (.var x1 T1) := by simpa using hEq.symm
-              _ = some (DBTerm.fvar x1 T1) := by simp [toDBAux, hidx1]
-      | some n =>
-          refine ⟨DBTerm.bvar n, ?_, ?_⟩
-          · simp [toDBAux, hidx1]
-          · calc
-              toDBAux env2 (.var x2 T2) = toDBAux env1 (.var x1 T1) := by simpa using hEq.symm
-              _ = some (DBTerm.bvar n) := by simp [toDBAux, hidx1]
+      refine ⟨toDBAux env1 (.var x1 T1), rfl, ?_⟩
+      exact hEq.symm
   | const bv c T =>
       refine ⟨DBTerm.const c T, ?_, ?_⟩ <;> simp [toDBAux]
   | app bv s1 s2 t1 t2 hAlphaS hAlphaT ihS ihT =>
@@ -225,13 +211,11 @@ private theorem toDBAux_eq_of_IsAlphaTerms :
       refine ⟨DBTerm.app ds dt, ?_, ?_⟩
       · simp [toDBAux, hs1, ht1]
       · simp [toDBAux, hs2, ht2]
-  | abs bv n1 n2 t1 t2 hNames hBody ih =>
-      rcases hNames with ⟨m1, m2, T, hn1, hn2⟩
-      subst hn1 hn2
+  | abs bv n1 n2 T t1 t2 hBody ih =>
       have hRel' :
-          DBCtxRel ((.var m1 T, .var m2 T) :: bv) ((m1, T) :: env1) ((m2, T) :: env2) :=
-        DBCtxRel.cons m1 m2 T T bv env1 env2 hRel
-      rcases ih ((m1, T) :: env1) ((m2, T) :: env2) hRel' with ⟨db, hb1, hb2⟩
+          DBCtxRel ((.var n1 T, .var n2 T) :: bv) ((n1, T) :: env1) ((n2, T) :: env2) :=
+        DBCtxRel.cons n1 n2 T T bv env1 env2 hRel
+      rcases ih ((n1, T) :: env1) ((n2, T) :: env2) hRel' with ⟨db, hb1, hb2⟩
       refine ⟨DBTerm.abs T db, ?_, ?_⟩
       · simp [toDBAux, hb1]
       · simp [toDBAux, hb2]
@@ -307,8 +291,8 @@ private theorem IsAlphaTerms_of_toDBAux_eq :
     ∀ (bv : List (Term × Term)) (env1 env2 : List (String × HOLType))
       (t1 t2 : Term) (dt : DBTerm),
       DBCtxRel bv env1 env2 ->
-      toDBAux env1 t1 = some dt ->
-      toDBAux env2 t2 = some dt ->
+      toDBAux env1 t1 = dt ->
+      toDBAux env2 t2 = dt ->
       IsAlphaTerms bv t1 t2 := by
   intro bv env1 env2 t1 t2 dt
   induction dt generalizing bv env1 env2 t1 t2 with
@@ -322,13 +306,19 @@ private theorem IsAlphaTerms_of_toDBAux_eq :
         | none =>
             simp [toDBAux, hidx1] at h1
         | some m =>
-            have hm : m = n := by
-              simpa [toDBAux, hidx1] using h1
-            simp [hm]
+          have hm : m = n := by
+            simpa [toDBAux, hidx1] using h1
+          simpa [hidx1] using congrArg some hm
       have hIdx2 : env2.idxOf? (x2, T2) = some n := by
-        cases hidx2 : env2.idxOf? (x2, T2) <;> aesop
-      apply IsAlphaTerms.var
-      apply IsAlphaVars_of_DBCtxRel_idxOf_eq <;> aesop
+        cases hidx2 : env2.idxOf? (x2, T2) with
+        | none =>
+            simp [toDBAux, hidx2] at h2
+        | some m =>
+          have hm : m = n := by
+            simpa [toDBAux, hidx2] using h2
+          simpa [hidx2] using congrArg some hm
+      exact IsAlphaTerms.var bv x1 x2 T1 T2
+        (IsAlphaVars_of_DBCtxRel_idxOf_eq bv env1 env2 x1 x2 T1 T2 n hRel hIdx1 hIdx2)
   | fvar x T =>
       intro hRel h1 h2
       have ⟨hNot1, hVar1⟩ := toDB_fvar env1 t1 x T h1
@@ -348,8 +338,8 @@ private theorem IsAlphaTerms_of_toDBAux_eq :
       rcases toDB_app env2 t2 s t h2 with ⟨s2, t2', hs2, ht2, ht2eq⟩
       subst ht1eq ht2eq
       apply IsAlphaTerms.app
-      apply ihs <;> aesop
-      apply iht <;> aesop
+      · exact ihs bv env1 env2 s1 s2 hRel hs1 hs2
+      · exact iht bv env1 env2 t1' t2' hRel ht1 ht2
   | abs dT t ih =>
       intro hRel h1 h2
       rcases toDB_abs env1 t1 dT t h1 with ⟨x1, b1, ht1eq, hb1⟩
@@ -359,31 +349,21 @@ private theorem IsAlphaTerms_of_toDBAux_eq :
         ih ((Term.var x1 dT, Term.var x2 dT) :: bv)
           ((x1, dT) :: env1) ((x2, dT) :: env2) b1 b2
           (DBCtxRel.cons x1 x2 dT dT bv env1 env2 hRel) hb1 hb2
-      have hTy : ∃ T, (Term.var x1 dT).HasType T ∧ (Term.var x2 dT).HasType T :=
-        ⟨dT, Term.HasType.var x1 dT, Term.HasType.var x2 dT⟩
-      apply IsAlphaTerms.abs <;> aesop
+      exact IsAlphaTerms.abs bv x1 x2 dT b1 b2 hBody
 
 theorem alpha_debrujin :
   ∀ t1 t2 : Term,
     AlphaEqv t1 t2 → t1.toDB = t2.toDB := by
   intros t1 t2 hAlpha
-  rcases toDBAux_eq_of_IsAlphaTerms [] [] [] t1.1 t2.1 DBCtxRel.nil hAlpha with ⟨dt, h1, h2⟩
-  have h1' : t1.1.toDB? = some dt := by simpa [Term.toDB?] using h1
-  have h2' : t2.1.toDB? = some dt := by simpa [Term.toDB?] using h2
-  have ht1 : t1.toDB = dt := by simp [WellTypedTerm.toDB, h1']
-  have ht2 : t2.toDB = dt := by simp [WellTypedTerm.toDB, h2']
+  rcases toDBAux_eq_of_IsAlphaTerms [] [] [] t1 t2 DBCtxRel.nil hAlpha with ⟨dt, h1, h2⟩
+  have ht1 : t1.toDB = dt := by simpa [Term.toDB] using h1
+  have ht2 : t2.toDB = dt := by simpa [Term.toDB] using h2
   exact ht1.trans ht2.symm
 
 theorem debrujin_alpha :
   ∀ (t1 t2 : Term),
     t1.toDB = t2.toDB → AlphaEqv t1 t2 := by
   intro t1 t2 hEq
-  have h1 : t1.1.Term.toDB = some t1.toDB := by
-    simp [WellTypedTerm.toDB]
-  have h2 : t2.1.Term.toDB = some t1.toDB := by
-    calc
-      t2.1.Term.toDB = some t2.toDB := by simp [WellTypedTerm.toDB]
-      _ = some t1.toDB := by simp [hEq]
-  exact IsAlphaTerms_of_toDBAux_eq [] [] [] t1.1 t2.1 t1.toDB DBCtxRel.nil
-    (by simpa [Term.toDB] using h1)
-    (by simpa [Term.toDB] using h2)
+  exact IsAlphaTerms_of_toDBAux_eq [] [] [] t1 t2 t1.toDB DBCtxRel.nil
+    (by simp [Term.toDB])
+    (by simpa [Term.toDB] using hEq.symm)
