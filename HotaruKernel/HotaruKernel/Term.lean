@@ -24,60 +24,77 @@ inductive Term.HasType : Term -> HOLType -> Prop
 /-- Predicate for well-typed terms. -/
 abbrev WellTyped (t : Term) : Prop := ∃ T, t.HasType T
 
+abbrev WellTypedTerm := { t : Term // WellTyped t }
+
 /-- Type inference function for terms. -/
-def typeof (t : Term) : Option HOLType :=
+def typeof? (t : Term) : Option HOLType :=
   match t with
   | .var _ T => some T
   | .const _ T => some T
   | .app s t =>
-      match typeof s, typeof t with
+      match typeof? s, typeof? t with
       | some (.fun dT rT), some tT =>
           if dT = tT then some rT else none
       | _, _ => none
   | .abs (.var _ dT) t =>
-      match typeof t with
+      match typeof? t with
       | some rT => some (.fun dT rT)
       | none => none
   | _ => none
 
-theorem welltyped_typeof : ∀ (t : Term) (T : HOLType), Term.HasType t T → typeof t = some T
+theorem welltyped_typeof? : ∀ (t : Term) (T : HOLType), Term.HasType t T → typeof? t = some T
     := by
   intros t T ht
-  induction ht with simp [typeof] <;> aesop
+  induction ht with simp [typeof?] <;> aesop
 
-theorem typeof_welltyped : ∀ (t : Term) (T : HOLType), typeof t = some T → t.HasType T
+theorem typeof?_welltyped : ∀ (t : Term) (T : HOLType), typeof? t = some T → t.HasType T
     := by
   intros t T h
-  induction t generalizing T with try simp [typeof] at h; subst h
+  induction t generalizing T with try simp [typeof?] at h; subst h
   | var x T' => apply Term.HasType.var
   | const c T' => apply Term.HasType.const
   | app s t ih_s ih_t =>
-      unfold typeof at h
+      unfold typeof? at h
       split at h
       · rename_i dT rT tT heq_s heq_t
         split at h <;> simp at h
         subst h
         apply Term.HasType.app
         · exact ih_s (.fun dT rT) heq_s
-        · have : typeof t = some dT := by
+        · have : typeof? t = some dT := by
             rw [heq_t]; aesop
           exact ih_t dT this
       · simp at h
   | abs n t ih_n ih_t =>
-      cases n with simp [typeof] at h
+      cases n with simp [typeof?] at h
       | var var_name dT =>
           split at h <;> simp at h
           subst h
           apply Term.HasType.abs
           aesop
 
-/-- Theorem: `HasType t T` if and only if `typeof t = some T`. -/
-theorem welltyped_typeof_iff : ∀ (t : Term) (T : HOLType), t.HasType T ↔ typeof t = some T
-    := by
-  intros t T
-  constructor
-  · apply welltyped_typeof
-  · apply typeof_welltyped
+def typeof (t : WellTypedTerm) : HOLType :=
+  Option.get (typeof? t.1) <| by
+    rcases t.2 with ⟨T, hHasType⟩
+    have hSome : typeof? t.1 = some T := welltyped_typeof? t.1 T hHasType
+    simp [hSome]
+
+theorem typeof_welltyped : ∀ (t : WellTypedTerm) {T : HOLType}, typeof t = T → t.1.HasType T := by
+  intro wt T hT
+  rcases wt with ⟨t, hwt⟩
+  rcases hwt with ⟨U, hHasType⟩
+  have hTy : typeof? t = some U := welltyped_typeof? t U hHasType
+  have hTypeof : typeof ⟨t, ⟨U, hHasType⟩⟩ = U := by
+    unfold typeof
+    simp [hTy]
+  aesop
+
+theorem welltyped_typeof : ∀ (t : WellTypedTerm) {T : HOLType}, t.1.HasType T → typeof t = T := by
+  intro wt T hHasType
+  rcases wt with ⟨t, hwt⟩
+  have hTy : typeof? t = some T := welltyped_typeof? t T hHasType
+  unfold typeof
+  simp [hTy]
 
 theorem welltyped_fun : ∀ (s t : Term), WellTyped (Term.app s t) → WellTyped s := by
   intros s t h
