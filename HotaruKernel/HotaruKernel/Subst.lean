@@ -156,67 +156,77 @@ theorem SubstOk.filter : ∀ (i : List (Term × Term)) (bvar : Term),
   intro v t hmem
   exact hOk v t (List.mem_filter.mp hmem).1
 
+private theorem dbSubst_filter_shadowed_predEq :
+  ∀ (x y : String) (T U : HOLType) (a : Term × Term),
+    Term.var y U ≠ Term.var x T ->
+    (!decide (a.fst = Term.var x T) && decide (a.fst = Term.var y U)) = decide (a.fst = Term.var y U) := by
+  intro x y T U a hneq
+  by_cases hy : a.fst = Term.var y U
+  · have hxFalse : decide (a.fst = Term.var x T) = false := by
+      apply (decide_eq_false_iff_not).2
+      intro hx
+      have hEq : Term.var y U = Term.var x T := by aesop
+      exact hneq hEq
+    have hdy : decide (a.fst = Term.var y U) = true := (decide_eq_true_iff).2 hy
+    simp [hdy, hxFalse]
+  · simp [hy]
+
+private theorem dbSubst_filter_shadowed_findEq :
+  ∀ (l : List (Term × Term)) (x y : String) (T U : HOLType),
+    Term.var y U ≠ Term.var x T ->
+    List.find? (fun p => decide (p.fst = Term.var y U)) l =
+      List.find? (fun a => !decide (a.fst = Term.var x T) && decide (a.fst = Term.var y U)) l := by
+  intro l x y T U hneq
+  induction l with
+  | nil => rfl
+  | cons a l ih => simp [List.find?, dbSubst_filter_shadowed_predEq x y T U a hneq, ih]
+
+private theorem dbSubst_filter_shadowed_lookup :
+  ∀ (l : List (Term × Term)) (x y : String) (T U : HOLType),
+    Term.var y U ≠ Term.var x T ->
+    dbSubst l (DBTerm.fvar y U) = dbSubst (l.filter (fun p => !decide (p.fst = Term.var x T))) (DBTerm.fvar y U) := by
+  intro l x y T U hneq
+  simp [dbSubst, List.find?_filter, dbSubst_filter_shadowed_predEq x y T U _ hneq]
+
+private theorem dbSubst_filter_shadowed_ctx :
+  ∀ (i : List (Term × Term)) (x : String) (T : HOLType)
+    (ctx : List (String × HOLType)) (t : Term),
+    (x, T) ∈ ctx ->
+    dbSubst i (toDBAux ctx t) =
+      dbSubst (i.filter (fun p => !decide (p.fst = Term.var x T))) (toDBAux ctx t) := by
+  intro i x T ctx t hmem
+  induction t generalizing ctx with
+  | var y U =>
+      cases hidx : ctx.idxOf? (y, U) with
+      | some n =>
+          simp [toDBAux, dbSubst, hidx]
+      | none =>
+          have hNotMem : (y, U) ∉ ctx :=
+            (List.idxOf?_eq_none_iff (l := ctx) (a := (y, U))).1 hidx
+          have hneq : Term.var y U ≠ Term.var x T := by aesop
+          simpa [toDBAux, dbSubst, hidx] using dbSubst_filter_shadowed_lookup i x y T U hneq
+  | const c U =>
+      simp [toDBAux, dbSubst]
+  | app s t ihs iht =>
+      have hs := ihs ctx hmem
+      have ht := iht ctx hmem
+      simp [toDBAux, dbSubst, hs, ht]
+  | abs y U t ih =>
+      have hmem' : (x, T) ∈ ((y, U) :: ctx) := List.mem_cons_of_mem _ hmem
+      have ht := ih ((y, U) :: ctx) hmem'
+      simpa [toDBAux, dbSubst] using ht
+
 /-- removing substitutions for the bound variable does not change dbSubst on a bound body. -/
 private theorem dbSubst_filter_shadowed_on_abs :
   ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
     dbSubst i (Term.abs x T body).toDB =
       dbSubst (i.filter (fun p => !decide (p.fst = Term.var x T))) (Term.abs x T body).toDB := by
   intro i x T body
-  let i' := i.filter (fun p => !decide (p.fst = Term.var x T))
-  have hLookup :
-      ∀ (l : List (Term × Term)) (y : String) (U : HOLType),
-        Term.var y U ≠ Term.var x T ->
-        dbSubst l (DBTerm.fvar y U) = dbSubst (l.filter (fun p => !decide (p.fst = Term.var x T))) (DBTerm.fvar y U) := by
-    intro l y U hneq
-    have hPredEq :
-        ∀ a : Term × Term,
-          (!decide (a.fst = Term.var x T) && decide (a.fst = Term.var y U)) = decide (a.fst = Term.var y U) := by
-      intro a
-      by_cases hy : a.fst = Term.var y U
-      · have hxFalse : decide (a.fst = Term.var x T) = false := by
-          apply (decide_eq_false_iff_not).2
-          intro hx
-          have hEq : Term.var y U = Term.var x T := by aesop
-          exact hneq hEq
-        have hdy : decide (a.fst = Term.var y U) = true := (decide_eq_true_iff).2 hy
-        simp [hdy, hxFalse]
-      · simp [hy]
-    have hFindEq :
-        List.find? (fun p => decide (p.fst = Term.var y U)) l =
-          List.find? (fun a => !decide (a.fst = Term.var x T) && decide (a.fst = Term.var y U)) l := by
-      induction l with
-      | nil => rfl
-      | cons a l ih =>
-        simp [List.find?, hPredEq a, ih]
-    simp [dbSubst, List.find?_filter, hPredEq]
-  have hCtx :
-      ∀ (ctx : List (String × HOLType)) (t : Term),
-        (x, T) ∈ ctx ->
-        dbSubst i (toDBAux ctx t) = dbSubst i' (toDBAux ctx t) := by
-    intro ctx t hmem
-    induction t generalizing ctx with
-    | var y U =>
-        cases hidx : ctx.idxOf? (y, U) with
-        | some n =>
-            simp [toDBAux, dbSubst, hidx]
-        | none =>
-            have hNotMem : (y, U) ∉ ctx :=
-              (List.idxOf?_eq_none_iff (l := ctx) (a := (y, U))).1 hidx
-            have hneq : Term.var y U ≠ Term.var x T := by aesop
-            simpa [toDBAux, dbSubst, i', hidx] using hLookup i y U hneq
-    | const c U =>
-        simp [toDBAux, dbSubst]
-    | app s t ihs iht =>
-        have hs := ihs ctx hmem
-        have ht := iht ctx hmem
-        simp [toDBAux, dbSubst, hs, ht]
-    | abs y U t ih =>
-        have hmem' : (x, T) ∈ ((y, U) :: ctx) := List.mem_cons_of_mem _ hmem
-        have ht := ih ((y, U) :: ctx) hmem'
-        simpa [toDBAux, dbSubst] using ht
-  have hBody : dbSubst i (toDBAux [(x, T)] body) = dbSubst i' (toDBAux [(x, T)] body) :=
-    hCtx [(x, T)] body (by simp)
-  simpa [Term.toDB, dbSubst, i'] using congrArg (DBTerm.abs T) hBody
+  have hBody :
+      dbSubst i (toDBAux [(x, T)] body) =
+        dbSubst (i.filter (fun p => !decide (p.fst = Term.var x T))) (toDBAux [(x, T)] body) :=
+    dbSubst_filter_shadowed_ctx i x T [(x, T)] body (by simp)
+  simpa [Term.toDB, dbSubst] using congrArg (DBTerm.abs T) hBody
 
 /-- abstraction branch when no capture risk. -/
 private theorem subst_toDB_comm_abs_no_capture :
