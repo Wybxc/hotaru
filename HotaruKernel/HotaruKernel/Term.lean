@@ -124,6 +124,20 @@ theorem welltyped_body : ∀ (x t : Term), WellTyped (Term.abs x t) → WellType
   | abs _ _ rT _ ht =>
       exact ⟨rT, ht⟩
 
+def dest_abs (t : WellTypedTerm) (hAbs : ∃ x body, t.1 = Term.abs x body) : String × HOLType × WellTypedTerm :=
+  Option.get (match t with
+  | ⟨.abs (.var n T) body, hwtAbs⟩ =>
+      some (n, T, ⟨body, welltyped_body (.var n T) body hwtAbs⟩)
+  | _ => none) <| by
+    rcases t with ⟨tm, hwt⟩
+    rcases hAbs with ⟨x, body, hEq⟩
+    simp at hEq
+    have hwtAbs : WellTyped (Term.abs x body) := by
+      simpa [hEq] using hwt
+    rcases welltyped_bind x body hwtAbs with ⟨n, T, hx⟩
+    subst hx
+    subst hEq
+    simp
 
 -- theorem IsAlphaTerms_welltyped_iff :
 --     ∀ {bv : List (Term × Term)} {t1 t2 : Term}, IsAlphaTerms bv t1 t2 → (WellTyped t1 ↔ WellTyped t2) := by
