@@ -161,7 +161,71 @@ private theorem dbSubst_filter_shadowed_on_abs :
   ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
     dbSubst i (Term.abs x T body).toDB =
       dbSubst (i.filter (fun p => !decide (p.fst = Term.var x T))) (Term.abs x T body).toDB := by
-  sorry
+  intro i x T body
+  let i' := i.filter (fun p => !decide (p.fst = Term.var x T))
+  have hLookup :
+      ∀ (l : List (Term × Term)) (y : String) (U : HOLType),
+        Term.var y U ≠ Term.var x T ->
+        dbSubst l (DBTerm.fvar y U) = dbSubst (l.filter (fun p => !decide (p.fst = Term.var x T))) (DBTerm.fvar y U) := by
+    intro l y U hneq
+    have hPredEq :
+        ∀ a : Term × Term,
+          (!decide (a.fst = Term.var x T) && decide (a.fst = Term.var y U)) = decide (a.fst = Term.var y U) := by
+      intro a
+      by_cases hy : a.fst = Term.var y U
+      · have hxFalse : decide (a.fst = Term.var x T) = false := by
+          apply (decide_eq_false_iff_not).2
+          intro hx
+          have hEq : Term.var y U = Term.var x T := by
+            calc
+              Term.var y U = a.fst := by simp [hy]
+              _ = Term.var x T := hx
+          exact hneq hEq
+        have hdy : decide (a.fst = Term.var y U) = true := (decide_eq_true_iff).2 hy
+        simp [hdy, hxFalse]
+      · simp [hy]
+    have hFindEq :
+        List.find? (fun p => decide (p.fst = Term.var y U)) l =
+          List.find? (fun a => !decide (a.fst = Term.var x T) && decide (a.fst = Term.var y U)) l := by
+      induction l with
+      | nil => rfl
+      | cons a l ih =>
+        simp [List.find?, hPredEq a, ih]
+    simp [dbSubst, List.find?_filter, hPredEq]
+  have hCtx :
+      ∀ (ctx : List (String × HOLType)) (t : Term),
+        (x, T) ∈ ctx ->
+        dbSubst i (toDBAux ctx t) = dbSubst i' (toDBAux ctx t) := by
+    intro ctx t hmem
+    induction t generalizing ctx with
+    | var y U =>
+        cases hidx : ctx.idxOf? (y, U) with
+        | some n =>
+            simp [toDBAux, dbSubst, hidx]
+        | none =>
+            have hNotMem : (y, U) ∉ ctx :=
+              (List.idxOf?_eq_none_iff (l := ctx) (a := (y, U))).1 hidx
+            have hneq : Term.var y U ≠ Term.var x T := by
+              intro hEq
+              have hPair : (y, U) = (x, T) := by
+                cases hEq
+                rfl
+              apply hNotMem
+              simpa [hPair] using hmem
+            simpa [toDBAux, dbSubst, i', hidx] using hLookup i y U hneq
+    | const c U =>
+        simp [toDBAux, dbSubst]
+    | app s t ihs iht =>
+        have hs := ihs ctx hmem
+        have ht := iht ctx hmem
+        simp [toDBAux, dbSubst, hs, ht]
+    | abs y U t ih =>
+        have hmem' : (x, T) ∈ ((y, U) :: ctx) := List.mem_cons_of_mem _ hmem
+        have ht := ih ((y, U) :: ctx) hmem'
+        simpa [toDBAux, dbSubst] using ht
+  have hBody : dbSubst i (toDBAux [(x, T)] body) = dbSubst i' (toDBAux [(x, T)] body) :=
+    hCtx [(x, T)] body (by simp)
+  simpa [Term.toDB, dbSubst, i'] using congrArg (DBTerm.abs T) hBody
 
 /-- abstraction branch when no capture risk. -/
 private theorem subst_toDB_comm_abs_no_capture :
@@ -188,19 +252,6 @@ private theorem subst_abs_capture_alpha :
           body)) := by
   sorry
 
-/-- use alpha_debrujin to close the capture branch. -/
-private theorem subst_toDB_comm_abs_capture_core :
-  ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
-    SubstOk i ->
-    captureRisk x T body (i.filter (fun p => !decide (p.fst = Term.var x T))) = true ->
-    let fresh := generateVariant (subst (i.filter (fun p => !decide (p.fst = Term.var x T))) body) x T
-    (Term.abs fresh T
-      (subst
-        ((Term.var x T, Term.var fresh T) :: i.filter (fun p => !decide (p.fst = Term.var x T)))
-        body)).toDB
-      = dbSubst i (Term.abs x T body).toDB := by
-  sorry
-
  /-- use alpha_debrujin to close the capture branch. -/
 private theorem subst_toDB_comm_abs_capture :
   ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
@@ -215,7 +266,7 @@ private theorem subst_toDB_comm_abs_capture :
           ((Term.var x T, Term.var fresh T) :: i.filter (fun p => !decide (p.fst = Term.var x T)))
           body)).toDB
         = dbSubst i (Term.abs x T body).toDB := by
-    simpa [fresh] using subst_toDB_comm_abs_capture_core i x T body hOk hCap
+    sorry
   simpa [subst, hCap, fresh] using hCore
 
 /-- split abstraction branch by captureRisk. -/
