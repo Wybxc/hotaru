@@ -185,6 +185,12 @@ def dbSubst (i : List (Term × Term)) : DBTerm -> DBTerm
 def SubstOk (i : List (Term × Term)) : Prop :=
   ∀ v t, (v, t) ∈ i → ∃ x T, v = Term.var x T ∧ t.HasType T
 
+theorem SubstOk.filter : ∀ (i : List (Term × Term)) (f : Term × Term → Bool),
+  SubstOk i → SubstOk (i.filter f)
+    := by
+  intro i f hOk v t hmem
+  exact hOk v t (List.mem_filter.mp hmem).1
+
 private theorem dbSubst_filter_shadowed_lookup :
   ∀ (l : List (Term × Term)) (x y : String) (T U : HOLType),
     Term.var y U ≠ Term.var x T ->
