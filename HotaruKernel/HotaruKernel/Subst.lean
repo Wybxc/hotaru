@@ -148,6 +148,132 @@ private theorem captureRisk_eq_false_iff_forall_not :
           exfalso
           exact hTrue hVal
 
+private theorem captureRisk_app_left_of_false :
+  ∀ (x : String) (T : HOLType) (s t : Term) (i : List (Term × Term)),
+    captureRisk x T (.app s t) i = false ->
+    captureRisk x T s i = false := by
+  intro x T s t i hApp
+  apply (captureRisk_eq_false_iff_forall_not x T s i).2
+  intro p hp hPair
+  have hAll := (captureRisk_eq_false_iff_forall_not x T (.app s t) i).1 hApp
+  have hNot := hAll p hp
+  apply hNot
+  constructor
+  · exact hPair.1
+  · have hOr : p.fst.IsFreeVarIn s ∨ p.fst.IsFreeVarIn t := Or.inl hPair.2
+    simpa [Term.IsFreeVarIn, Term.isFreeVarIn] using hOr
+
+private theorem captureRisk_app_right_of_false :
+  ∀ (x : String) (T : HOLType) (s t : Term) (i : List (Term × Term)),
+    captureRisk x T (.app s t) i = false ->
+    captureRisk x T t i = false := by
+  intro x T s t i hApp
+  apply (captureRisk_eq_false_iff_forall_not x T t i).2
+  intro p hp hPair
+  have hAll := (captureRisk_eq_false_iff_forall_not x T (.app s t) i).1 hApp
+  have hNot := hAll p hp
+  apply hNot
+  constructor
+  · exact hPair.1
+  · have hOr : p.fst.IsFreeVarIn s ∨ p.fst.IsFreeVarIn t := Or.inr hPair.2
+    simpa [Term.IsFreeVarIn, Term.isFreeVarIn] using hOr
+
+private theorem captureRisk_abs_body_of_false_filtered :
+  ∀ (y : String) (U : HOLType) (x : String) (T : HOLType) (t : Term) (i : List (Term × Term)),
+    captureRisk y U (.abs x T t) i = false ->
+    let i' := i.filter (fun p => !decide (p.fst = Term.var x T))
+    captureRisk y U t i' = false := by
+  intro y U x T t i hAbs i'
+  apply (captureRisk_eq_false_iff_forall_not y U t i').2
+  intro p hp hPair
+  have hpMem : p ∈ i := (List.mem_filter.mp hp).1
+  have hpNe : p.fst ≠ Term.var x T := by
+    have hPred : (!decide (p.fst = Term.var x T)) = true := (List.mem_filter.mp hp).2
+    by_contra hEq
+    simp [hEq] at hPred
+  have hAll := (captureRisk_eq_false_iff_forall_not y U (.abs x T t) i).1 hAbs
+  have hNot := hAll p hpMem
+  apply hNot
+  have hFreeAbs : p.fst.IsFreeVarIn (.abs x T t) := by
+    unfold Term.IsFreeVarIn Term.isFreeVarIn
+    have hDec : decide (p.fst ≠ Term.var x T) = true := (decide_eq_true_iff).2 hpNe
+    rw [hDec]
+    simpa using hPair.2
+  constructor
+  · exact hPair.1
+  · exact hFreeAbs
+
+private theorem toDBAux_eq_of_ctxIdxEq_on_free :
+  ∀ (t : Term) (ctx1 ctx2 : List (String × HOLType)),
+    (∀ (x : String) (T : HOLType), (Term.var x T).IsFreeVarIn t →
+      ctx1.idxOf? (x, T) = ctx2.idxOf? (x, T)) ->
+    toDBAux ctx1 t = toDBAux ctx2 t := by
+  intro t
+  induction t with
+  | var y U =>
+      intro ctx1 ctx2 hIdx
+      have hFree : (Term.var y U).IsFreeVarIn (Term.var y U) := by
+        simp [Term.IsFreeVarIn, Term.isFreeVarIn]
+      have hEq := hIdx y U hFree
+      simp [toDBAux, hEq]
+  | const c U =>
+      intro ctx1 ctx2 _
+      simp [toDBAux]
+  | app s u ihs ihu =>
+      intro ctx1 ctx2 hIdx
+      have hIdxS :
+          ∀ (x : String) (T : HOLType), (Term.var x T).IsFreeVarIn s ->
+            ctx1.idxOf? (x, T) = ctx2.idxOf? (x, T) := by
+        intro x T hFreeS
+        apply hIdx x T
+        have hOr : (Term.var x T).IsFreeVarIn s ∨ (Term.var x T).IsFreeVarIn u := Or.inl hFreeS
+        simpa [Term.IsFreeVarIn, Term.isFreeVarIn] using hOr
+      have hIdxU :
+          ∀ (x : String) (T : HOLType), (Term.var x T).IsFreeVarIn u ->
+            ctx1.idxOf? (x, T) = ctx2.idxOf? (x, T) := by
+        intro x T hFreeU
+        apply hIdx x T
+        have hOr : (Term.var x T).IsFreeVarIn s ∨ (Term.var x T).IsFreeVarIn u := Or.inr hFreeU
+        simpa [Term.IsFreeVarIn, Term.isFreeVarIn] using hOr
+      simp [toDBAux, ihs ctx1 ctx2 hIdxS, ihu ctx1 ctx2 hIdxU]
+  | abs n U b ih =>
+      intro ctx1 ctx2 hIdx
+      have hIdxBody :
+          ∀ (x : String) (T : HOLType), (Term.var x T).IsFreeVarIn b ->
+            ((n, U) :: ctx1).idxOf? (x, T) = ((n, U) :: ctx2).idxOf? (x, T) := by
+        intro x T hFreeBody
+        by_cases hEqVar : Term.var x T = Term.var n U
+        · have hEqPair : (x, T) = (n, U) := by aesop
+          cases hEqPair
+          simp [List.idxOf?_cons]
+        · have hFreeAbs : (Term.var x T).IsFreeVarIn (.abs n U b) := by
+            unfold Term.IsFreeVarIn Term.isFreeVarIn
+            have hDec : decide (Term.var x T ≠ Term.var n U) = true :=
+              (decide_eq_true_iff).2 hEqVar
+            rw [hDec]
+            simpa using hFreeBody
+          have hTail := hIdx x T hFreeAbs
+          have hbeq : ((n, U) == (x, T)) = false := (beq_eq_false_iff_ne).2 (by aesop)
+          simpa [List.idxOf?_cons, hbeq] using congrArg (Option.map Nat.succ) hTail
+      simp [toDBAux, ih ((n, U) :: ctx1) ((n, U) :: ctx2) hIdxBody]
+
+private theorem toDBAux_eq_toDB_of_no_free_ctx :
+  ∀ (ctx : List (String × HOLType)) (t : Term),
+    (∀ (x : String) (T : HOLType), (x, T) ∈ ctx -> ¬(Term.var x T).IsFreeVarIn t) ->
+    toDBAux ctx t = t.toDB := by
+  intro ctx t hNoFree
+  have hEqIdx :
+      ∀ (x : String) (T : HOLType), (Term.var x T).IsFreeVarIn t ->
+        ctx.idxOf? (x, T) = ([] : List (String × HOLType)).idxOf? (x, T) := by
+    intro x T hFree
+    have hNotMem : (x, T) ∉ ctx := by
+      intro hMem
+      exact (hNoFree x T hMem) hFree
+    have hNone : ctx.idxOf? (x, T) = none :=
+      (List.idxOf?_eq_none_iff (l := ctx) (a := (x, T))).2 hNotMem
+    simp [hNone]
+  simpa [Term.toDB] using toDBAux_eq_of_ctxIdxEq_on_free t ctx [] hEqIdx
+
 def subst (i : List (Term × Term)) : Term → Term
 | .var x ty =>
     match i.find? (fun (y, _) => y = Term.var x ty) with
@@ -239,6 +365,18 @@ private theorem dbSubst_filter_shadowed_ctx :
       have ht := ih ((y, U) :: ctx) hmem'
       simpa [toDBAux, dbSubst] using ht
 
+private theorem subst_toDBAux_comm_abs_capture_bridge :
+  ∀ (ctx : List (String × HOLType)) (i : List (Term × Term))
+    (x : String) (T : HOLType) (t : Term),
+    SubstOk i ->
+    let i' := i.filter (fun p => !decide (p.fst = Term.var x T))
+    captureRisk x T t i' = true ->
+    let fresh := generateVariant (subst i' t) x T
+    toDBAux ((fresh, T) :: ctx) (subst ((Term.var x T, Term.var fresh T) :: i') t)
+      = dbSubst i (toDBAux ((x, T) :: ctx) t) := by
+  intro ctx i x T t hOk i' hCap fresh
+  sorry
+
 private theorem subst_toDBAux_comm :
   ∀ (ctx : List (String × HOLType)) (i : List (Term × Term)) (body : Term),
     SubstOk i ->
@@ -258,16 +396,26 @@ private theorem subst_toDBAux_comm :
           simp [subst, dbSubst, toDBAux, hidx, hNoFind]
       | none =>
           cases hfind : i.find? (fun p => p.fst = Term.var y U) with
-          | none =>
-              simp [subst, dbSubst, toDBAux, hidx, hfind]
+          | none => simp [subst, dbSubst, toDBAux, hidx, hfind]
           | some p =>
               rcases p with ⟨v, t⟩
               have hClosedRhs : toDBAux ctx t = t.toDB := by
-                -- TODO: prove substituted RHS does not reference variables bound in ctx.
-                sorry
+                have hMem : (v, t) ∈ i := List.mem_of_find?_eq_some hfind
+                have hPred : decide (v = Term.var y U) = true :=
+                  (List.find?_eq_some_iff_getElem.mp hfind).1
+                have hv : v = Term.var y U := (decide_eq_true_iff).1 hPred
+                subst hv
+                apply toDBAux_eq_toDB_of_no_free_ctx
+                intro x T hctx hFree
+                have hRiskFalse : captureRisk x T (Term.var y U) i = false := (hNoCap x T hctx).1
+                have hAll := (captureRisk_eq_false_iff_forall_not x T (Term.var y U) i).1 hRiskFalse
+                have hNot := hAll (Term.var y U, t) hMem
+                apply hNot
+                constructor
+                · exact hFree
+                · simp [Term.IsFreeVarIn, Term.isFreeVarIn]
               simp [subst, dbSubst, toDBAux, hidx, hfind, hClosedRhs]
-  | const c U =>
-      simp [subst, dbSubst, toDBAux]
+  | const c U => simp [subst, dbSubst, toDBAux]
   | app s t ihs iht =>
       have hCtxS :
           ∀ (x : String) (T : HOLType), (x, T) ∈ ctx →
@@ -275,16 +423,14 @@ private theorem subst_toDBAux_comm :
         intro x T hmem
         have hAll := hNoCap x T hmem
         refine ⟨?_, hAll.2⟩
-        -- TODO: derive from captureRisk x T (Term.app s t) i = false.
-        sorry
+        exact captureRisk_app_left_of_false x T s t i hAll.1
       have hCtxT :
           ∀ (x : String) (T : HOLType), (x, T) ∈ ctx →
             captureRisk x T t i = false ∧ i.find? (fun p => p.fst = Term.var x T) = none := by
         intro x T hmem
         have hAll := hNoCap x T hmem
         refine ⟨?_, hAll.2⟩
-        -- TODO: derive from captureRisk x T (Term.app s t) i = false.
-        sorry
+        exact captureRisk_app_right_of_false x T s t i hAll.1
       have hs := ihs ctx i hOk hCtxS
       have ht := iht ctx i hOk hCtxT
       simp [subst, toDBAux, dbSubst, hs, ht]
@@ -294,10 +440,8 @@ private theorem subst_toDBAux_comm :
       by_cases hCap : captureRisk x T t i' = true
       · -- TODO: capture branch requires alpha/renaming bridge under extended context.
         simp only [subst, hCap, ↓reduceIte, toDBAux, dbSubst, DBTerm.abs.injEq, true_and, i']
-        set i' := i.filter (fun p => !decide (p.fst = Term.var x T))
         set fresh := generateVariant (subst i' t) x T
-        apply ih
-        sorry
+        simpa [fresh] using subst_toDBAux_comm_abs_capture_bridge ctx i x T t hOk (by simpa [i'] using hCap)
       · have hShadow :
             dbSubst i (toDBAux ((x, T) :: ctx) t) = dbSubst i' (toDBAux ((x, T) :: ctx) t) := by
           simpa [i'] using dbSubst_filter_shadowed_ctx i x T ((x, T) :: ctx) t (by simp)
@@ -314,8 +458,8 @@ private theorem subst_toDBAux_comm :
                 | tail _ hmemTail =>
                   have hOrig := hNoCap y U hmemTail
                   constructor
-                  · -- TODO: preserve no-capture under filtering by the abstraction binder.
-                    sorry
+                  · simpa [i'] using
+                      captureRisk_abs_body_of_false_filtered y U x T t i hOrig.1
                   · aesop
         _ = dbSubst i (toDBAux ((x, T) :: ctx) t) := by
               simpa using hShadow.symm
@@ -350,7 +494,8 @@ private theorem subst_toDB_comm_abs_capture :
       = dbSubst i (toDBAux [(x, T)] body) := by
   intro i x T body hOk i' hCap
   let fresh := generateVariant (subst i' body) x T
-  sorry
+  simpa [fresh] using
+    subst_toDBAux_comm_abs_capture_bridge [] i x T body hOk (by simpa [i'] using hCap)
 
 theorem subst_toDB_comm :
   ∀ (i : List (Term × Term)) (t : Term),
