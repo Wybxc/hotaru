@@ -335,6 +335,81 @@ private theorem dbSubst_filter_shadowed_ctx :
       have ht := ih ((y, U) :: ctx) hmem'
       simpa [toDBAux, dbSubst] using ht
 
+private def cexCtx : List (String × HOLType) := [("x", HOLType.bool)]
+
+private def cexI : List (Term × Term) :=
+  [(Term.var "x" HOLType.bool, Term.var "y" HOLType.bool)]
+
+private def cexX : String := "y"
+
+private def cexT : HOLType := HOLType.bool
+
+private def cexBody : Term := Term.var "x" HOLType.bool
+
+private def cexI' : List (Term × Term) :=
+  cexI.filter (fun p => !decide (p.fst = Term.var cexX cexT))
+
+private theorem cex_SubstOk : SubstOk cexI := by
+  intro v t hmem
+  simp [cexI] at hmem
+  rcases hmem with ⟨hv, ht⟩
+  subst hv ht
+  exact ⟨"x", HOLType.bool, rfl, Term.HasType.var "y" HOLType.bool⟩
+
+private theorem cex_captureRisk_true : captureRisk cexX cexT cexBody cexI' = true := by
+  simp [captureRisk, cexX, cexT, cexBody, cexI', cexI, Term.IsFreeVarIn, Term.isFreeVarIn]
+
+private theorem cex_capture_ineq :
+  let fresh := generateVariant (subst cexI' cexBody) cexX cexT
+  toDBAux ((fresh, cexT) :: cexCtx)
+      (subst ((Term.var cexX cexT, Term.var fresh cexT) :: cexI') cexBody)
+    ≠ dbSubst cexI (toDBAux ((cexX, cexT) :: cexCtx) cexBody) := by
+  intro fresh
+  have hFreshFree : ¬(Term.var fresh cexT).IsFreeVarIn (subst cexI' cexBody) := by
+    simpa [fresh] using (VariantFresh (subst cexI' cexBody) cexX cexT)
+  have hI' : cexI' = cexI := by
+    simp [cexI', cexI, cexX, cexT]
+  have hSubstBody : subst cexI' cexBody = Term.var "y" HOLType.bool := by
+    rw [hI']
+    simp [subst, cexI, cexBody]
+  have hFreshNe : fresh ≠ "y" := by
+    intro hEq
+    apply hFreshFree
+    rw [hSubstBody]
+    simpa [hEq, cexT, Term.IsFreeVarIn, Term.isFreeVarIn]
+  have hHeadNe : (fresh, HOLType.bool) ≠ ("y", HOLType.bool) := by
+    intro h
+    exact hFreshNe (Prod.mk.inj h).1
+  have hHeadBeq : ((fresh, HOLType.bool) == ("y", HOLType.bool)) = false :=
+    (beq_eq_false_iff_ne).2 hHeadNe
+  have hTailBeq : (("x", HOLType.bool) == ("y", HOLType.bool)) = false := by
+    decide
+  have hLeft :
+      toDBAux ((fresh, cexT) :: cexCtx)
+          (subst ((Term.var cexX cexT, Term.var fresh cexT) :: cexI') cexBody)
+        = DBTerm.fvar "y" HOLType.bool := by
+    rw [hI']
+    have hIdxLeft : List.idxOf? ("y", HOLType.bool) [(fresh, HOLType.bool), ("x", HOLType.bool)] = none := by
+      simp [List.idxOf?_cons, hHeadBeq, hTailBeq]
+    simp [toDBAux, subst, cexCtx, cexI, cexX, cexT, cexBody, hIdxLeft]
+  have hRight :
+      dbSubst cexI (toDBAux ((cexX, cexT) :: cexCtx) cexBody)
+        = DBTerm.bvar 1 := by
+    have hIdxRight : List.idxOf? ("x", HOLType.bool) [("y", HOLType.bool), ("x", HOLType.bool)] = some 1 := by
+      simp [List.idxOf?_cons]
+    simp [toDBAux, dbSubst, cexCtx, cexI, cexX, cexT, cexBody, hIdxRight]
+  rw [hLeft, hRight]
+  decide
+
+private theorem subst_toDBAux_comm_capture_counterexample :
+  SubstOk cexI ∧
+  captureRisk cexX cexT cexBody cexI' = true ∧
+  (let fresh := generateVariant (subst cexI' cexBody) cexX cexT
+   toDBAux ((fresh, cexT) :: cexCtx)
+      (subst ((Term.var cexX cexT, Term.var fresh cexT) :: cexI') cexBody)
+    ≠ dbSubst cexI (toDBAux ((cexX, cexT) :: cexCtx) cexBody)) := by
+  exact ⟨cex_SubstOk, cex_captureRisk_true, cex_capture_ineq⟩
+
 private theorem subst_toDBAux_comm_capture :
   ∀ (ctx : List (String × HOLType)) (i : List (Term × Term))
     (x : String) (T : HOLType) (t : Term),
