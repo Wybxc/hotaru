@@ -415,11 +415,13 @@ private theorem subst_toDBAux_comm_capture :
     (x : String) (T : HOLType) (t : Term),
     SubstOk i ->
     let i' := i.filter (fun p => !decide (p.fst = Term.var x T))
+    (∀ (y : String) (U : HOLType), (y, U) ∈ ctx →
+      captureRisk y U t i' = false ∧ i'.find? (fun p => p.fst = Term.var y U) = none) ->
     captureRisk x T t i' = true ->
     let fresh := generateVariant (subst i' t) x T
     toDBAux ((fresh, T) :: ctx) (subst ((Term.var x T, Term.var fresh T) :: i') t)
       = dbSubst i (toDBAux ((x, T) :: ctx) t) := by
-  intro ctx i x T t hOk i' hCap fresh
+  intro ctx i x T t hOk i' hCtxNoCap hCap fresh
   sorry
 
 private theorem subst_toDBAux_comm :
@@ -485,7 +487,31 @@ private theorem subst_toDBAux_comm :
       by_cases hCap : captureRisk x T t i' = true
       · simp only [subst, hCap, ↓reduceIte, toDBAux, dbSubst, DBTerm.abs.injEq, true_and, i']
         set fresh := generateVariant (subst i' t) x T
-        simpa [fresh] using subst_toDBAux_comm_capture ctx i x T t hOk (by simpa [i'] using hCap)
+        have hCtxNoCap :
+            ∀ (y : String) (U : HOLType), (y, U) ∈ ctx →
+              captureRisk y U t i' = false ∧ i'.find? (fun p => p.fst = Term.var y U) = none := by
+          intro y U hmem
+          have hOrig := hNoCap y U hmem
+          constructor
+          · apply (captureRisk_false y U t i').2
+            intro p hp hPair
+            have hpMem : p ∈ i := (List.mem_filter.mp hp).1
+            have hpNe : p.fst ≠ Term.var x T := by
+              have hPred : (!decide (p.fst = Term.var x T)) = true := (List.mem_filter.mp hp).2
+              by_contra hEq
+              simp [hEq] at hPred
+            apply (captureRisk_false y U (.abs x T t) i).mp hOrig.1 p hpMem
+            have hFreeAbs : p.fst.IsFreeVarIn (.abs x T t) := by
+              unfold Term.IsFreeVarIn Term.isFreeVarIn
+              rw [decide_eq_true_iff.mpr hpNe]
+              simpa using hPair.2
+            exact ⟨hPair.1, hFreeAbs⟩
+          · apply (List.find?_eq_none).2
+            intro p hp
+            have hpMem : p ∈ i := (List.mem_filter.mp hp).1
+            exact (List.find?_eq_none).1 hOrig.2 p hpMem
+        simpa [fresh] using
+          subst_toDBAux_comm_capture ctx i x T t hOk (by simpa [i'] using hCtxNoCap) (by simpa [i'] using hCap)
       · have hShadow :
             dbSubst i (toDBAux ((x, T) :: ctx) t) = dbSubst i' (toDBAux ((x, T) :: ctx) t) := by
           simpa [i'] using dbSubst_filter_shadowed_ctx i x T ((x, T) :: ctx) t (by simp)
@@ -552,7 +578,7 @@ private theorem subst_toDB_comm_abs_capture :
   intro i x T body hOk i' hCap
   let fresh := generateVariant (subst i' body) x T
   simpa [fresh] using
-    subst_toDBAux_comm_capture [] i x T body hOk (by simpa [i'] using hCap)
+    subst_toDBAux_comm_capture [] i x T body hOk (by intro y U hmem; cases hmem) (by simpa [i'] using hCap)
 
 theorem subst_toDB_comm :
   ∀ (i : List (Term × Term)) (t : Term),
