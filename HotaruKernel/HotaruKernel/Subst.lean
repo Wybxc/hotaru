@@ -114,21 +114,16 @@ theorem VariantFresh : ∀ t x T, ¬(Term.var (generateVariant t x T) T).IsFreeV
 
 /-- Term variable substitution: applies a list of term substitutions to a term -/
 private def captureRisk (x : String) (T : HOLType) (body : Term) (i : List (Term × Term)) : Bool :=
-  let bvar := Term.var x T
-  i.any (fun p => decide (bvar.IsFreeVarIn p.2 ∧ p.1.IsFreeVarIn body))
+  i.any (fun (t, t') => decide ((Term.var x T).IsFreeVarIn t' ∧ t.IsFreeVarIn body))
 
-private theorem captureRisk_eq_true_iff_exists :
+private theorem captureRisk_true :
   ∀ (x : String) (T : HOLType) (body : Term) (i : List (Term × Term)),
     captureRisk x T body i = true ↔
       ∃ p ∈ i, (Term.var x T).IsFreeVarIn p.2 ∧ p.1.IsFreeVarIn body := by
   intro x T body i
-  induction i with
-  | nil =>
-      simp [captureRisk]
-  | cons p ps ih =>
-      simp [captureRisk]
+  induction i <;> simp [captureRisk]
 
-private theorem captureRisk_eq_false_iff_forall_not :
+private theorem captureRisk_false :
   ∀ (x : String) (T : HOLType) (body : Term) (i : List (Term × Term)),
     captureRisk x T body i = false ↔
       ∀ p ∈ i, ¬((Term.var x T).IsFreeVarIn p.2 ∧ p.1.IsFreeVarIn body) := by
@@ -136,11 +131,11 @@ private theorem captureRisk_eq_false_iff_forall_not :
   constructor
   · intro hFalse p hp hPair
     have hTrue : captureRisk x T body i = true :=
-      (captureRisk_eq_true_iff_exists x T body i).2 ⟨p, hp, hPair⟩
+      (captureRisk_true x T body i).2 ⟨p, hp, hPair⟩
     simp [hFalse] at hTrue
   · intro hNoPair
     by_cases hTrue : captureRisk x T body i = true
-    · rcases (captureRisk_eq_true_iff_exists x T body i).1 hTrue with ⟨p, hp, hPair⟩
+    · rcases (captureRisk_true x T body i).1 hTrue with ⟨p, hp, hPair⟩
       exact False.elim ((hNoPair p hp) hPair)
     · cases hVal : captureRisk x T body i with
       | false => rfl
@@ -148,14 +143,14 @@ private theorem captureRisk_eq_false_iff_forall_not :
           exfalso
           exact hTrue hVal
 
-private theorem captureRisk_app_left_of_false :
+private theorem captureRisk_false_fun :
   ∀ (x : String) (T : HOLType) (s t : Term) (i : List (Term × Term)),
     captureRisk x T (.app s t) i = false ->
     captureRisk x T s i = false := by
   intro x T s t i hApp
-  apply (captureRisk_eq_false_iff_forall_not x T s i).2
+  apply (captureRisk_false x T s i).2
   intro p hp hPair
-  have hAll := (captureRisk_eq_false_iff_forall_not x T (.app s t) i).1 hApp
+  have hAll := (captureRisk_false x T (.app s t) i).1 hApp
   have hNot := hAll p hp
   apply hNot
   constructor
@@ -163,45 +158,20 @@ private theorem captureRisk_app_left_of_false :
   · have hOr : p.fst.IsFreeVarIn s ∨ p.fst.IsFreeVarIn t := Or.inl hPair.2
     simpa [Term.IsFreeVarIn, Term.isFreeVarIn] using hOr
 
-private theorem captureRisk_app_right_of_false :
+private theorem captureRisk_false_arg :
   ∀ (x : String) (T : HOLType) (s t : Term) (i : List (Term × Term)),
     captureRisk x T (.app s t) i = false ->
     captureRisk x T t i = false := by
   intro x T s t i hApp
-  apply (captureRisk_eq_false_iff_forall_not x T t i).2
+  apply (captureRisk_false x T t i).2
   intro p hp hPair
-  have hAll := (captureRisk_eq_false_iff_forall_not x T (.app s t) i).1 hApp
+  have hAll := (captureRisk_false x T (.app s t) i).1 hApp
   have hNot := hAll p hp
   apply hNot
   constructor
   · exact hPair.1
   · have hOr : p.fst.IsFreeVarIn s ∨ p.fst.IsFreeVarIn t := Or.inr hPair.2
     simpa [Term.IsFreeVarIn, Term.isFreeVarIn] using hOr
-
-private theorem captureRisk_abs_body_of_false_filtered :
-  ∀ (y : String) (U : HOLType) (x : String) (T : HOLType) (t : Term) (i : List (Term × Term)),
-    captureRisk y U (.abs x T t) i = false ->
-    let i' := i.filter (fun p => !decide (p.fst = Term.var x T))
-    captureRisk y U t i' = false := by
-  intro y U x T t i hAbs i'
-  apply (captureRisk_eq_false_iff_forall_not y U t i').2
-  intro p hp hPair
-  have hpMem : p ∈ i := (List.mem_filter.mp hp).1
-  have hpNe : p.fst ≠ Term.var x T := by
-    have hPred : (!decide (p.fst = Term.var x T)) = true := (List.mem_filter.mp hp).2
-    by_contra hEq
-    simp [hEq] at hPred
-  have hAll := (captureRisk_eq_false_iff_forall_not y U (.abs x T t) i).1 hAbs
-  have hNot := hAll p hpMem
-  apply hNot
-  have hFreeAbs : p.fst.IsFreeVarIn (.abs x T t) := by
-    unfold Term.IsFreeVarIn Term.isFreeVarIn
-    have hDec : decide (p.fst ≠ Term.var x T) = true := (decide_eq_true_iff).2 hpNe
-    rw [hDec]
-    simpa using hPair.2
-  constructor
-  · exact hPair.1
-  · exact hFreeAbs
 
 private theorem toDBAux_eq_of_ctxIdxEq_on_free :
   ∀ (t : Term) (ctx1 ctx2 : List (String × HOLType)),
@@ -365,7 +335,7 @@ private theorem dbSubst_filter_shadowed_ctx :
       have ht := ih ((y, U) :: ctx) hmem'
       simpa [toDBAux, dbSubst] using ht
 
-private theorem subst_toDBAux_comm_abs_capture_bridge :
+private theorem subst_toDBAux_comm_capture :
   ∀ (ctx : List (String × HOLType)) (i : List (Term × Term))
     (x : String) (T : HOLType) (t : Term),
     SubstOk i ->
@@ -408,7 +378,7 @@ private theorem subst_toDBAux_comm :
                 apply toDBAux_eq_toDB_of_no_free_ctx
                 intro x T hctx hFree
                 have hRiskFalse : captureRisk x T (Term.var y U) i = false := (hNoCap x T hctx).1
-                have hAll := (captureRisk_eq_false_iff_forall_not x T (Term.var y U) i).1 hRiskFalse
+                have hAll := (captureRisk_false x T (Term.var y U) i).1 hRiskFalse
                 have hNot := hAll (Term.var y U, t) hMem
                 apply hNot
                 constructor
@@ -423,14 +393,14 @@ private theorem subst_toDBAux_comm :
         intro x T hmem
         have hAll := hNoCap x T hmem
         refine ⟨?_, hAll.2⟩
-        exact captureRisk_app_left_of_false x T s t i hAll.1
+        exact captureRisk_false_fun x T s t i hAll.1
       have hCtxT :
           ∀ (x : String) (T : HOLType), (x, T) ∈ ctx →
             captureRisk x T t i = false ∧ i.find? (fun p => p.fst = Term.var x T) = none := by
         intro x T hmem
         have hAll := hNoCap x T hmem
         refine ⟨?_, hAll.2⟩
-        exact captureRisk_app_right_of_false x T s t i hAll.1
+        exact captureRisk_false_arg x T s t i hAll.1
       have hs := ihs ctx i hOk hCtxS
       have ht := iht ctx i hOk hCtxT
       simp [subst, toDBAux, dbSubst, hs, ht]
@@ -438,10 +408,9 @@ private theorem subst_toDBAux_comm :
       set i' := i.filter (fun p => !decide (p.fst = Term.var x T))
       have hOk' : SubstOk i' := SubstOk.filter i (fun p => !decide (p.fst = Term.var x T)) hOk
       by_cases hCap : captureRisk x T t i' = true
-      · -- TODO: capture branch requires alpha/renaming bridge under extended context.
-        simp only [subst, hCap, ↓reduceIte, toDBAux, dbSubst, DBTerm.abs.injEq, true_and, i']
+      · simp only [subst, hCap, ↓reduceIte, toDBAux, dbSubst, DBTerm.abs.injEq, true_and, i']
         set fresh := generateVariant (subst i' t) x T
-        simpa [fresh] using subst_toDBAux_comm_abs_capture_bridge ctx i x T t hOk (by simpa [i'] using hCap)
+        simpa [fresh] using subst_toDBAux_comm_capture ctx i x T t hOk (by simpa [i'] using hCap)
       · have hShadow :
             dbSubst i (toDBAux ((x, T) :: ctx) t) = dbSubst i' (toDBAux ((x, T) :: ctx) t) := by
           simpa [i'] using dbSubst_filter_shadowed_ctx i x T ((x, T) :: ctx) t (by simp)
@@ -450,17 +419,30 @@ private theorem subst_toDBAux_comm :
         calc
             toDBAux ((x, T) :: ctx) (subst i' t)
           = dbSubst i' (toDBAux ((x, T) :: ctx) t) := by
-              apply ih
-              · exact hOk'
-              · intro y U hmem
-                cases hmem with
-                | head => constructor <;> aesop
-                | tail _ hmemTail =>
-                  have hOrig := hNoCap y U hmemTail
+              apply ih <;> try trivial
+              intro y U hmem
+              cases hmem with
+              | head => constructor <;> aesop
+              | tail _ hmemTail =>
+                have hOrig := hNoCap y U hmemTail
+                constructor
+                · apply (captureRisk_false y U t i').2
+                  intro p hp hPair
+                  have hpMem : p ∈ i := (List.mem_filter.mp hp).1
+                  have hpNe : p.fst ≠ Term.var x T := by
+                    have hPred : (!decide (p.fst = Term.var x T)) = true
+                      := (List.mem_filter.mp hp).right
+                    by_contra hEq
+                    simp [hEq] at hPred
+                  apply (captureRisk_false y U (.abs x T t) i).mp hOrig.left p hpMem
+                  have hFreeAbs : p.fst.IsFreeVarIn (.abs x T t) := by
+                    unfold Term.IsFreeVarIn Term.isFreeVarIn
+                    rw [decide_eq_true_iff.mpr hpNe]
+                    simpa using hPair.right
                   constructor
-                  · simpa [i'] using
-                      captureRisk_abs_body_of_false_filtered y U x T t i hOrig.1
-                  · aesop
+                  · exact hPair.left
+                  · exact hFreeAbs
+                · aesop
         _ = dbSubst i (toDBAux ((x, T) :: ctx) t) := by
               simpa using hShadow.symm
 
@@ -495,7 +477,7 @@ private theorem subst_toDB_comm_abs_capture :
   intro i x T body hOk i' hCap
   let fresh := generateVariant (subst i' body) x T
   simpa [fresh] using
-    subst_toDBAux_comm_abs_capture_bridge [] i x T body hOk (by simpa [i'] using hCap)
+    subst_toDBAux_comm_capture [] i x T body hOk (by simpa [i'] using hCap)
 
 theorem subst_toDB_comm :
   ∀ (i : List (Term × Term)) (t : Term),
