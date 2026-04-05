@@ -20,107 +20,12 @@ instance (v t : Term) : Decidable (v.IsFreeVarIn t) := by
   unfold Term.IsFreeVarIn
   infer_instance
 
-@[simp] def Term.hasName : String -> Term -> Bool
-| x, .var y _ => decide (x = y)
-| _, .const _ _ => false
-| x, .app s u => s.hasName x || u.hasName x
-| x, .abs y _ body => decide (x = y) || body.hasName x
-
-@[simp] def Term.HasName (x : String) (t : Term) : Prop :=
-  t.hasName x = true
-
-instance (x : String) (t : Term) : Decidable (Term.HasName x t) := by
-  unfold Term.HasName
-  infer_instance
-
 /-- Maximum variable-name length appearing in a term. -/
 def Term.maxVarNameLen : Term → Nat
 | .var x _ => String.length x
 | .const _ _ => 0
 | .app s t => Nat.max s.maxVarNameLen t.maxVarNameLen
 | .abs n _ t => Nat.max (String.length n) t.maxVarNameLen
-
-theorem nameNotInOfNameLengthGt :
-  ∀ (t : Term) (x : String),
-    t.maxVarNameLen < String.length x → ¬Term.HasName x t := by
-  have hasNameLen_le :
-      ∀ (t : Term) (x : String),
-        Term.HasName x t -> String.length x ≤ t.maxVarNameLen := by
-    intro t
-    induction t with
-    | var y Ty =>
-        intro x hHas
-        have hx : x = y := by
-          unfold Term.HasName Term.hasName at hHas
-          exact (decide_eq_true_iff).1 hHas
-        subst hx
-        simp [Term.maxVarNameLen]
-    | const c Ty =>
-        intro x hHas
-        simp [Term.HasName, Term.hasName] at hHas
-    | app s t ihs iht =>
-        intro x hHas
-        unfold Term.HasName Term.hasName at hHas
-        have hOr : s.hasName x = true ∨ t.hasName x = true := by
-          simpa [Bool.or_eq_true] using hHas
-        rcases hOr with hs | ht
-        · exact Nat.le_trans (ihs x hs) (Nat.le_max_left s.maxVarNameLen t.maxVarNameLen)
-        · exact Nat.le_trans (iht x ht) (Nat.le_max_right s.maxVarNameLen t.maxVarNameLen)
-    | abs n Ty t ih =>
-        intro x hHas
-        unfold Term.HasName Term.hasName at hHas
-        have hOr : decide (x = n) = true ∨ t.hasName x = true := by
-          simpa [Bool.or_eq_true] using hHas
-        rcases hOr with hx | ht
-        · have hEq : x = n := (decide_eq_true_iff).1 hx
-          subst hEq
-          exact Nat.le_max_left (String.length x) t.maxVarNameLen
-        · exact Nat.le_trans (ih x ht) (Nat.le_max_right (String.length n) t.maxVarNameLen)
-  intro t x hlen hHas
-  have hle : String.length x ≤ t.maxVarNameLen := hasNameLen_le t x hHas
-  exact (Nat.not_lt_of_ge hle) hlen
-
-private theorem hasName_of_isFreeVarIn :
-  ∀ (x : String) (T : HOLType) (t : Term),
-    (Term.var x T).IsFreeVarIn t -> Term.HasName x t := by
-  intro x T t hFree
-  induction t with
-  | var y U =>
-      have hEq : Term.var x T = Term.var y U := by
-        unfold Term.IsFreeVarIn Term.isFreeVarIn at hFree
-        exact (decide_eq_true_iff).1 hFree
-      have hx : x = y := by aesop
-      subst hx
-      simp [Term.HasName, Term.hasName]
-  | const c U =>
-      simp [Term.IsFreeVarIn, Term.isFreeVarIn] at hFree
-  | app s u ihs ihu =>
-      unfold Term.IsFreeVarIn Term.isFreeVarIn at hFree
-      have hOr : (Term.var x T).isFreeVarIn s = true ∨ (Term.var x T).isFreeVarIn u = true := by
-        simpa [Bool.or_eq_true] using hFree
-      rcases hOr with hs | hu
-      · have hsName : Term.HasName x s := ihs hs
-        unfold Term.HasName Term.hasName
-        have hOrName : Term.hasName x s = true ∨ Term.hasName x u = true := Or.inl hsName
-        simpa [Bool.or_eq_true] using hOrName
-      · have huName : Term.HasName x u := ihu hu
-        unfold Term.HasName Term.hasName
-        have hOrName : Term.hasName x s = true ∨ Term.hasName x u = true := Or.inr huName
-        simpa [Bool.or_eq_true] using hOrName
-  | abs y U body ih =>
-      have hBody : (Term.var x T).IsFreeVarIn body := by
-        unfold Term.IsFreeVarIn Term.isFreeVarIn at hFree
-        aesop
-      have hBodyName : Term.HasName x body := ih hBody
-      unfold Term.HasName Term.hasName
-      have hOrName : decide (x = y) = true ∨ Term.hasName x body = true := Or.inr hBodyName
-      simpa [Bool.or_eq_true] using hOrName
-
-private theorem not_isFreeVarIn_of_noName :
-  ∀ (x : String) (T : HOLType) (t : Term),
-    ¬Term.HasName x t -> ¬(Term.var x T).IsFreeVarIn t := by
-  intro x T t hNoName hFree
-  exact hNoName (hasName_of_isFreeVarIn x T t hFree)
 
 theorem varNotFreeOfNameLengthGt :
   ∀ (t : Term) (x : String) (T : HOLType),
@@ -158,12 +63,15 @@ theorem varNotFreeOfNameLengthGt :
   exact (Nat.not_lt_of_ge hle) hlen
 
 /-- Generate a variable variant with primes appended to avoid name collisions -/
+@[simp]
 private def variantCandidate (baseName : String) (k : Nat) : String :=
   baseName ++ String.ofList (List.replicate k '\'')
 
 /-- Freshness predicate for a suffix length. -/
-private def variantFreshAt (term : Term) (baseName : String) (_ty : HOLType) (k : Nat) : Prop :=
-  ¬Term.HasName (variantCandidate baseName k) term
+@[simp]
+private def variantFreshAt (term : Term) (baseName : String) (ty : HOLType) (k : Nat) : Prop :=
+  let variant := variantCandidate baseName k
+  ¬ (Term.var variant ty).IsFreeVarIn term
 
 instance (term : Term) (baseName : String) (ty : HOLType) (k : Nat) :
     Decidable (variantFreshAt term baseName ty k) := by
@@ -188,7 +96,7 @@ private def chooseMinFreshSuffix (term : Term) (baseName : String) (ty : HOLType
 def generateVariant (t : Term) (baseName : String) (ty : HOLType) : String :=
   let bound := t.maxVarNameLen + 1
   let hbound : variantFreshAt t baseName ty bound := by
-    apply nameNotInOfNameLengthGt
+    apply varNotFreeOfNameLengthGt
     have h1 : t.maxVarNameLen < t.maxVarNameLen + 1 := Nat.lt_succ_self _
     have h2 : t.maxVarNameLen + 1 ≤ String.length (variantCandidate baseName bound) := by
       simp [bound, variantCandidate, Nat.le_add_left (t.maxVarNameLen + 1) (String.length baseName)]
@@ -196,22 +104,18 @@ def generateVariant (t : Term) (baseName : String) (ty : HOLType) : String :=
   let best := chooseMinFreshSuffix t baseName ty bound bound hbound
   variantCandidate baseName best.1
 
-theorem VariantNoName : ∀ t x T, ¬Term.HasName (generateVariant t x T) t := by
+theorem VariantFresh : ∀ t x T, ¬(Term.var (generateVariant t x T) T).IsFreeVarIn t
+    := by
   intros t x T
   unfold generateVariant
   have hbound : variantFreshAt t x T (t.maxVarNameLen + 1) := by
-    apply nameNotInOfNameLengthGt
+    apply varNotFreeOfNameLengthGt
     have h1 : t.maxVarNameLen < t.maxVarNameLen + 1 := Nat.lt_succ_self _
     have h2 : t.maxVarNameLen + 1 ≤ String.length (variantCandidate x (t.maxVarNameLen + 1)) := by
       simp [variantCandidate, Nat.le_add_left (t.maxVarNameLen + 1) (String.length x)]
     exact Nat.lt_of_lt_of_le h1 h2
   let best := chooseMinFreshSuffix t x T (t.maxVarNameLen + 1) (t.maxVarNameLen + 1) hbound
   simpa [variantFreshAt] using best.2
-
-theorem VariantFresh : ∀ t x T, ¬(Term.var (generateVariant t x T) T).IsFreeVarIn t
-    := by
-  intros t x T
-  exact not_isFreeVarIn_of_noName (generateVariant t x T) T t (VariantNoName t x T)
 
 /-- Term variable substitution: applies a list of term substitutions to a term -/
 private def captureRisk (x : String) (T : HOLType) (body : Term) (i : List (Term × Term)) : Bool :=
@@ -345,37 +249,6 @@ private theorem not_free_in_app_arg :
   apply hNot
   have hOr : v.IsFreeVarIn s ∨ v.IsFreeVarIn t := Or.inr hT
   simpa [Term.IsFreeVarIn, Term.isFreeVarIn] using hOr
-
-private theorem not_hasName_in_app_fun :
-  ∀ (x : String) (s t : Term), ¬Term.HasName x (Term.app s t) -> ¬Term.HasName x s := by
-  intro x s t hNot hS
-  apply hNot
-  unfold Term.HasName Term.hasName
-  have hOrName : Term.hasName x s = true ∨ Term.hasName x t = true := Or.inl hS
-  simpa [Bool.or_eq_true] using hOrName
-
-private theorem not_hasName_in_app_arg :
-  ∀ (x : String) (s t : Term), ¬Term.HasName x (Term.app s t) -> ¬Term.HasName x t := by
-  intro x s t hNot hT
-  apply hNot
-  unfold Term.HasName Term.hasName
-  have hOrName : Term.hasName x s = true ∨ Term.hasName x t = true := Or.inr hT
-  simpa [Bool.or_eq_true] using hOrName
-
-private theorem not_hasName_in_abs :
-  ∀ (x y : String) (U : HOLType) (t : Term),
-    ¬Term.HasName x (Term.abs y U t) -> x ≠ y ∧ ¬Term.HasName x t := by
-  intro x y U t hNot
-  constructor
-  · intro hEq
-    apply hNot
-    unfold Term.HasName Term.hasName
-    simp [hEq]
-  · intro hHas
-    apply hNot
-    unfold Term.HasName Term.hasName
-    have hOrName : decide (x = y) = true ∨ Term.hasName x t = true := Or.inr hHas
-    simpa [Bool.or_eq_true] using hOrName
 
 private theorem toDBAux_eq_of_ctxIdxEq_on_free :
   ∀ (t : Term) (ctx1 ctx2 : List (String × HOLType)),
@@ -539,468 +412,6 @@ private theorem dbSubst_filter_shadowed_ctx :
       have ht := ih ((y, U) :: ctx) hmem'
       simpa [toDBAux, dbSubst] using ht
 
-private theorem subst_toDBAux_comm_capture_no_capture_child :
-  ∀ (ctx : List (String × HOLType)) (i : List (Term × Term))
-    (x : String) (T : HOLType) (child : Term) (fresh : String),
-    SubstOk i ->
-    let i' := i.filter (fun p => !decide (p.fst = Term.var x T))
-    (∀ (y : String) (U : HOLType), (y, U) ∈ ctx →
-      captureRisk y U child i' = false ∧ i'.find? (fun p => p.fst = Term.var y U) = none) ->
-    captureRisk x T child i' = false ->
-    ¬Term.HasName fresh (subst i' child) ->
-    toDBAux ((fresh, T) :: ctx) (subst ((Term.var x T, Term.var fresh T) :: i') child)
-      = dbSubst i (toDBAux ((x, T) :: ctx) child) := by
-  intro ctx i x T child fresh hOk i' hCtxNoCap hNoCap hFreshNoName
-  induction child generalizing ctx i with
-  | var y U =>
-      cases hFind : i'.find? (fun p => p.fst = Term.var y U) with
-      | none =>
-          by_cases hEqXY : Term.var x T = Term.var y U
-          · have hSubstHead :
-              subst ((Term.var x T, Term.var fresh T) :: i') (Term.var y U) = Term.var fresh T := by
-              simp [subst, hEqXY]
-            have hEqPair : (y, U) = (x, T) := by aesop
-            cases hEqPair
-            simp [hSubstHead, toDBAux, dbSubst, List.idxOf?_cons]
-          · have hneqYX : Term.var y U ≠ Term.var x T := by
-              intro hEq
-              exact hEqXY hEq.symm
-            have hSubstHead :
-              subst ((Term.var x T, Term.var fresh T) :: i') (Term.var y U) = Term.var y U := by
-              simp [subst, hEqXY, hFind]
-            have hSubstI' : subst i' (Term.var y U) = Term.var y U := by
-              simp [subst, hFind]
-            have hNoNameVar : ¬Term.HasName fresh (Term.var y U) := by
-              simpa [hSubstI'] using hFreshNoName
-            have hneqFY : fresh ≠ y := by
-              intro hEq
-              apply hNoNameVar
-              unfold Term.HasName Term.hasName
-              simpa [hEq]
-            by_cases hyInCtx : (y, U) ∈ ctx
-            · have hHeadBeqFresh : ((fresh, T) == (y, U)) = false :=
-                (beq_eq_false_iff_ne).2 (by aesop)
-              have hHeadBeqX : ((x, T) == (y, U)) = false :=
-                (beq_eq_false_iff_ne).2 (by aesop)
-              cases hIdx : ctx.idxOf? (y, U) with
-              | none =>
-                  exfalso
-                  exact ((List.idxOf?_eq_none_iff (l := ctx) (a := (y, U))).1 hIdx) hyInCtx
-              | some n =>
-                  simp [hSubstHead, toDBAux, dbSubst, List.idxOf?_cons, hHeadBeqFresh, hHeadBeqX, hIdx]
-            · have hTailNone : ctx.idxOf? (y, U) = none :=
-                (List.idxOf?_eq_none_iff (l := ctx) (a := (y, U))).2 hyInCtx
-              have hHeadBeqFresh : ((fresh, T) == (y, U)) = false :=
-                (beq_eq_false_iff_ne).2 (by aesop)
-              have hHeadBeqX : ((x, T) == (y, U)) = false :=
-                (beq_eq_false_iff_ne).2 (by aesop)
-              have hShadow : dbSubst i (DBTerm.fvar y U) = dbSubst i' (DBTerm.fvar y U) := by
-                simpa [i'] using dbSubst_filter_shadowed_lookup i x y T U hneqYX
-              have hDbI' : dbSubst i' (DBTerm.fvar y U) = DBTerm.fvar y U := by
-                simp [dbSubst, hFind]
-              calc
-                  toDBAux ((fresh, T) :: ctx)
-                      (subst ((Term.var x T, Term.var fresh T) :: i') (Term.var y U))
-                = DBTerm.fvar y U := by
-                    simp [hSubstHead, toDBAux, List.idxOf?_cons, hHeadBeqFresh, hTailNone]
-              _ = dbSubst i' (DBTerm.fvar y U) := by simp [hDbI']
-              _ = dbSubst i (DBTerm.fvar y U) := by simp [hShadow]
-              _ = dbSubst i (toDBAux ((x, T) :: ctx) (Term.var y U)) := by
-                    simp [toDBAux, List.idxOf?_cons, hHeadBeqX, hTailNone]
-      | some p =>
-          rcases p with ⟨v, rhs⟩
-          have hMem : (v, rhs) ∈ i' := List.mem_of_find?_eq_some hFind
-          have hPred : decide (v = Term.var y U) = true :=
-            (List.find?_eq_some_iff_getElem.mp hFind).1
-          have hv : v = Term.var y U := (decide_eq_true_iff).1 hPred
-          subst hv
-          by_cases hyInCtx : (y, U) ∈ ctx
-          · have hNoFind : i'.find? (fun q => q.fst = Term.var y U) = none :=
-              (hCtxNoCap y U hyInCtx).2
-            rw [hNoFind] at hFind
-            contradiction
-          · have hKeep : (!decide ((Term.var y U) = Term.var x T)) = true :=
-              (List.mem_filter.mp hMem).2
-            have hneqYX : Term.var y U ≠ Term.var x T := by
-              by_contra hEq
-              simp [hEq] at hKeep
-            have hneqXY : Term.var x T ≠ Term.var y U := by
-              intro hEq
-              exact hneqYX hEq.symm
-            have hSubstI' : subst i' (Term.var y U) = rhs := by
-              simp [subst, hFind]
-            have hFreshNoFreeSubst : ¬(Term.var fresh T).IsFreeVarIn (subst i' (Term.var y U)) := by
-              exact not_isFreeVarIn_of_noName fresh T (subst i' (Term.var y U)) hFreshNoName
-            have hFreshNoFreeRhs : ¬(Term.var fresh T).IsFreeVarIn rhs := by
-              simpa [hSubstI'] using hFreshNoFreeSubst
-            have hCtxNoFreeRhs :
-                ∀ (z : String) (V : HOLType), (z, V) ∈ ctx → ¬(Term.var z V).IsFreeVarIn rhs := by
-              intro z V hz
-              have hNoCapZ : captureRisk z V (Term.var y U) i' = false := (hCtxNoCap z V hz).1
-              have hAll := (captureRisk_false z V (Term.var y U) i').1 hNoCapZ
-              have hNot := hAll (Term.var y U, rhs) hMem
-              intro hFree
-              have hSelf : (Term.var y U).IsFreeVarIn (Term.var y U) := by
-                simp [Term.IsFreeVarIn, Term.isFreeVarIn]
-              exact hNot ⟨hFree, hSelf⟩
-            have hLeftToDB :
-                toDBAux ((fresh, T) :: ctx)
-                    (subst ((Term.var x T, Term.var fresh T) :: i') (Term.var y U))
-                  = rhs.toDB := by
-              have hHeadNo : decide (Term.var x T = Term.var y U) = false :=
-                (decide_eq_false_iff_not).2 hneqXY
-              have hSubstHead :
-                  subst ((Term.var x T, Term.var fresh T) :: i') (Term.var y U) = rhs := by
-                have hHeadPredFalse :
-                    ((fun q : Term × Term => q.fst = Term.var y U) (Term.var x T, Term.var fresh T)) = false := by
-                  simpa using hHeadNo
-                unfold subst
-                rw [List.find?_cons]
-                simp [hHeadPredFalse, hFind]
-              have hClosed : toDBAux ((fresh, T) :: ctx) rhs = rhs.toDB := by
-                apply toDBAux_eq_toDB_of_no_free_ctx
-                intro z V hz
-                cases hz with
-                | head =>
-                    simpa using hFreshNoFreeRhs
-                | tail _ hzTail =>
-                    exact hCtxNoFreeRhs z V hzTail
-              simpa [hSubstHead] using hClosed
-            have hToDBVar : toDBAux ((x, T) :: ctx) (Term.var y U) = DBTerm.fvar y U := by
-              have hPairNe : (x, T) ≠ (y, U) := by
-                intro hEq
-                exact hneqYX (by aesop)
-              have hHeadBeq : ((x, T) == (y, U)) = false := (beq_eq_false_iff_ne).2 hPairNe
-              have hTailNone : ctx.idxOf? (y, U) = none :=
-                (List.idxOf?_eq_none_iff (l := ctx) (a := (y, U))).2 hyInCtx
-              have hIdxNone : ((x, T) :: ctx).idxOf? (y, U) = none := by
-                simp [List.idxOf?_cons, hHeadBeq, hTailNone]
-              simp [toDBAux, hIdxNone]
-            have hShadow : dbSubst i (DBTerm.fvar y U) = dbSubst i' (DBTerm.fvar y U) := by
-              simpa [i'] using dbSubst_filter_shadowed_lookup i x y T U hneqYX
-            have hDbI' : dbSubst i' (DBTerm.fvar y U) = rhs.toDB := by
-              simp [dbSubst, hFind]
-            calc
-                toDBAux ((fresh, T) :: ctx)
-                    (subst ((Term.var x T, Term.var fresh T) :: i') (Term.var y U))
-              = rhs.toDB := hLeftToDB
-            _ = dbSubst i' (DBTerm.fvar y U) := by simp [hDbI']
-            _ = dbSubst i (DBTerm.fvar y U) := by simp [hShadow]
-            _ = dbSubst i (toDBAux ((x, T) :: ctx) (Term.var y U)) := by
-              rw [hToDBVar]
-  | const c U =>
-      simp [subst, toDBAux, dbSubst]
-  | app s u ihs ihu =>
-      have hCtxNoCapS :
-          ∀ (z : String) (V : HOLType), (z, V) ∈ ctx →
-            captureRisk z V s i' = false ∧ i'.find? (fun p => p.fst = Term.var z V) = none := by
-        intro z V hz
-        have hAll := hCtxNoCap z V hz
-        exact ⟨captureRisk_false_fun z V s u i' hAll.1, hAll.2⟩
-      have hCtxNoCapU :
-          ∀ (z : String) (V : HOLType), (z, V) ∈ ctx →
-            captureRisk z V u i' = false ∧ i'.find? (fun p => p.fst = Term.var z V) = none := by
-        intro z V hz
-        have hAll := hCtxNoCap z V hz
-        exact ⟨captureRisk_false_arg z V s u i' hAll.1, hAll.2⟩
-      have hNoCapS : captureRisk x T s i' = false := captureRisk_false_fun x T s u i' hNoCap
-      have hNoCapU : captureRisk x T u i' = false := captureRisk_false_arg x T s u i' hNoCap
-      have hFreshNoNameS : ¬Term.HasName fresh (subst i' s) := by
-        apply not_hasName_in_app_fun fresh (subst i' s) (subst i' u)
-        simpa [subst] using hFreshNoName
-      have hFreshNoNameU : ¬Term.HasName fresh (subst i' u) := by
-        apply not_hasName_in_app_arg fresh (subst i' s) (subst i' u)
-        simpa [subst] using hFreshNoName
-      have hs := ihs ctx i hOk (by simpa [i'] using hCtxNoCapS) (by simpa [i'] using hNoCapS) hFreshNoNameS
-      have hu := ihu ctx i hOk (by simpa [i'] using hCtxNoCapU) (by simpa [i'] using hNoCapU) hFreshNoNameU
-      calc
-          toDBAux ((fresh, T) :: ctx) (subst ((Term.var x T, Term.var fresh T) :: i') (Term.app s u))
-        = DBTerm.app
-            (toDBAux ((fresh, T) :: ctx) (subst ((Term.var x T, Term.var fresh T) :: i') s))
-            (toDBAux ((fresh, T) :: ctx) (subst ((Term.var x T, Term.var fresh T) :: i') u)) := by
-              simp [subst, toDBAux]
-      _ = DBTerm.app
-            (dbSubst i (toDBAux ((x, T) :: ctx) s))
-            (dbSubst i (toDBAux ((x, T) :: ctx) u)) := by
-              simp [i', hs, hu]
-      _ = dbSubst i (toDBAux ((x, T) :: ctx) (Term.app s u)) := by
-              simp [toDBAux, dbSubst]
-  | abs y U t ih =>
-      sorry
-
-private theorem subst_toDBAux_comm_capture :
-  ∀ (ctx : List (String × HOLType)) (i : List (Term × Term))
-    (x : String) (T : HOLType) (t : Term) (fresh : String),
-    SubstOk i ->
-    let i' := i.filter (fun p => !decide (p.fst = Term.var x T))
-    (∀ (y : String) (U : HOLType), (y, U) ∈ ctx →
-      captureRisk y U t i' = false ∧ i'.find? (fun p => p.fst = Term.var y U) = none) ->
-    captureRisk x T t i' = true ->
-    ¬Term.HasName fresh (subst i' t) ->
-    toDBAux ((fresh, T) :: ctx) (subst ((Term.var x T, Term.var fresh T) :: i') t)
-      = dbSubst i (toDBAux ((x, T) :: ctx) t) := by
-  intro ctx i x T t fresh hOk i' hCtxNoCap hCap hFreshNoName
-  induction t generalizing ctx i with
-  | var y U =>
-      cases hFind : i'.find? (fun p => p.fst = Term.var y U) with
-      | none =>
-          have hRisk : captureRisk x T (Term.var y U) i' = true := hCap
-          have hContra : False := by
-            rcases (captureRisk_true x T (Term.var y U) i').1 hRisk with ⟨p, hp, hPair⟩
-            have hFindNone := (List.find?_eq_none).1 hFind
-            have hp1Eq : p.1 = Term.var y U := by
-              unfold Term.IsFreeVarIn Term.isFreeVarIn at hPair
-              exact (decide_eq_true_iff).1 hPair.2
-            have hPredTrue : (fun q => decide (q.fst = Term.var y U)) p = true := by
-              simp [hp1Eq]
-            exact (hFindNone p hp) hPredTrue
-          exact False.elim hContra
-      | some p =>
-          rcases p with ⟨v, rhs⟩
-          have hMem : (v, rhs) ∈ i' := List.mem_of_find?_eq_some hFind
-          have hPred : decide (v = Term.var y U) = true :=
-            (List.find?_eq_some_iff_getElem.mp hFind).1
-          have hv : v = Term.var y U := (decide_eq_true_iff).1 hPred
-          subst hv
-          have hRisk : captureRisk x T (Term.var y U) i' = true := hCap
-          by_cases hyInCtx : (y, U) ∈ ctx
-          · have hNoFind : i'.find? (fun q => q.fst = Term.var y U) = none :=
-              (hCtxNoCap y U hyInCtx).2
-            rw [hNoFind] at hFind
-            contradiction
-          · have hKeep : (!decide ((Term.var y U) = Term.var x T)) = true :=
-              (List.mem_filter.mp hMem).2
-            have hneqYX : Term.var y U ≠ Term.var x T := by
-              by_contra hEq
-              simp [hEq] at hKeep
-            have hneqXY : Term.var x T ≠ Term.var y U := by
-              intro hEq
-              exact hneqYX hEq.symm
-            have hSubstI' : subst i' (Term.var y U) = rhs := by
-              simp [subst, hFind]
-            have hFreshNoFreeSubst : ¬(Term.var fresh T).IsFreeVarIn (subst i' (Term.var y U)) := by
-              exact not_isFreeVarIn_of_noName fresh T (subst i' (Term.var y U)) hFreshNoName
-            have hFreshNoFreeRhs : ¬(Term.var fresh T).IsFreeVarIn rhs := by
-              simpa [hSubstI'] using hFreshNoFreeSubst
-            have hCtxNoFreeRhs :
-                ∀ (z : String) (V : HOLType), (z, V) ∈ ctx → ¬(Term.var z V).IsFreeVarIn rhs := by
-              intro z V hz
-              have hNoCapZ : captureRisk z V (Term.var y U) i' = false := (hCtxNoCap z V hz).1
-              have hAll := (captureRisk_false z V (Term.var y U) i').1 hNoCapZ
-              have hNot := hAll (Term.var y U, rhs) hMem
-              intro hFree
-              have hSelf : (Term.var y U).IsFreeVarIn (Term.var y U) := by
-                simp [Term.IsFreeVarIn, Term.isFreeVarIn]
-              exact hNot ⟨hFree, hSelf⟩
-            have hLeftToDB :
-                toDBAux ((fresh, T) :: ctx)
-                    (subst ((Term.var x T, Term.var fresh T) :: i') (Term.var y U))
-                  = rhs.toDB := by
-              have hHeadNo : decide (Term.var x T = Term.var y U) = false :=
-                (decide_eq_false_iff_not).2 hneqXY
-              have hSubstHead :
-                  subst ((Term.var x T, Term.var fresh T) :: i') (Term.var y U) = rhs := by
-                have hHeadPredFalse :
-                    ((fun q : Term × Term => q.fst = Term.var y U) (Term.var x T, Term.var fresh T)) = false := by
-                  simpa using hHeadNo
-                unfold subst
-                rw [List.find?_cons]
-                simp [hHeadPredFalse, hFind]
-              have hClosed : toDBAux ((fresh, T) :: ctx) rhs = rhs.toDB := by
-                apply toDBAux_eq_toDB_of_no_free_ctx
-                intro z V hz
-                cases hz with
-                | head =>
-                    simpa using hFreshNoFreeRhs
-                | tail _ hzTail =>
-                    exact hCtxNoFreeRhs z V hzTail
-              simpa [hSubstHead] using hClosed
-            have hToDBVar : toDBAux ((x, T) :: ctx) (Term.var y U) = DBTerm.fvar y U := by
-              have hPairNe : (x, T) ≠ (y, U) := by
-                intro hEq
-                exact hneqYX (by aesop)
-              have hHeadBeq : ((x, T) == (y, U)) = false := (beq_eq_false_iff_ne).2 hPairNe
-              have hTailNone : ctx.idxOf? (y, U) = none :=
-                (List.idxOf?_eq_none_iff (l := ctx) (a := (y, U))).2 hyInCtx
-              have hIdxNone : ((x, T) :: ctx).idxOf? (y, U) = none := by
-                simp [List.idxOf?_cons, hHeadBeq, hTailNone]
-              simp [toDBAux, hIdxNone]
-            have hShadow : dbSubst i (DBTerm.fvar y U) = dbSubst i' (DBTerm.fvar y U) := by
-              simpa [i'] using dbSubst_filter_shadowed_lookup i x y T U hneqYX
-            have hDbI' : dbSubst i' (DBTerm.fvar y U) = rhs.toDB := by
-              simp [dbSubst, hFind]
-            calc
-                toDBAux ((fresh, T) :: ctx)
-                    (subst ((Term.var x T, Term.var fresh T) :: i') (Term.var y U))
-              = rhs.toDB := hLeftToDB
-            _ = dbSubst i' (DBTerm.fvar y U) := by simp [hDbI']
-            _ = dbSubst i (DBTerm.fvar y U) := by simp [hShadow]
-            _ = dbSubst i (toDBAux ((x, T) :: ctx) (Term.var y U)) := by
-              rw [hToDBVar]
-  | const c U =>
-      have hFalse : captureRisk x T (Term.const c U) i' = false := by
-        simp [captureRisk]
-      simp [hFalse] at hCap
-  | app s u ihs ihu =>
-      have hCtxNoCapS :
-          ∀ (z : String) (V : HOLType), (z, V) ∈ ctx →
-            captureRisk z V s i' = false ∧ i'.find? (fun p => p.fst = Term.var z V) = none := by
-        intro z V hz
-        have hAll := hCtxNoCap z V hz
-        exact ⟨captureRisk_false_fun z V s u i' hAll.1, hAll.2⟩
-      have hCtxNoCapU :
-          ∀ (z : String) (V : HOLType), (z, V) ∈ ctx →
-            captureRisk z V u i' = false ∧ i'.find? (fun p => p.fst = Term.var z V) = none := by
-        intro z V hz
-        have hAll := hCtxNoCap z V hz
-        exact ⟨captureRisk_false_arg z V s u i' hAll.1, hAll.2⟩
-      have hCapSplit : captureRisk x T s i' = true ∨ captureRisk x T u i' = true :=
-        captureRisk_true_fun_or_arg x T s u i' hCap
-      have hFreshNoNameS : ¬Term.HasName fresh (subst i' s) := by
-        apply not_hasName_in_app_fun fresh (subst i' s) (subst i' u)
-        simpa [subst] using hFreshNoName
-      have hFreshNoNameU : ¬Term.HasName fresh (subst i' u) := by
-        apply not_hasName_in_app_arg fresh (subst i' s) (subst i' u)
-        simpa [subst] using hFreshNoName
-      have hsEq :
-          captureRisk x T s i' = true ->
-            toDBAux ((fresh, T) :: ctx) (subst ((Term.var x T, Term.var fresh T) :: i') s)
-              = dbSubst i (toDBAux ((x, T) :: ctx) s) := by
-        intro hCapS
-        exact ihs ctx i hOk (by simpa [i'] using hCtxNoCapS) (by simpa [i'] using hCapS) hFreshNoNameS
-      have huEq :
-          captureRisk x T u i' = true ->
-            toDBAux ((fresh, T) :: ctx) (subst ((Term.var x T, Term.var fresh T) :: i') u)
-              = dbSubst i (toDBAux ((x, T) :: ctx) u) := by
-        intro hCapU
-        exact ihu ctx i hOk (by simpa [i'] using hCtxNoCapU) (by simpa [i'] using hCapU) hFreshNoNameU
-      cases hCapSplit with
-      | inl hCapS =>
-          have hs :
-              toDBAux ((fresh, T) :: ctx) (subst ((Term.var x T, Term.var fresh T) :: i') s)
-                = dbSubst i (toDBAux ((x, T) :: ctx) s) := hsEq hCapS
-          have hu :
-              toDBAux ((fresh, T) :: ctx) (subst ((Term.var x T, Term.var fresh T) :: i') u)
-                = dbSubst i (toDBAux ((x, T) :: ctx) u) := by
-            by_cases hCapU : captureRisk x T u i' = true
-            · exact huEq hCapU
-            · have hNoCapU : captureRisk x T u i' = false := by
-                cases hVal : captureRisk x T u i' with
-                | false => rfl
-                | true => exfalso; exact hCapU hVal
-              exact subst_toDBAux_comm_capture_no_capture_child ctx i x T u fresh hOk
-                (by simpa [i'] using hCtxNoCapU) hNoCapU hFreshNoNameU
-          simp [subst, toDBAux, dbSubst, hs, hu]
-      | inr hCapU =>
-          have hs :
-              toDBAux ((fresh, T) :: ctx) (subst ((Term.var x T, Term.var fresh T) :: i') s)
-                = dbSubst i (toDBAux ((x, T) :: ctx) s) := by
-            by_cases hCapS : captureRisk x T s i' = true
-            · exact hsEq hCapS
-            · have hNoCapS : captureRisk x T s i' = false := by
-                cases hVal : captureRisk x T s i' with
-                | false => rfl
-                | true => exfalso; exact hCapS hVal
-              exact subst_toDBAux_comm_capture_no_capture_child ctx i x T s fresh hOk
-                (by simpa [i'] using hCtxNoCapS) hNoCapS hFreshNoNameS
-          have hu :
-              toDBAux ((fresh, T) :: ctx) (subst ((Term.var x T, Term.var fresh T) :: i') u)
-                = dbSubst i (toDBAux ((x, T) :: ctx) u) := huEq hCapU
-          simp [subst, toDBAux, dbSubst, hs, hu]
-  | abs y U t ih =>
-      have hCapXBody : captureRisk x T t i' = true :=
-        captureRisk_true_abs_body x y T U t i' hCap
-      by_cases hCapBody : captureRisk y U t i' = true
-      · -- nested capture branch
-        sorry
-      · -- nested no-capture branch
-        have hNoCapBody : captureRisk y U t i' = false := by
-          cases hVal : captureRisk y U t i' with
-          | false => rfl
-          | true =>
-              exfalso
-              exact hCapBody hVal
-        have hNoCapBodyFiltered :
-            captureRisk y U t (i'.filter (fun p => !decide (p.fst = Term.var y U))) = false := by
-          exact captureRisk_false_filter y U t i' (fun p => !decide (p.fst = Term.var y U)) hNoCapBody
-        let iY := i'.filter (fun p => !decide (p.fst = Term.var y U))
-        have hSubstI'Abs :
-            subst i' (Term.abs y U t) = Term.abs y U (subst iY t) := by
-          simp [subst, iY, hNoCapBodyFiltered]
-        have hFreshSplit : fresh ≠ y ∧ ¬Term.HasName fresh (subst iY t) := by
-          have hNoNameAbs : ¬Term.HasName fresh (Term.abs y U (subst iY t)) := by
-            simpa [hSubstI'Abs] using hFreshNoName
-          exact not_hasName_in_abs fresh y U (subst iY t) hNoNameAbs
-        have hFreshNeY : fresh ≠ y := hFreshSplit.1
-        have hFreshNoNameBody : ¬Term.HasName fresh (subst iY t) := hFreshSplit.2
-        let iHead := (Term.var x T, Term.var fresh T) :: i'
-        let iHeadY := iHead.filter (fun p => !decide (p.fst = Term.var y U))
-        have hNoCapBodyHeadY : captureRisk y U t iHeadY = false := by
-          by_cases hEqXY : Term.var x T = Term.var y U
-          · have hEqFilter : iHeadY = iY := by
-              simp [iHead, iHeadY, iY, hEqXY]
-            simpa [hEqFilter] using hNoCapBodyFiltered
-          · have hEqFilter : iHeadY = (Term.var x T, Term.var fresh T) :: iY := by
-              simp [iHead, iHeadY, iY, hEqXY]
-            apply (captureRisk_false y U t iHeadY).2
-            intro p hp hPair
-            rw [hEqFilter] at hp
-            cases hp with
-            | head =>
-                have hVarNe : Term.var y U ≠ Term.var fresh T := by
-                  intro hEq
-                  exact hFreshNeY (by aesop)
-                have hNotFreeFresh : ¬(Term.var y U).IsFreeVarIn (Term.var fresh T) := by
-                  simpa [Term.IsFreeVarIn, Term.isFreeVarIn] using hVarNe
-                simpa using hNotFreeFresh hPair.1
-            | tail _ hpTail =>
-                have hAll := (captureRisk_false y U t iY).1 hNoCapBodyFiltered
-                exact (hAll p hpTail) hPair
-        have hSubstHeadAbs :
-            subst ((Term.var x T, Term.var fresh T) :: i') (Term.abs y U t)
-              = Term.abs y U (subst iHeadY t) := by
-          simp [subst, iHead, iHeadY, hNoCapBodyHeadY]
-        have hRhsShadowX :
-            dbSubst i (toDBAux ((y, U) :: (x, T) :: ctx) t)
-              = dbSubst i' (toDBAux ((y, U) :: (x, T) :: ctx) t) := by
-          simpa [i'] using
-            dbSubst_filter_shadowed_ctx i x T ((y, U) :: (x, T) :: ctx) t (by simp)
-        have hRhsShadowY :
-            dbSubst i' (toDBAux ((y, U) :: (x, T) :: ctx) t)
-              = dbSubst iY (toDBAux ((y, U) :: (x, T) :: ctx) t) := by
-          simpa [iY] using
-            dbSubst_filter_shadowed_ctx i' y U ((y, U) :: (x, T) :: ctx) t (by simp)
-        have hRhsToIY :
-            dbSubst i (toDBAux ((y, U) :: (x, T) :: ctx) t)
-              = dbSubst iY (toDBAux ((y, U) :: (x, T) :: ctx) t) :=
-          hRhsShadowX.trans hRhsShadowY
-        have hneqXYVar : Term.var x T ≠ Term.var y U := by
-          intro hEq
-          have hNoCapXBody : captureRisk x T t i' = false := by
-            cases hEq
-            simpa using hNoCapBody
-          rw [hNoCapXBody] at hCapXBody
-          simp at hCapXBody
-        have hIHeadYCons : iHeadY = (Term.var x T, Term.var fresh T) :: iY := by
-          simp [iHead, iHeadY, iY, hneqXYVar]
-        have hBodyGoal :
-            toDBAux ((y, U) :: (fresh, T) :: ctx) (subst iHeadY t)
-              = dbSubst iY (toDBAux ((y, U) :: (x, T) :: ctx) t) := by
-          rw [hIHeadYCons]
-          sorry
-        clear hFreshNoNameBody
-        calc
-            toDBAux ((fresh, T) :: ctx)
-                (subst ((Term.var x T, Term.var fresh T) :: i') (Term.abs y U t))
-          = DBTerm.abs U (toDBAux ((y, U) :: (fresh, T) :: ctx) (subst iHeadY t)) := by
-              simp [hSubstHeadAbs, toDBAux]
-        _ = DBTerm.abs U (dbSubst iY (toDBAux ((y, U) :: (x, T) :: ctx) t)) := by
-              simp [hBodyGoal]
-        _ = DBTerm.abs U (dbSubst i (toDBAux ((y, U) :: (x, T) :: ctx) t)) := by
-              simp [hRhsToIY, congrArg (DBTerm.abs U) hRhsToIY.symm]
-        _ = dbSubst i (toDBAux ((x, T) :: ctx) (Term.abs y U t)) := by
-              simp [toDBAux, dbSubst]
-
 private theorem subst_toDBAux_comm :
   ∀ (ctx : List (String × HOLType)) (i : List (Term × Term)) (body : Term),
     SubstOk i ->
@@ -1063,34 +474,34 @@ private theorem subst_toDBAux_comm :
       have hOk' : SubstOk i' := SubstOk.filter i (fun p => !decide (p.fst = Term.var x T)) hOk
       by_cases hCap : captureRisk x T t i' = true
       · simp only [subst, hCap, ↓reduceIte, toDBAux, dbSubst, DBTerm.abs.injEq, true_and, i']
+        set i' := i.filter (fun p => !decide (p.fst = Term.var x T))
         set fresh := generateVariant (subst i' t) x T
-        have hFreshNoName : ¬Term.HasName fresh (subst i' t) := by
-          simpa [fresh] using (VariantNoName (subst i' t) x T)
-        have hCtxNoCap :
-            ∀ (y : String) (U : HOLType), (y, U) ∈ ctx →
-              captureRisk y U t i' = false ∧ i'.find? (fun p => p.fst = Term.var y U) = none := by
-          intro y U hmem
-          have hOrig := hNoCap y U hmem
-          constructor
-          · apply (captureRisk_false y U t i').2
-            intro p hp hPair
-            have hpMem : p ∈ i := (List.mem_filter.mp hp).1
-            have hpNe : p.fst ≠ Term.var x T := by
-              have hPred : (!decide (p.fst = Term.var x T)) = true := (List.mem_filter.mp hp).2
-              by_contra hEq
-              simp [hEq] at hPred
-            apply (captureRisk_false y U (.abs x T t) i).mp hOrig.1 p hpMem
-            have hFreeAbs : p.fst.IsFreeVarIn (.abs x T t) := by
-              unfold Term.IsFreeVarIn Term.isFreeVarIn
-              rw [decide_eq_true_iff.mpr hpNe]
-              simpa using hPair.2
-            exact ⟨hPair.1, hFreeAbs⟩
-          · apply (List.find?_eq_none).2
-            intro p hp
-            have hpMem : p ∈ i := (List.mem_filter.mp hp).1
-            exact (List.find?_eq_none).1 hOrig.2 p hpMem
-        simpa [fresh] using
-          subst_toDBAux_comm_capture ctx i x T t fresh hOk (by simpa [i'] using hCtxNoCap) (by simpa [i'] using hCap) (by simpa [fresh] using hFreshNoName)
+        -- have hFreshNoName : ¬Term.HasName fresh (subst i' t) := by
+        --   simpa [fresh] using (VariantNoName (subst i' t) x T)
+        -- have hCtxNoCap :
+        --     ∀ (y : String) (U : HOLType), (y, U) ∈ ctx →
+        --       captureRisk y U t i' = false ∧ i'.find? (fun p => p.fst = Term.var y U) = none := by
+        --   intro y U hmem
+        --   have hOrig := hNoCap y U hmem
+        --   constructor
+        --   · apply (captureRisk_false y U t i').2
+        --     intro p hp hPair
+        --     have hpMem : p ∈ i := (List.mem_filter.mp hp).1
+        --     have hpNe : p.fst ≠ Term.var x T := by
+        --       have hPred : (!decide (p.fst = Term.var x T)) = true := (List.mem_filter.mp hp).2
+        --       by_contra hEq
+        --       simp [hEq] at hPred
+        --     apply (captureRisk_false y U (.abs x T t) i).mp hOrig.1 p hpMem
+        --     have hFreeAbs : p.fst.IsFreeVarIn (.abs x T t) := by
+        --       unfold Term.IsFreeVarIn Term.isFreeVarIn
+        --       rw [decide_eq_true_iff.mpr hpNe]
+        --       simpa using hPair.2
+        --     exact ⟨hPair.1, hFreeAbs⟩
+        --   · apply (List.find?_eq_none).2
+        --     intro p hp
+        --     have hpMem : p ∈ i := (List.mem_filter.mp hp).1
+        --     exact (List.find?_eq_none).1 hOrig.2 p hpMem
+        sorry
       · have hShadow :
             dbSubst i (toDBAux ((x, T) :: ctx) t) = dbSubst i' (toDBAux ((x, T) :: ctx) t) := by
           simpa [i'] using dbSubst_filter_shadowed_ctx i x T ((x, T) :: ctx) t (by simp)
@@ -1126,6 +537,19 @@ private theorem subst_toDBAux_comm :
         _ = dbSubst i (toDBAux ((x, T) :: ctx) t) := by
               simpa using hShadow.symm
 
+private theorem subst_toDBAux_comm_capture :
+  ∀ (ctx : List (String × HOLType)) (i : List (Term × Term))
+    (x : String) (T : HOLType) (t : Term) (fresh : String),
+    SubstOk i ->
+    let i' := i.filter (fun p => !decide (p.fst = Term.var x T))
+    (∀ (y : String) (U : HOLType), (y, U) ∈ ctx →
+      captureRisk y U t i' = false ∧ i'.find? (fun p => p.fst = Term.var y U) = none) ->
+    captureRisk x T t i' = true ->
+    ¬(Term.var fresh T).IsFreeVarIn (subst i' t) ->
+    toDBAux ((fresh, T) :: ctx) (subst ((Term.var x T, Term.var fresh T) :: i') t)
+      = dbSubst i (toDBAux ((x, T) :: ctx) t) := by
+  sorry
+
 /-- abstraction branch when no capture risk. -/
 private theorem subst_toDB_comm_abs_no_capture :
   ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
@@ -1156,10 +580,10 @@ private theorem subst_toDB_comm_abs_capture :
       = dbSubst i (toDBAux [(x, T)] body) := by
   intro i x T body hOk i' hCap
   let fresh := generateVariant (subst i' body) x T
-  have hFreshNoName : ¬Term.HasName fresh (subst i' body) := by
-    simpa [fresh] using (VariantNoName (subst i' body) x T)
+  have hFreshNoFree : ¬(Term.var fresh T).IsFreeVarIn (subst i' body) := by
+    simpa [fresh] using (VariantFresh (subst i' body) x T)
   simpa [fresh] using
-    subst_toDBAux_comm_capture [] i x T body fresh hOk (by intro y U hmem; cases hmem) (by simpa [i'] using hCap) (by simpa [fresh] using hFreshNoName)
+    subst_toDBAux_comm_capture [] i x T body fresh hOk (by intro y U hmem; cases hmem) (by simpa [i'] using hCap) (by simpa [fresh] using hFreshNoFree)
 
 theorem subst_toDB_comm :
   ∀ (i : List (Term × Term)) (t : Term),
