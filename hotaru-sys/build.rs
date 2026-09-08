@@ -6,12 +6,14 @@ fn lake(dir: &Path, args: &[&str]) -> String {
         .args(args)
         .output()
         .expect("lake must be installed and available on PATH");
+
     assert!(
         output.status.success(),
         "lake {args:?} failed:\n{}\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
+
     String::from_utf8(output.stdout)
         .expect("lake output is UTF-8")
         .trim()
@@ -24,6 +26,7 @@ fn main() {
         env::var("TARGET").unwrap(),
         "cross compilation is not supported: the Lean library must match the Rust target"
     );
+
     let os = env::var("CARGO_CFG_TARGET_OS").unwrap();
     assert!(
         os == "macos" || os == "linux",
@@ -31,11 +34,13 @@ fn main() {
     );
     assert_eq!(env::var("CARGO_CFG_TARGET_POINTER_WIDTH").unwrap(), "64");
     assert_eq!(env::var("CARGO_CFG_TARGET_ENDIAN").unwrap(), "little");
+
     let manifest = env::var_os("CARGO_MANIFEST_DIR").unwrap();
     let kernel = Path::new(&manifest)
         .join("../HotaruKernel")
         .canonicalize()
         .unwrap();
+
     for path in [
         "lean-toolchain",
         "lakefile.lean",
@@ -54,11 +59,13 @@ fn main() {
         "leanprover/lean4:v4.29.0",
         "runtime bindings require Lean 4.29.0"
     );
+
     lake(&kernel, &["build", "hotaruLean"]);
     let prefix = lake(&kernel, &["env", "lean", "--print-prefix"]);
     let include = Path::new(&prefix).join("include");
     let out = std::path::PathBuf::from(env::var_os("OUT_DIR").unwrap());
     let wrapper = out.join("lean_inline");
+
     bindgen::Builder::default()
         .header(include.join("lean/lean.h").to_str().unwrap())
         .clang_arg(format!("-I{}", include.display()))
@@ -78,20 +85,25 @@ fn main() {
         .expect("generate bindings from the pinned Lean header (libclang is required)")
         .write_to_file(out.join("lean.rs"))
         .expect("write generated Lean bindings");
+
     cc::Build::new()
         .file(wrapper.with_extension("c"))
         .include(&include)
         .std("c11")
         .compile("hotaru_lean_inline");
+
     let runtime = Path::new(&prefix).join("lib/lean");
     let library = kernel.join(".lake/build/lib");
+
     for path in [&library, &runtime] {
         println!("cargo:rustc-link-search=native={}", path.display());
         println!("cargo:rustc-link-arg=-Wl,-rpath,{}", path.display());
     }
     println!("cargo:rustc-link-lib=dylib=hotaru_lean");
+
     let ext = if os == "macos" { "dylib" } else { "so" };
     let mut libs = Vec::new();
+
     for entry in fs::read_dir(&runtime).unwrap() {
         let path = entry.unwrap().path();
         let name = path.file_name().unwrap().to_str().unwrap();
@@ -107,11 +119,14 @@ fn main() {
             );
         }
     }
+
     libs.sort();
     assert!(!libs.is_empty(), "Lean runtime shared libraries not found");
+
     for lib in libs {
         println!("cargo:rustc-link-lib=dylib={lib}");
     }
+
     println!("cargo:lib_dir={}", library.display());
     println!("cargo:runtime_dir={}", runtime.display());
 }

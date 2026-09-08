@@ -10,6 +10,7 @@
 //! fn require_sync<T: Sync>() {}
 //! require_sync::<hotaru_sys::Theorem>();
 //! ```
+
 mod lean;
 mod raw;
 mod runtime;
@@ -43,6 +44,7 @@ pub enum KernelError {
     NotPredicate,
     InvalidTheoremReference,
 }
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
     WrongThread,
@@ -53,18 +55,23 @@ pub enum Error {
     Kernel(KernelError),
     UnknownNativeError(i32),
 }
+
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self:?}")
     }
 }
+
 impl std::error::Error for Error {}
+
 pub type Result<T> = std::result::Result<T, Error>;
 
 fn ready() -> Result<()> {
     static INIT: OnceLock<(ThreadId, bool)> = OnceLock::new();
+
     let current = std::thread::current().id();
     let (owner, ok) = INIT.get_or_init(|| (current, runtime::initialize()));
+
     if *owner != current {
         Err(Error::WrongThread)
     } else if !ok {
@@ -73,6 +80,7 @@ fn ready() -> Result<()> {
         Ok(())
     }
 }
+
 fn error(code: i32) -> Error {
     match code {
         6 => Error::WrongKind,
@@ -102,15 +110,18 @@ fn error(code: i32) -> Error {
         n => Error::UnknownNativeError(n),
     }
 }
+
 // Callers pass only owned results of the matching Lean exports.
 unsafe fn checked(ptr: Obj) -> Result<Owned> {
     unsafe { Owned::from_raw(ptr) }.result().map_err(error)
 }
+
 fn string(value: Owned) -> String {
     std::str::from_utf8(value.bytes())
         .expect("Lean returned invalid UTF-8")
         .to_owned()
 }
+
 fn bindings(items: &[(&str, &Type)]) -> Owned {
     items.iter().fold(Owned::array(), |a, (n, t)| {
         a.push(unsafe {
@@ -127,6 +138,7 @@ pub struct Name {
     pub scope: String,
     pub name: String,
 }
+
 impl Name {
     pub fn new(scope: impl Into<String>, name: impl Into<String>) -> Self {
         Self {
@@ -135,6 +147,7 @@ impl Name {
         }
     }
 }
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Foundation {
     Eta,
@@ -142,6 +155,7 @@ pub enum Foundation {
     Infinity,
     BoolCases,
 }
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TypeKind {
     Bool,
@@ -149,6 +163,7 @@ pub enum TypeKind {
     Function,
     Operator,
 }
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TermKind {
     Free,
@@ -164,14 +179,17 @@ pub enum TermKind {
 pub struct Type {
     value: Owned,
 }
+
 #[derive(Clone)]
 pub struct Term {
     value: Owned,
 }
+
 #[derive(Clone)]
 pub struct Theory {
     context: Rc<Context>,
 }
+
 #[derive(Clone)]
 pub struct Theorem {
     value: Owned,
@@ -183,9 +201,11 @@ struct Context {
     edge: Option<Owned>,
     parent: Option<Rc<Context>>,
 }
+
 impl Drop for Context {
     fn drop(&mut self) {
         let mut parent = self.parent.take();
+
         while let Some(rc) = parent {
             match Rc::try_unwrap(rc) {
                 Ok(mut c) => parent = c.parent.take(),
@@ -194,51 +214,64 @@ impl Drop for Context {
         }
     }
 }
+
 impl std::fmt::Debug for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Type").finish_non_exhaustive()
     }
 }
+
 impl std::fmt::Debug for Term {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Term").finish_non_exhaustive()
     }
 }
+
 impl std::fmt::Debug for Theory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Theory").finish_non_exhaustive()
     }
 }
+
 impl std::fmt::Debug for Theorem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Theorem").finish_non_exhaustive()
     }
 }
+
 impl PartialEq for Type {
     fn eq(&self, other: &Self) -> bool {
         unsafe { hotaru_lean_type_eq(self.value.argument(), other.value.argument()) != 0 }
     }
 }
+
 impl Eq for Type {}
+
 impl PartialEq for Term {
     fn eq(&self, other: &Self) -> bool {
         unsafe { hotaru_lean_term_eq(self.value.argument(), other.value.argument()) != 0 }
     }
 }
+
 impl Eq for Term {}
+
 impl Type {
     pub fn bool() -> Result<Self> {
         ready()?;
+
         Ok(Self {
             value: unsafe { Owned::from_raw(hotaru_lean_type_bool(Owned::unit().into_raw())) },
         })
     }
+
     pub fn var(name: &str) -> Result<Self> {
         ready()?;
+
         Ok(Self {
             value: unsafe { Owned::from_raw(hotaru_lean_type_var(Owned::string(name).into_raw())) },
         })
     }
+
     pub fn function(domain: &Type, range: &Type) -> Result<Self> {
         Ok(Self {
             value: unsafe {
@@ -249,8 +282,10 @@ impl Type {
             },
         })
     }
+
     pub fn operator(name: &Name, args: &[&Type]) -> Result<Self> {
         ready()?;
+
         let args = args
             .iter()
             .fold(Owned::array(), |a, t| a.push(t.value.clone()));
@@ -264,6 +299,7 @@ impl Type {
             },
         })
     }
+
     pub fn kind(&self) -> TypeKind {
         match unsafe { hotaru_lean_type_kind(self.value.argument()) } {
             0 => TypeKind::Bool,
@@ -273,15 +309,18 @@ impl Type {
             _ => unreachable!(),
         }
     }
+
     pub fn arity(&self) -> u64 {
         unsafe { hotaru_lean_type_arity(self.value.argument()) }
     }
+
     pub fn child(&self, index: u64) -> Result<Type> {
         Ok(Type {
             value: unsafe { checked(hotaru_lean_type_child(self.value.argument(), index))? },
         })
     }
 }
+
 impl Term {
     pub fn free(name: &str, ty: &Type) -> Result<Self> {
         Ok(Self {
@@ -293,14 +332,18 @@ impl Term {
             },
         })
     }
+
     pub fn bound(index: u64) -> Result<Self> {
         ready()?;
+
         Ok(Self {
             value: unsafe { Owned::from_raw(hotaru_lean_term_bound(index)) },
         })
     }
+
     pub fn constant(name: &Name, inst: &[(&str, &Type)]) -> Result<Self> {
         ready()?;
+
         Ok(Self {
             value: unsafe {
                 Owned::from_raw(hotaru_lean_term_const(
@@ -311,6 +354,7 @@ impl Term {
             },
         })
     }
+
     pub fn lambda(ty: &Type, body: &Term) -> Result<Self> {
         Ok(Self {
             value: unsafe {
@@ -321,6 +365,7 @@ impl Term {
             },
         })
     }
+
     pub fn kind(&self) -> TermKind {
         match unsafe { hotaru_lean_term_kind(self.value.argument()) } {
             0 => TermKind::Free,
@@ -333,21 +378,26 @@ impl Term {
             _ => unreachable!(),
         }
     }
+
     pub fn child(&self, index: u64) -> Result<Term> {
         Ok(Term {
             value: unsafe { checked(hotaru_lean_term_child(self.value.argument(), index))? },
         })
     }
+
     pub fn annotation(&self) -> Result<Type> {
         Ok(Type {
             value: unsafe { checked(hotaru_lean_term_annotation(self.value.argument()))? },
         })
     }
+
     pub fn bound_index(&self) -> Result<u64> {
         Ok(unsafe { checked(hotaru_lean_bound_index(self.value.argument()))? }.uint64())
     }
+
     pub fn constant_substitution(&self) -> Result<Vec<(String, Type)>> {
         let count = unsafe { checked(hotaru_lean_inst_count(self.value.argument()))? }.uint64();
+
         (0..count)
             .map(|i| {
                 Ok((
@@ -361,6 +411,7 @@ impl Term {
             })
             .collect()
     }
+
     pub fn app(a: &Term, b: &Term) -> Result<Self> {
         Ok(Self {
             value: unsafe {
@@ -368,6 +419,7 @@ impl Term {
             },
         })
     }
+
     pub fn equal(a: &Term, b: &Term) -> Result<Self> {
         Ok(Self {
             value: unsafe {
@@ -378,6 +430,7 @@ impl Term {
             },
         })
     }
+
     pub fn imp(a: &Term, b: &Term) -> Result<Self> {
         Ok(Self {
             value: unsafe {
@@ -386,33 +439,39 @@ impl Term {
         })
     }
 }
+
 impl Type {
     pub fn name(&self) -> Result<String> {
         Ok(string(unsafe {
             checked(hotaru_lean_type_name(self.value.argument()))?
         }))
     }
+
     pub fn scope(&self) -> Result<String> {
         Ok(string(unsafe {
             checked(hotaru_lean_type_scope(self.value.argument()))?
         }))
     }
 }
+
 impl Term {
     pub fn name(&self) -> Result<String> {
         Ok(string(unsafe {
             checked(hotaru_lean_term_name(self.value.argument()))?
         }))
     }
+
     pub fn scope(&self) -> Result<String> {
         Ok(string(unsafe {
             checked(hotaru_lean_term_scope(self.value.argument()))?
         }))
     }
 }
+
 impl Theory {
     pub fn new() -> Result<Self> {
         ready()?;
+
         Ok(Self {
             context: Rc::new(Context {
                 value: unsafe { Owned::from_raw(hotaru_lean_new(Owned::unit().into_raw())) },
@@ -421,9 +480,11 @@ impl Theory {
             }),
         })
     }
+
     fn arg(&self) -> Obj {
         self.context.value.argument()
     }
+
     fn owns(&self, th: &Theorem) -> Result<()> {
         if Rc::ptr_eq(&self.context, &th.context) {
             Ok(())
@@ -431,20 +492,24 @@ impl Theory {
             Err(Error::TheoryMismatch)
         }
     }
+
     fn theorem(&self, value: Owned) -> Theorem {
         Theorem {
             value,
             context: self.context.clone(),
         }
     }
+
     pub fn check(&self, term: &Term) -> Result<Type> {
         Ok(Type {
             value: unsafe { checked(hotaru_lean_check(self.arg(), term.value.argument()))? },
         })
     }
+
     pub fn foundation(&self, which: Foundation) -> Result<Theorem> {
         Ok(self.theorem(unsafe { checked(hotaru_lean_foundation(self.arg(), which as u64))? }))
     }
+
     pub fn assume(&self, term: &Term) -> Result<Theorem> {
         Ok(
             self.theorem(unsafe {
@@ -452,15 +517,19 @@ impl Theory {
             }),
         )
     }
+
     pub fn refl(&self, term: &Term) -> Result<Theorem> {
         Ok(self.theorem(unsafe { checked(hotaru_lean_refl(self.arg(), term.value.argument()))? }))
     }
+
     pub fn beta(&self, term: &Term) -> Result<Theorem> {
         Ok(self.theorem(unsafe { checked(hotaru_lean_beta(self.arg(), term.value.argument()))? }))
     }
+
     pub fn mk_comb(&self, a: &Theorem, b: &Theorem) -> Result<Theorem> {
         self.owns(a)?;
         self.owns(b)?;
+
         Ok(self.theorem(unsafe {
             checked(hotaru_lean_mk_comb(
                 self.arg(),
@@ -469,9 +538,11 @@ impl Theory {
             ))?
         }))
     }
+
     pub fn mp(&self, a: &Theorem, b: &Theorem) -> Result<Theorem> {
         self.owns(a)?;
         self.owns(b)?;
+
         Ok(self.theorem(unsafe {
             checked(hotaru_lean_mp(
                 self.arg(),
@@ -480,9 +551,11 @@ impl Theory {
             ))?
         }))
     }
+
     pub fn trans(&self, a: &Theorem, b: &Theorem) -> Result<Theorem> {
         self.owns(a)?;
         self.owns(b)?;
+
         Ok(self.theorem(unsafe {
             checked(hotaru_lean_trans(
                 self.arg(),
@@ -491,9 +564,11 @@ impl Theory {
             ))?
         }))
     }
+
     pub fn eq_mp(&self, a: &Theorem, b: &Theorem) -> Result<Theorem> {
         self.owns(a)?;
         self.owns(b)?;
+
         Ok(self.theorem(unsafe {
             checked(hotaru_lean_eq_mp(
                 self.arg(),
@@ -502,12 +577,16 @@ impl Theory {
             ))?
         }))
     }
+
     pub fn symm(&self, th: &Theorem) -> Result<Theorem> {
         self.owns(th)?;
+
         Ok(self.theorem(unsafe { checked(hotaru_lean_symm(self.arg(), th.value.argument()))? }))
     }
+
     pub fn abs(&self, name: &str, ty: &Type, th: &Theorem) -> Result<Theorem> {
         self.owns(th)?;
+
         Ok(self.theorem(unsafe {
             checked(hotaru_lean_abs(
                 self.arg(),
@@ -517,8 +596,10 @@ impl Theory {
             ))?
         }))
     }
+
     pub fn disch(&self, term: &Term, th: &Theorem) -> Result<Theorem> {
         self.owns(th)?;
+
         Ok(self.theorem(unsafe {
             checked(hotaru_lean_disch(
                 self.arg(),
@@ -527,8 +608,10 @@ impl Theory {
             ))?
         }))
     }
+
     pub fn inst(&self, replacements: &[(&Term, &Term)], th: &Theorem) -> Result<Theorem> {
         self.owns(th)?;
+
         let pairs = replacements.iter().fold(Owned::array(), |a, (x, y)| {
             a.push(unsafe {
                 Owned::from_raw(hotaru_lean_term_pair(
@@ -537,6 +620,7 @@ impl Theory {
                 ))
             })
         });
+
         Ok(self.theorem(unsafe {
             checked(hotaru_lean_inst(
                 self.arg(),
@@ -545,8 +629,10 @@ impl Theory {
             ))?
         }))
     }
+
     pub fn inst_type(&self, replacements: &[(&str, &Type)], th: &Theorem) -> Result<Theorem> {
         self.owns(th)?;
+
         Ok(self.theorem(unsafe {
             checked(hotaru_lean_inst_type(
                 self.arg(),
@@ -555,6 +641,7 @@ impl Theory {
             ))?
         }))
     }
+
     pub fn subst(
         &self,
         equations: &[(&Term, &Theorem)],
@@ -565,6 +652,7 @@ impl Theory {
         for (_, equation) in equations {
             self.owns(equation)?;
         }
+
         let pairs = equations.iter().fold(Owned::array(), |a, (x, eq)| {
             a.push(unsafe {
                 Owned::from_raw(hotaru_lean_equation_pair(
@@ -574,6 +662,7 @@ impl Theory {
                 ))
             })
         });
+
         Ok(self.theorem(unsafe {
             checked(hotaru_lean_subst(
                 self.arg(),
@@ -583,9 +672,11 @@ impl Theory {
             ))?
         }))
     }
+
     fn extend(&self, edge: Owned) -> Theory {
         let value =
             unsafe { Owned::from_raw(hotaru_lean_extension_state(self.arg(), edge.argument())) };
+
         Theory {
             context: Rc::new(Context {
                 value,
@@ -594,12 +685,15 @@ impl Theory {
             }),
         }
     }
+
     fn extend_produced(&self, edge: Owned) -> Result<(Theory, Theorem)> {
         let value = unsafe { checked(hotaru_lean_extension_thm(self.arg(), edge.argument()))? };
         let theory = self.extend(edge);
         let th = theory.theorem(value);
+
         Ok((theory, th))
     }
+
     pub fn declare_type(&self, name: &Name, arity: u64) -> Result<Theory> {
         Ok(self.extend(unsafe {
             checked(hotaru_lean_declare_type(
@@ -610,6 +704,7 @@ impl Theory {
             ))?
         }))
     }
+
     pub fn declare_const(&self, name: &Name, ty: &Type) -> Result<Theory> {
         Ok(self.extend(unsafe {
             checked(hotaru_lean_declare_const(
@@ -620,6 +715,7 @@ impl Theory {
             ))?
         }))
     }
+
     pub fn define_const(&self, name: &Name, body: &Term) -> Result<(Theory, Theorem)> {
         self.extend_produced(unsafe {
             checked(hotaru_lean_define_const(
@@ -630,6 +726,7 @@ impl Theory {
             ))?
         })
     }
+
     pub fn define_type(
         &self,
         name: &Name,
@@ -638,11 +735,13 @@ impl Theory {
         nonempty: &Theorem,
     ) -> Result<(Theory, Theorem)> {
         self.owns(nonempty)?;
+
         let params = parameters
             .iter()
             .fold(Owned::array(), |a, p| a.push(Owned::string(p)));
         let proof =
             unsafe { Owned::from_raw(hotaru_lean_some_thm(self.arg(), nonempty.value.argument())) };
+
         self.extend_produced(unsafe {
             checked(hotaru_lean_define_type(
                 self.arg(),
@@ -654,6 +753,7 @@ impl Theory {
             ))?
         })
     }
+
     /// Adds an assumption to the theory. Soundness is conditional on models satisfying it.
     pub fn add_axiom(&self, proposition: &Term) -> Result<(Theory, Theorem)> {
         self.extend_produced(unsafe {
@@ -664,12 +764,14 @@ impl Theory {
         })
     }
 }
+
 impl Theorem {
     pub fn theory(&self) -> Theory {
         Theory {
             context: self.context.clone(),
         }
     }
+
     pub fn conclusion(&self) -> Term {
         Term {
             value: unsafe {
@@ -680,11 +782,13 @@ impl Theorem {
             },
         }
     }
+
     pub fn assumption_count(&self) -> u64 {
         unsafe {
             hotaru_lean_assumption_count(self.context.value.argument(), self.value.argument())
         }
     }
+
     pub fn assumption(&self, index: u64) -> Result<Term> {
         Ok(Term {
             value: unsafe {
@@ -696,18 +800,22 @@ impl Theorem {
             },
         })
     }
+
     pub fn assumptions(&self) -> Result<Vec<Term>> {
         (0..self.assumption_count())
             .map(|i| self.assumption(i))
             .collect()
     }
+
     pub fn rebase(&self, target: &Theory) -> Result<Theorem> {
         let mut cursor = &target.context;
         let mut path = Vec::new();
+
         while !Rc::ptr_eq(cursor, &self.context) {
             path.push(cursor.as_ref());
             cursor = cursor.parent.as_ref().ok_or(Error::TheoryMismatch)?;
         }
+
         let mut value = self.value.clone();
         for context in path.into_iter().rev() {
             value = unsafe {
@@ -718,6 +826,7 @@ impl Theorem {
                 ))
             };
         }
+
         Ok(target.theorem(value))
     }
 }

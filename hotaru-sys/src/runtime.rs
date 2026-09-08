@@ -1,4 +1,5 @@
 //! RAII ownership over bindgen's Lean runtime bindings.
+
 use crate::{
     lean::*,
     raw::{initialize_HotaruKernel_HotaruKernelFFI, lean_initialize},
@@ -38,6 +39,7 @@ impl Owned {
         // Only Except UInt32 results reach this method; its payload is borrowed.
         unsafe {
             let payload = lean_ctor_get(self.0.as_ptr(), 0);
+
             if self.tag() == 0 {
                 Err(lean_unbox_uint32(payload) as i32)
             } else {
