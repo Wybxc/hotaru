@@ -217,6 +217,16 @@ The type-definition operation currently has conditional soundness in target
 models. Its polymorphic model-extension construction is still outstanding, so
 conservativity and model existence are not yet claimed for `DEFINE_TYPE`.
 
+`ModelAgreement.lean` proves that agreement on declared type operators preserves
+the interpretation of valid old types and terms, including under binders.
+`OperatorTransport.lean` transports polymorphic constant families when previously
+undeclared operators acquire a new interpretation. `Theory.models_changeOperators`
+proves that this transport preserves the old theory's axioms. Constant instances
+may contain unused substitution entries; only variables present in the scheme
+are used in the preservation proof. The remaining type-definition construction
+must choose the new operator's parameterized subtype and verify its defining
+representation formula.
+
 ## Validation and trust boundary
 
 Regression cases cover successful and rejected kernel operations, malformed

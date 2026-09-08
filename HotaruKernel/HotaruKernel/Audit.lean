@@ -1,4 +1,5 @@
 import HotaruKernel.TypeDefinitionTests
+import HotaruKernel.OperatorTransport
 import Lean.Util.CollectAxioms
 
 /-! Fail the build if any project declaration acquires an unapproved axiom. -/
@@ -46,6 +47,10 @@ audit_hotaru
 #print axioms HotaruKernel.TypeDefinition.predicate_nonempty
 #print axioms HotaruKernel.TypeDefinition.definition_sound
 #print axioms HotaruKernel.Kernel.defineType_spec
+#print axioms HotaruKernel.TypeModel.Agrees.interp
+#print axioms HotaruKernel.Term.eval_agrees
+#print axioms HotaruKernel.PolymorphicModel.OperatorExtension.models_agree
+#print axioms HotaruKernel.Theory.models_changeOperators
 #print axioms HotaruKernel.Substitution.eval_apply
 #print axioms HotaruKernel.rewrite_eval
 #print axioms HotaruKernel.HolType.inst_compose
