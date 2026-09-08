@@ -30,6 +30,10 @@ jobs:
         run: lake env leanchecker HotaruKernelAudit
       - name: Check Rust formatting
         run: cargo fmt --all --check
+      - name: Install bindgen prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang libclang-dev
       - name: Check Rust adapter
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Test Rust interface

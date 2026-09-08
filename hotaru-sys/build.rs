@@ -56,6 +56,33 @@ fn main() {
     );
     lake(&kernel, &["build", "hotaruLean"]);
     let prefix = lake(&kernel, &["env", "lean", "--print-prefix"]);
+    let include = Path::new(&prefix).join("include");
+    let out = std::path::PathBuf::from(env::var_os("OUT_DIR").unwrap());
+    let wrapper = out.join("lean_inline");
+    bindgen::Builder::default()
+        .header(include.join("lean/lean.h").to_str().unwrap())
+        .clang_arg(format!("-I{}", include.display()))
+        .clang_arg("-std=c11")
+        .allowlist_type("lean_object")
+        .opaque_type("lean_object")
+        .allowlist_function("lean_(box|obj_tag|ctor_get|unbox_uint32|unbox_uint64)")
+        .allowlist_function("lean_(inc|dec|string_cstr|string_size)")
+        .allowlist_function(
+            "lean_(mk_string_from_bytes|array_mk|array_push|io_mark_end_initialization)",
+        )
+        .wrap_static_fns(true)
+        .wrap_static_fns_path(&wrapper)
+        .wrap_static_fns_suffix("_hotaru_sys")
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
+        .generate()
+        .expect("generate bindings from the pinned Lean header (libclang is required)")
+        .write_to_file(out.join("lean.rs"))
+        .expect("write generated Lean bindings");
+    cc::Build::new()
+        .file(wrapper.with_extension("c"))
+        .include(&include)
+        .std("c11")
+        .compile("hotaru_lean_inline");
     let runtime = Path::new(&prefix).join("lib/lean");
     let library = kernel.join(".lake/build/lib");
     for path in [&library, &runtime] {

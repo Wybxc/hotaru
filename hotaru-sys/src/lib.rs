@@ -10,6 +10,7 @@
 //! fn require_sync<T: Sync>() {}
 //! require_sync::<hotaru_sys::Theorem>();
 //! ```
+mod lean;
 mod raw;
 mod runtime;
 

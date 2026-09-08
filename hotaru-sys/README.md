@@ -1,8 +1,9 @@
 # hotaru-sys
 
-Safe Rust handles for Hotaru's verified Lean kernel. All ownership, runtime
-reference management, error conversion, and theory identity checks are implemented
-in Rust. There is no public C API, C header, JSON protocol, or handwritten C shim.
+Safe Rust handles for Hotaru's verified Lean kernel. Ownership, error conversion,
+and theory identity checks are implemented in Rust. Reference management calls
+Lean's own runtime functions through generated bindings.
+There is no public C API, C header, JSON protocol, or handwritten C shim.
 Logical operations still execute the verified Lean definitions through private
 native bindings.
 
@@ -17,7 +18,11 @@ cargo run -p hotaru-sys --example refl
 ```
 
 The build script invokes `lake build hotaruLean` in the sibling Lean package.
-The pinned Lean 4.29.0 and its locked dependencies must be available. The adapter
+The pinned Lean 4.29.0 and its locked dependencies must be available.
+Building also requires libclang and a C compiler. On Debian/Ubuntu, install
+`clang libclang-dev`; on macOS, install Xcode Command Line Tools. Set
+`LIBCLANG_PATH` if libclang is installed outside its usual search locations.
+The adapter
 supports native 64-bit little-endian macOS and Linux builds; cross compilation
 and a separately initialized Lean runtime in the same process are unsupported.
 
@@ -61,6 +66,16 @@ axiom; it does not guarantee consistency.
 
 ## Linking and trust
 
+At build time, bindgen reads `include/lean/lean.h` from the selected Lean
+toolchain and generates only the runtime bindings used by this crate.
+Its [static-function wrapper support](https://rust-lang.github.io/rust-bindgen/faq.html#why-isnt-bindgen-generating-bindings-to-inline-functions)
+generates C bridges for the header's inline reference counting, constructor,
+string, and boxing functions. The `cc` build dependency compiles those bridges.
+Both generated Rust and C files stay in Cargo's `OUT_DIR`.
+Rust does not duplicate object layouts, pointer tagging, or reference counting.
+The Lean-generated kernel exports and initialization entry points are absent
+from `lean.h`, so their private declarations remain in `src/raw.rs`.
+
 Cargo builds a Rust library and links the internal `libhotaru_lean` shared library
 and Lean runtime libraries. Its own tests and examples get build-tree rpaths.
 Downstream executables must supply their own runtime search paths or deploy these
@@ -70,8 +85,9 @@ This package currently requires the sibling Lean source checkout; it is not a
 self-contained crates.io distribution.
 
 Lean proves the kernel's logical soundness and extension properties.
-Rust's unsafe runtime adapter, its identity bookkeeping, Lean's native compiler,
-the Rust compiler, linker, and runtime are outside those proofs. The adapter uses
-the pinned Lean object layout, with build-time target checks and layout assertions.
+Rust's unsafe runtime adapter, its identity bookkeeping, bindgen, the C compiler,
+Lean's native compiler, the Rust compiler, linker, and runtime are outside those
+proofs. Bindgen generates the layout assertions from the pinned header, and
+build-time checks enforce the supported toolchain and targets.
 Integration tests exercise every inference entry point, rejected side conditions,
 polymorphic substitution, theory ancestry, definitions, and object lifetimes.
