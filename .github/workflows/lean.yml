@@ -1,0 +1,25 @@
+name: Verify Kernel
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      LEAN_NUM_THREADS: 2
+    steps:
+      - uses: actions/checkout@v5
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: HotaruKernel
+          build: "true"
+          test: "false"
+          lint: "false"
+          leanchecker: "true"
+          leanchecker-args: HotaruKernel
