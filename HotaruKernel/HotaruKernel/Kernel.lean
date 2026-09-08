@@ -1,5 +1,5 @@
 import HotaruKernel.Check
-import HotaruKernel.Inference
+import HotaruKernel.InstDerivation
 
 namespace HotaruKernel
 

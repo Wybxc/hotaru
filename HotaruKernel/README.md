@@ -1,7 +1,7 @@
 # HotaruKernel
 
-A Lean reimplementation of a HOL4-style logical kernel. **M1 is complete; M2 is
-in progress:** all eight basic inference interfaces, simultaneous term and
+A Lean reimplementation of a HOL4-style logical kernel. **M1 and M2 are
+complete:** all eight basic inference interfaces, simultaneous term and
 equational substitution, polymorphic instantiation, and semantic soundness.
 This is not a verification of HOL4's SML source or a complete HOL4 kernel.
 
@@ -15,7 +15,7 @@ lake env lean HotaruKernel/Audit.lean
 LEAN_NUM_THREADS=2 lake env leanchecker HotaruKernel
 ```
 
-The default build includes all library modules, 116 regression examples, a proof
+The default build includes all library modules, 121 regression examples, a proof
 composed using the five original M1 operations, and the axiom audit. Tests use
 `decide +kernel`, not native proof evaluation. The root repository's
 `.github/workflows/lean.yml` runs the build and checks the compiled declarations.
@@ -87,13 +87,23 @@ matching entry for repeated variables. Replacements are not substituted again.
 `SUBST` and `REFL`. They have no independent inference constructors or soundness
 cases. `freshName_not_mem` and `Substitution.apply_fresh` justify the fresh
 template variables used in these derivations.
+`INST` is also a derived rule. `InstDerivation.lean` discharges hypotheses,
+uses abstraction and beta conversion to construct simultaneous substitution,
+then restores the instantiated hypotheses. `Substitution.apply_cons_close`
+is the syntactic identity ensuring that inserted replacements are not
+substituted again. No derived interface has its own inference constructor.
 
 The eight basic interfaces correspond to the official `ASSUME`, `REFL`,
 `BETA_CONV`, `SUBST`, `ABS`, `INST_TYPE`, `DISCH`, and `MP` rules. Type-substitution
 keys are strings, so the interface enforces the type-variable domain by its
-input type. It checks validity of every replacement type. `INST` currently has
-its own inference constructor; deriving it from the eight-rule basis remains
-an M2 obligation.
+input type. It checks validity of every replacement type.
+
+The logical foundation includes the explicit `BooleanAxiom.impAntisym` schema,
+`(p ==> q) ==> (q ==> p) ==> (p = q)`, the role of HOL4's `IMP_ANTISYM_AX`.
+`BooleanAxiom.sound` proves it in the fixed Bool interpretation for every model;
+it is not a Lean axiom or an assumed model field. The `INST` derivation uses this
+Boolean foundation to turn a closed proof of `p` into an equality with truth.
+`truth` itself is defined by reflexivity of the Boolean identity function.
 
 `Equality.lean` proves that equal raw encodings of typed terms have equal types
 and equal internal terms. The executable term comparison uses this theorem;
@@ -169,7 +179,7 @@ implementation, parsing, printing, or theorem serialization.
 | Milestone | Status and next obligations |
 | --- | --- |
 | M1 | Complete: fixed-signature semantic soundness and five executable operations |
-| M2 | All eight basic interfaces, polymorphic soundness, and logical constant-instance matching proved; only `INST` still has an extra inference constructor |
+| M2 | Complete: eight basic interfaces, all five derived interfaces, polymorphic soundness, and logical constant-instance matching |
 | M3 | Not implemented: checked declarations and definitions, model extensions, choice and infinity foundations |
 | M4 | Not implemented: execution traces containing theory extensions and their global correctness theorem |
 
@@ -183,11 +193,10 @@ transport needed by `Kernel.INST_TYPE`. Tests also cover abstraction before and
 after variable-type merging: bound indices prevent newly merged free variables
 from becoming captured.
 
-The remaining `INST` derivation needs the Boolean foundation relating implication
-and equality (the role of HOL4's `IMP_ANTISYM_AX`), together with syntactic lemmas
-for simultaneous substitution through abstraction and beta reduction. The current
-extra `inst` constructor has a proved semantic soundness case, but that is not
-yet a derivation from the basic inference rules and Boolean foundation.
+`MixedSubstitution.lean` proves renaming and mixed-substitution composition under
+arbitrary binders and connects them to the executable substitutions. These
+syntactic lemmas justify the complete basic-rule derivation of `INST`, including
+open theory axioms and hypotheses with duplicate or logically equal encodings.
 
 Before M3, validate signature extensions and prove freshness, nonempty type
 definitions, and old-language interpretation preservation. The existing `Theory`

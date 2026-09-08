@@ -1,6 +1,7 @@
 import HotaruKernel.SubstitutionLemmas
 import HotaruKernel.LogicalEquality
 import HotaruKernel.TypeInstantiationSemantics
+import HotaruKernel.BooleanFoundation
 
 namespace HotaruKernel
 
@@ -25,6 +26,7 @@ inductive Derivable (t : Theory) : List (Formula t.signature) → Formula t.sign
   | conversion {hs : List (Formula t.signature)} {p q : Formula t.signature}
       (h : p.Equivalent q) : Derivable t hs p → Derivable t hs q
   | axiom (p : Formula t.signature) (h : p ∈ t.axioms) : Derivable t [] p
+  | booleanAxiom {p : Formula t.signature} (h : BooleanAxiom t.signature p) : Derivable t [] p
   | assume (p : Formula t.signature) : Derivable t [p] p
   | refl (x : Closed t.signature a) : Derivable t [] (.equal x x)
   | beta (valid : t.signature.validType a = true)
@@ -40,9 +42,6 @@ inductive Derivable (t : Theory) : List (Formula t.signature) → Formula t.sign
       Derivable t (hs.filter (fun h => decide (¬ h.Equivalent p))) (.imp p q)
   | mp {hs ks : List (Formula t.signature)} {p q : Formula t.signature} :
       Derivable t hs (.imp p q) → Derivable t ks p → Derivable t (hs ++ ks) q
-  | inst {hs : List (Formula t.signature)} {p : Formula t.signature}
-      (rs : Substitution t.signature) : Derivable t hs p →
-      Derivable t (hs.map rs.apply) (rs.apply p)
   | instType {hs : List (Formula t.signature)} {p : Formula t.signature}
       (i : TypeSubst) (hi : i.Valid t.signature) : Derivable t hs p →
       Derivable t (hs.map (Term.instType i hi)) (p.instType i hi)
@@ -180,6 +179,7 @@ theorem Derivable.sound {t : Theory} {hs : List (Formula t.signature)}
     exact (he.eval (poly.atTypes types htypes) f BoundEnv.nil).symm.trans
       (ih types htypes f h)
   | «axiom» p hp => exact fun m hm f _ => hpoly m hm f p hp
+  | booleanAxiom h => exact fun m hm f _ => h.sound (poly.atTypes m hm) f
   | assume p => exact fun _ _ _ h => h p (by simp)
   | refl x =>
     intro types htypes f _
@@ -223,14 +223,6 @@ theorem Derivable.sound {t : Theory} {hs : List (Formula t.signature)}
     have hp := ihp f (fun p hp => h p (List.mem_append_left _ hp))
     have hq := ihq f (fun p hp => h p (List.mem_append_right _ hp))
     simpa [Term.eval, hq] using hp
-  | inst rs d ih =>
-    intro types htypes f h
-    have ih := ih types htypes
-    rw [Substitution.eval_apply]
-    apply ih
-    intro p hp
-    rw [← Substitution.eval_apply]
-    exact h _ (List.mem_map.mpr ⟨p, hp, rfl⟩)
   | @instType hs p i hi d ih =>
     intro types htypes f h
     apply (Formula.eval_instType p i hi poly types htypes f).trans
