@@ -15,7 +15,7 @@ lake env lean HotaruKernel/Audit.lean
 LEAN_NUM_THREADS=2 lake env leanchecker HotaruKernel
 ```
 
-The default build includes all library modules, 168 regression examples, a proof
+The default build includes all library modules, 175 regression examples, a proof
 composed using the five original M1 operations, and the axiom audit. Tests use
 `decide +kernel`, not native proof evaluation. The root repository's
 `.github/workflows/lean.yml` runs the build and checks the compiled declarations.
@@ -151,6 +151,24 @@ soundness result is not vacuous; it is not the M3 foundation theorem.
 identity constant and its defining equation as an axiom. Its checked
 `instantiatedAxiom` computation specializes that axiom to booleans.
 
+## Foundation
+
+`Foundation.theory` declares `min.ind` and the polymorphic choice constant
+`min.@`, and contains four object-logic axioms: Boolean cases, eta extensionality,
+selection, and infinity. Quantification uses the proved equality-based encodings.
+`Foundation.model` interprets individuals as `Nat`, functions as full Lean
+function spaces, and selection by a witness of the predicate when one exists,
+with a nonempty-type fallback otherwise. `choiceFamily_support` proves that this
+choice interpretation is coherent across type assignments.
+
+`Foundation.models` proves that this model satisfies every foundation axiom at
+every type and term-variable assignment. Infinity is witnessed by `Nat.succ`,
+which is injective and misses zero. `Foundation.falsehood_not_derivable` proves
+that the base theory cannot derive the encoded false formula without assumptions.
+The computation in `FoundationTests.booleanSelection` instantiates the choice
+axiom to Bool, specializes both quantified variables, and applies modus ponens
+using executable kernel operations.
+
 ## Theory operations
 
 The theory context remains explicit and immutable. The additional operations are:
@@ -262,7 +280,7 @@ implementation, parsing, printing, or theorem serialization.
 | --- | --- |
 | M1 | Complete: fixed-signature semantic soundness and five executable operations |
 | M2 | Complete: eight basic interfaces, all five derived interfaces, polymorphic soundness, and logical constant-instance matching |
-| M3 | In progress: declarations, conservative constant and type definitions, and theorem migration; the full foundation remains |
+| M3 | Complete: declarations, conservative constant and type definitions, theorem migration, and a Nat-based model of the foundation |
 | M4 | Not implemented: execution traces containing theory extensions and their global correctness theorem |
 
 `TypeInstantiation.lean` now proves composition of type substitutions, type
@@ -280,13 +298,14 @@ arbitrary binders and connects them to the executable substitutions. These
 syntactic lemmas justify the complete basic-rule derivation of `INST`, including
 open theory axioms and hypotheses with duplicate or logically equal encodings.
 
-The remaining M3 work is the foundation supporting extensionality, choice,
-and infinity with individuals interpreted by Nat. Direct construction of a
+Direct construction of a
 `Theory` does not certify that it came from conservative extensions; the checked
 operation results and their model-extension theorems provide that evidence.
 
 ## References
 
+- [HOL4 Trindemossen-2: Syntax and Semantics](https://hol-theorem-prover.org/docs/trindemossen-2/Logic/)
+  specifies the full function-space semantics and the standard choice interpretation.
 - [HOL4 Trindemossen-2: The HOL Logic in ML](https://hol-theorem-prover.org/docs/trindemossen-2/Description/)
   is the versioned logical-interface reference. M1 corresponds to `ASSUME`,
   `REFL`, `BETA_CONV`, `ABS`, and the derivable `MK_COMB` interface.

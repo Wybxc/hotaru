@@ -1,4 +1,4 @@
-import HotaruKernel.TypeDefinitionTests
+import HotaruKernel.FoundationTests
 import HotaruKernel.OperatorTransport
 import Lean.Util.CollectAxioms
 
@@ -54,6 +54,10 @@ audit_hotaru
 #print axioms HotaruKernel.TypeDefinition.interpreted_subtype
 #print axioms HotaruKernel.TypeDefinition.model_extension
 #print axioms HotaruKernel.TypeDefinitionTests.definition_has_model
+#print axioms HotaruKernel.Foundation.choiceFamily_support
+#print axioms HotaruKernel.Foundation.models
+#print axioms HotaruKernel.Foundation.falsehood_not_derivable
+#print axioms HotaruKernel.FoundationTests.booleanSelection_sound
 #print axioms HotaruKernel.Substitution.eval_apply
 #print axioms HotaruKernel.rewrite_eval
 #print axioms HotaruKernel.HolType.inst_compose
