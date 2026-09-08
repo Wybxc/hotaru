@@ -5,36 +5,36 @@ use crate::{
 };
 use std::{marker::PhantomData, ptr::NonNull, rc::Rc};
 
-pub(crate) type Obj = *mut lean_object;
+pub type Obj = *mut lean_object;
 
 // Owned Lean references cannot leave the runtime's initialization thread.
-pub(crate) struct Owned(NonNull<lean_object>, PhantomData<Rc<()>>);
+pub struct Owned(NonNull<lean_object>, PhantomData<Rc<()>>);
 
 impl Owned {
     /// Takes exactly one reference returned by a Lean export.
-    pub(crate) unsafe fn from_raw(raw: Obj) -> Self {
+    pub unsafe fn from_raw(raw: Obj) -> Self {
         Self(unsafe { NonNull::new_unchecked(raw) }, PhantomData)
     }
 
-    pub(crate) fn unit() -> Self {
+    pub fn unit() -> Self {
         unsafe { Self::from_raw(lean_box(0)) }
     }
 
-    pub(crate) fn into_raw(self) -> Obj {
+    pub fn into_raw(self) -> Obj {
         let ptr = self.0.as_ptr();
         std::mem::forget(self);
         ptr
     }
 
-    pub(crate) fn argument(&self) -> Obj {
+    pub fn argument(&self) -> Obj {
         self.clone().into_raw()
     }
 
-    pub(crate) fn tag(&self) -> u32 {
+    fn tag(&self) -> u32 {
         unsafe { lean_obj_tag(self.0.as_ptr()) }
     }
 
-    pub(crate) fn result(self) -> Result<Self, i32> {
+    pub fn result(self) -> Result<Self, i32> {
         // Only Except UInt32 results reach this method; its payload is borrowed.
         unsafe {
             let payload = lean_ctor_get(self.0.as_ptr(), 0);
@@ -47,11 +47,11 @@ impl Owned {
         }
     }
 
-    pub(crate) fn uint64(&self) -> u64 {
+    pub fn uint64(&self) -> u64 {
         unsafe { lean_unbox_uint64(self.0.as_ptr()) }
     }
 
-    pub(crate) fn bytes(&self) -> &[u8] {
+    pub fn bytes(&self) -> &[u8] {
         // Lean's size includes its final NUL; embedded NUL bytes remain intact.
         unsafe {
             std::slice::from_raw_parts(
@@ -61,15 +61,15 @@ impl Owned {
         }
     }
 
-    pub(crate) fn string(text: &str) -> Self {
+    pub fn string(text: &str) -> Self {
         unsafe { Self::from_raw(lean_mk_string_from_bytes(text.as_ptr().cast(), text.len())) }
     }
 
-    pub(crate) fn array() -> Self {
+    pub fn array() -> Self {
         unsafe { Self::from_raw(lean_array_mk(Self::unit().into_raw())) }
     }
 
-    pub(crate) fn push(self, value: Self) -> Self {
+    pub fn push(self, value: Self) -> Self {
         unsafe { Self::from_raw(lean_array_push(self.into_raw(), value.into_raw())) }
     }
 }
@@ -89,7 +89,7 @@ impl Drop for Owned {
     }
 }
 
-pub(crate) fn initialize() -> bool {
+pub fn initialize() -> bool {
     unsafe {
         lean_initialize();
         let result = Owned::from_raw(initialize_HotaruKernel_HotaruKernelFFI(1));
