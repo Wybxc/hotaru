@@ -1,4 +1,4 @@
-import HotaruKernel.TypeDefinition
+import HotaruKernel.TypeDefinitionModel
 import HotaruKernel.ConstantDefinitionTests
 
 namespace HotaruKernel.TypeDefinitionTests
@@ -73,5 +73,32 @@ example (d : TypeDefinition theory) (_foreignProof : Thm d.target) : True := by
 
 theorem definition_valid (d : TypeDefinition theory) : d.target.Entails [] d.formula :=
   d.definition_sound
+
+theorem definition_has_model (d : TypeDefinition theory) :
+    ∃ q : PolymorphicModel d.target.signature, Models d.target q := by
+  obtain ⟨q, hq, _⟩ := d.model_extension polymorphicModel models
+  exact ⟨q, hq⟩
+
+def polymorphicProof : Except KernelError (Thm theory) := do
+  let a := HolType.var "a"
+  let p := RawTerm.lam a trueRaw
+  let q := RawTerm.lam a falseRaw
+  let witness := RawTerm.fvar "w" a
+  let eq ← Kernel.ASSUME theory (.equal p q)
+  let app ← Kernel.MK_COMB theory eq (← Kernel.REFL theory witness)
+  let left ← Kernel.BETA_CONV theory (.app p witness)
+  let right ← Kernel.BETA_CONV theory (.app q witness)
+  let eq ← Kernel.TRANS theory (← Kernel.SYM theory left) app
+  let eq ← Kernel.TRANS theory eq right
+  let contradiction ← Kernel.EQ_MP theory eq (← Kernel.REFL theory identity)
+  Kernel.DISCH theory (.equal p q) contradiction
+
+def polymorphicDefinition : Except KernelError (TypeDefinition theory) := do
+  let th ← polymorphicProof
+  Kernel.DEFINE_TYPE theory name ["a"] (.lam (.var "a") trueRaw) (some th)
+
+example : observeDefinition polymorphicDefinition = .ok (.op name [.var "a"]) := by decide +kernel
+example : observe polymorphicProof = .ok ([], .imp
+    (.equal (.lam (.var "a") trueRaw) (.lam (.var "a") falseRaw)) falseRaw) := by decide +kernel
 
 end HotaruKernel.TypeDefinitionTests

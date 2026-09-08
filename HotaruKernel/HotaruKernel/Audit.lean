@@ -51,6 +51,9 @@ audit_hotaru
 #print axioms HotaruKernel.Term.eval_agrees
 #print axioms HotaruKernel.PolymorphicModel.OperatorExtension.models_agree
 #print axioms HotaruKernel.Theory.models_changeOperators
+#print axioms HotaruKernel.TypeDefinition.interpreted_subtype
+#print axioms HotaruKernel.TypeDefinition.model_extension
+#print axioms HotaruKernel.TypeDefinitionTests.definition_has_model
 #print axioms HotaruKernel.Substitution.eval_apply
 #print axioms HotaruKernel.rewrite_eval
 #print axioms HotaruKernel.HolType.inst_compose

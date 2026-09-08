@@ -15,7 +15,7 @@ lake env lean HotaruKernel/Audit.lean
 LEAN_NUM_THREADS=2 lake env leanchecker HotaruKernel
 ```
 
-The default build includes all library modules, 166 regression examples, a proof
+The default build includes all library modules, 168 regression examples, a proof
 composed using the five original M1 operations, and the axiom audit. Tests use
 `decide +kernel`, not native proof evaluation. The root repository's
 `.github/workflows/lean.yml` runs the build and checks the compiled declarations.
@@ -213,9 +213,14 @@ through executable kernel calls.
 `Term.eval_typeDefinitionT` proves the representation formula's intended
 full-function-space semantics. `subtype_representation` supplies the native
 subtype inclusion and `subtype_nonempty_iff` its nonemptiness condition.
-The type-definition operation currently has conditional soundness in target
-models. Its polymorphic model-extension construction is still outstanding, so
-conservativity and model existence are not yet claimed for `DEFINE_TYPE`.
+`TypeDefinition.model_extension` constructs a model of the extended theory from
+every source model. The new operator denotes the nonempty subtype selected by
+the predicate at each assignment of its type parameters. The inclusion map is
+injective and has exactly the required image. The theorem also establishes
+agreement on all old declarations; `Term.eval_agrees` transports old formulas.
+Thus checked type definitions preserve model existence, as do checked constant
+definitions. Regression examples construct both monomorphic and polymorphic
+nonemptiness proofs through kernel calls.
 
 `ModelAgreement.lean` proves that agreement on declared type operators preserves
 the interpretation of valid old types and terms, including under binders.
@@ -223,9 +228,9 @@ the interpretation of valid old types and terms, including under binders.
 undeclared operators acquire a new interpretation. `Theory.models_changeOperators`
 proves that this transport preserves the old theory's axioms. Constant instances
 may contain unused substitution entries; only variables present in the scheme
-are used in the preservation proof. The remaining type-definition construction
-must choose the new operator's parameterized subtype and verify its defining
-representation formula.
+are used in the preservation proof. `TypeParameters.lean` constructs the parameter
+assignment, and `TypeDefinitionModel.lean` verifies the parameterized subtype and
+its defining representation formula.
 
 ## Validation and trust boundary
 
@@ -257,7 +262,7 @@ implementation, parsing, printing, or theorem serialization.
 | --- | --- |
 | M1 | Complete: fixed-signature semantic soundness and five executable operations |
 | M2 | Complete: eight basic interfaces, all five derived interfaces, polymorphic soundness, and logical constant-instance matching |
-| M3 | In progress: declarations, conservative constant definitions, theorem migration, and checked type definitions; type-definition model extensions and the full foundation remain |
+| M3 | In progress: declarations, conservative constant and type definitions, and theorem migration; the full foundation remains |
 | M4 | Not implemented: execution traces containing theory extensions and their global correctness theorem |
 
 `TypeInstantiation.lean` now proves composition of type substitutions, type
@@ -275,8 +280,7 @@ arbitrary binders and connects them to the executable substitutions. These
 syntactic lemmas justify the complete basic-rule derivation of `INST`, including
 open theory axioms and hypotheses with duplicate or logically equal encodings.
 
-The remaining M3 work is the model-extension proof for checked nonempty type
-definitions and the foundation supporting extensionality, choice,
+The remaining M3 work is the foundation supporting extensionality, choice,
 and infinity with individuals interpreted by Nat. Direct construction of a
 `Theory` does not certify that it came from conservative extensions; the checked
 operation results and their model-extension theorems provide that evidence.
