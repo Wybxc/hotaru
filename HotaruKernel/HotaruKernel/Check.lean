@@ -22,6 +22,10 @@ inductive KernelError where
   | duplicateConstant
   | freeVariablesInDefinition
   | hiddenTypeVariables
+  | duplicateTypeParameter
+  | missingNonemptyProof
+  | nonemptyProofHasAssumptions
+  | notPredicate
   deriving DecidableEq, Repr
 
 structure Checked (s : Signature) (ctx : List HolType) (r : RawTerm) where

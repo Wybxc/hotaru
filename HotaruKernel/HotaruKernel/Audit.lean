@@ -1,4 +1,4 @@
-import HotaruKernel.ConstantDefinitionTests
+import HotaruKernel.TypeDefinitionTests
 import Lean.Util.CollectAxioms
 
 /-! Fail the build if any project declaration acquires an unapproved axiom. -/
@@ -41,6 +41,11 @@ audit_hotaru
 #print axioms HotaruKernel.Term.eval_typeVars
 #print axioms HotaruKernel.Kernel.defineConstant_spec
 #print axioms HotaruKernel.ConstantDefinition.model_extension
+#print axioms HotaruKernel.Term.eval_existsT
+#print axioms HotaruKernel.Term.eval_typeDefinitionT
+#print axioms HotaruKernel.TypeDefinition.predicate_nonempty
+#print axioms HotaruKernel.TypeDefinition.definition_sound
+#print axioms HotaruKernel.Kernel.defineType_spec
 #print axioms HotaruKernel.Substitution.eval_apply
 #print axioms HotaruKernel.rewrite_eval
 #print axioms HotaruKernel.HolType.inst_compose

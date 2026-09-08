@@ -15,7 +15,7 @@ lake env lean HotaruKernel/Audit.lean
 LEAN_NUM_THREADS=2 lake env leanchecker HotaruKernel
 ```
 
-The default build includes all library modules, 152 regression examples, a proof
+The default build includes all library modules, 166 regression examples, a proof
 composed using the five original M1 operations, and the axiom audit. Tests use
 `decide +kernel`, not native proof evaluation. The root repository's
 `.github/workflows/lean.yml` runs the build and checks the compiled declarations.
@@ -160,6 +160,7 @@ The theory context remains explicit and immutable. The additional operations are
 | `DECLARE_TYPE` | Theory, qualified name, arity | `Except KernelError (TheoryExtension theory)` |
 | `DECLARE_CONSTANT` | Theory, qualified name, type scheme | `Except KernelError (TheoryExtension theory)` |
 | `DEFINE_CONSTANT` | Theory, fresh qualified name, closed right-hand side | `Except KernelError (ConstantDefinition theory)` |
+| `DEFINE_TYPE` | Theory, fresh name, distinct type parameters, closed predicate, optional nonempty theorem | `Except KernelError (TypeDefinition theory)` |
 | `MIGRATE` | A checked extension and a theorem of its source theory | The theorem in the target theory |
 
 Declarations reject malformed source signatures, duplicate names, and invalid
@@ -198,6 +199,24 @@ defining equation, and restriction recovers the source model. The computation
 in `ConstantDefinitionTests.composedDefinition` defines polymorphic identity,
 instantiates its defining theorem to Bool, and applies it using kernel rules.
 
+`DEFINE_TYPE` checks a closed predicate, its type-variable support, and an
+assumption-free theorem of its existential closure in the source theory.
+Missing proofs, mismatched conclusions, duplicate parameters, and proofs with
+assumptions are rejected. The result introduces a type operator and the formula
+asserting an injective representation whose image is exactly the predicate.
+`Kernel.defineType_spec` verifies the returned name, parameters, and predicate.
+`TypeDefinition.predicate_nonempty` derives semantic nonemptiness from the
+supplied derivation. `TypeDefinitionTests.nonemptyProof` constructs the premise
+through executable kernel calls.
+
+`Quantifiers.lean` encodes quantifiers using equality and Boolean implication;
+`Term.eval_typeDefinitionT` proves the representation formula's intended
+full-function-space semantics. `subtype_representation` supplies the native
+subtype inclusion and `subtype_nonempty_iff` its nonemptiness condition.
+The type-definition operation currently has conditional soundness in target
+models. Its polymorphic model-extension construction is still outstanding, so
+conservativity and model existence are not yet claimed for `DEFINE_TYPE`.
+
 ## Validation and trust boundary
 
 Regression cases cover successful and rejected kernel operations, malformed
@@ -228,7 +247,7 @@ implementation, parsing, printing, or theorem serialization.
 | --- | --- |
 | M1 | Complete: fixed-signature semantic soundness and five executable operations |
 | M2 | Complete: eight basic interfaces, all five derived interfaces, polymorphic soundness, and logical constant-instance matching |
-| M3 | In progress: declarations, constant definitions, model extensions, and theorem migration proved; type definitions and the full foundation remain |
+| M3 | In progress: declarations, conservative constant definitions, theorem migration, and checked type definitions; type-definition model extensions and the full foundation remain |
 | M4 | Not implemented: execution traces containing theory extensions and their global correctness theorem |
 
 `TypeInstantiation.lean` now proves composition of type substitutions, type
@@ -246,8 +265,8 @@ arbitrary binders and connects them to the executable substitutions. These
 syntactic lemmas justify the complete basic-rule derivation of `INST`, including
 open theory axioms and hypotheses with duplicate or logically equal encodings.
 
-The remaining M3 work is checked nonempty type definitions, their
-model-extension proofs, and the foundation supporting extensionality, choice,
+The remaining M3 work is the model-extension proof for checked nonempty type
+definitions and the foundation supporting extensionality, choice,
 and infinity with individuals interpreted by Nat. Direct construction of a
 `Theory` does not certify that it came from conservative extensions; the checked
 operation results and their model-extension theorems provide that evidence.
