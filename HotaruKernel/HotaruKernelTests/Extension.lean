@@ -1,5 +1,5 @@
 import HotaruKernel.DeclarationModels
-import HotaruKernel.DerivedInstantiationTests
+import HotaruKernelTests.DerivedInstantiation
 import HotaruKernel.TheoryMigration
 
 namespace HotaruKernel.ExtensionTests

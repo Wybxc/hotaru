@@ -1,4 +1,4 @@
-import HotaruKernel.LogicalEqualityTests
+import HotaruKernelTests.LogicalEquality
 
 namespace HotaruKernel.DerivedInstantiationTests
 

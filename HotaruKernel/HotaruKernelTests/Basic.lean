@@ -1,4 +1,4 @@
-import HotaruKernel.Examples
+import HotaruKernelTests.Examples
 
 namespace HotaruKernel.Tests
 

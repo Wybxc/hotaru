@@ -1,5 +1,5 @@
 import HotaruKernel.TypeInstantiation
-import HotaruKernel.PropositionalTests
+import HotaruKernelTests.Propositional
 
 namespace HotaruKernel.TypeInstantiationTests
 

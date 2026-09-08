@@ -1,5 +1,5 @@
 import HotaruKernel.TypeDefinitionModel
-import HotaruKernel.ConstantDefinitionTests
+import HotaruKernelTests.ConstantDefinition
 
 namespace HotaruKernel.TypeDefinitionTests
 

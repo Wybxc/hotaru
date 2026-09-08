@@ -1,4 +1,4 @@
-import HotaruKernel.Tests
+import HotaruKernelTests.Basic
 
 namespace HotaruKernel.PropositionalTests
 

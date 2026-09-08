@@ -13,8 +13,8 @@ From this directory, with the pinned Lean 4.29.0 toolchain:
 
 ```sh
 lake build
-lake env lean HotaruKernel/Audit.lean
-LEAN_NUM_THREADS=2 lake env leanchecker HotaruKernel
+lake env lean HotaruKernelAudit.lean
+LEAN_NUM_THREADS=2 lake env leanchecker HotaruKernelAudit
 ```
 
 The default build includes all library modules, 184 regression examples, proofs
@@ -22,6 +22,20 @@ composed using kernel calls, a complete operation-sequence test, and the axiom a
 `decide +kernel`, not native proof evaluation. The root repository's
 `.github/workflows/lean.yml` runs the build and checks the compiled declarations.
 The template workflows nested inside this package are not active root workflows.
+
+## Source layout
+
+- `HotaruKernel/`: kernel implementation and its correctness proofs.
+- `HotaruKernel.lean`: implementation-only public import (`import HotaruKernel`).
+- `HotaruKernelTests/`: regression tests, executable examples, and test fixtures.
+- `HotaruKernelTests.lean`: explicit import of every test module.
+- `HotaruKernelAudit.lean`: axiom audit over the implementation and tests.
+
+The three entry points are separate Lake libraries and default build targets.
+Use `lake build HotaruKernel` to build only the implementation, or `lake build`
+to include all tests and the audit. CI checks `HotaruKernelAudit` with the
+independent checker so the full development remains covered. Test declaration
+names are preserved; only their module paths have changed.
 
 ## Proof architecture
 
@@ -304,7 +318,7 @@ operator arities, polymorphic constant instances, same-name variables at distinc
 types, nested beta reductions, free substitution, and shifting replacements
 under binders.
 
-`audit_hotaru` in `Audit.lean` traverses dependencies of all declarations under
+`audit_hotaru` in `HotaruKernelAudit.lean` traverses dependencies of all declarations under
 the `HotaruKernel` namespace. It fails on any axiom outside this allowlist:
 
 - `propext`

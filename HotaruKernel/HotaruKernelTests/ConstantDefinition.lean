@@ -1,5 +1,5 @@
 import HotaruKernel.ConstantDefinitionModel
-import HotaruKernel.ExtensionTests
+import HotaruKernelTests.Extension
 
 namespace HotaruKernel.ConstantDefinitionTests
 

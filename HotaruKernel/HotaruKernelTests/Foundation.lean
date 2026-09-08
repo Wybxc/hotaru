@@ -1,5 +1,5 @@
 import HotaruKernel.FoundationModel
-import HotaruKernel.TypeDefinitionTests
+import HotaruKernelTests.TypeDefinition
 
 namespace HotaruKernel.FoundationTests
 

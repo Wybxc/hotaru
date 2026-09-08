@@ -1,0 +1,13 @@
+import HotaruKernel
+import HotaruKernelTests.Examples
+import HotaruKernelTests.Basic
+import HotaruKernelTests.Propositional
+import HotaruKernelTests.TypeInstantiation
+import HotaruKernelTests.Polymorphic
+import HotaruKernelTests.LogicalEquality
+import HotaruKernelTests.DerivedInstantiation
+import HotaruKernelTests.Extension
+import HotaruKernelTests.ConstantDefinition
+import HotaruKernelTests.TypeDefinition
+import HotaruKernelTests.Foundation
+import HotaruKernelTests.Execution

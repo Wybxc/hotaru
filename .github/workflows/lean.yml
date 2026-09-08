@@ -22,4 +22,4 @@ jobs:
           test: "false"
           lint: "false"
           leanchecker: "true"
-          leanchecker-args: HotaruKernel
+          leanchecker-args: HotaruKernelAudit

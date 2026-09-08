@@ -1,7 +1,7 @@
 name = "HotaruKernel"
 version = "0.1.0"
 keywords = ["math"]
-defaultTargets = ["HotaruKernel"]
+defaultTargets = ["HotaruKernel", "HotaruKernelTests", "HotaruKernelAudit"]
 
 [leanOptions]
 pp.unicode.fun = true # pretty-prints `fun a ↦ b`
@@ -21,3 +21,9 @@ rev = "v4.29.0"
 
 [[lean_lib]]
 name = "HotaruKernel"
+
+[[lean_lib]]
+name = "HotaruKernelTests"
+
+[[lean_lib]]
+name = "HotaruKernelAudit"

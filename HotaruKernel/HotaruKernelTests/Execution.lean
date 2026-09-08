@@ -1,5 +1,5 @@
 import HotaruKernel.Execution
-import HotaruKernel.FoundationTests
+import HotaruKernelTests.Foundation
 
 namespace HotaruKernel.ExecutionTests
 

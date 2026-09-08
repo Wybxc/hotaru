@@ -1,5 +1,4 @@
-import HotaruKernel.ExecutionTests
-import HotaruKernel.OperatorTransport
+import HotaruKernelTests
 import Lean.Util.CollectAxioms
 
 /-! Fail the build if any project declaration acquires an unapproved axiom. -/

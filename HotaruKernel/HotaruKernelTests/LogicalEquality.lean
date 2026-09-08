@@ -1,4 +1,4 @@
-import HotaruKernel.PolymorphicTests
+import HotaruKernelTests.Polymorphic
 
 namespace HotaruKernel.LogicalEqualityTests
 

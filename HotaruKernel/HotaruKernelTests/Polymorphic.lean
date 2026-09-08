@@ -1,4 +1,4 @@
-import HotaruKernel.TypeInstantiationTests
+import HotaruKernelTests.TypeInstantiation
 
 namespace HotaruKernel.PolymorphicTests
 
