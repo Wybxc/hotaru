@@ -20,8 +20,10 @@ LEAN_NUM_THREADS=2 lake env leanchecker HotaruKernelAudit
 
 `lake build` builds the implementation and its correctness proofs. `lake test`
 builds the test library, including 184 regression examples, proofs composed using
-kernel calls, and the complete operation-sequence test. Tests use `decide +kernel`,
-not native proof evaluation. The axiom audit is a separate build target.
+kernel calls, and the complete operation-sequence test. Proof examples use
+`decide +kernel`, not native proof evaluation. Additional JSON behavior tests use
+`#eval` with failing IO checks and do not construct proofs.
+The axiom audit is a separate build target.
 The root repository's `.github/workflows/lean.yml` explicitly runs the build,
 tests, axiom audit, and independent check of the compiled declarations.
 The template workflows nested inside this package are not active root workflows.
@@ -33,12 +35,23 @@ The template workflows nested inside this package are not active root workflows.
 - `HotaruKernelTests/`: regression tests, executable examples, and test fixtures.
 - `HotaruKernelTests.lean`: explicit import of every test module.
 - `HotaruKernelAudit.lean`: axiom audit over the implementation and tests.
+- `HotaruKernelFFI.lean`: JSON transport, C exports, and transport correctness proofs.
+- `ffi/`: public C header, adapter, documentation, and separate C integration tests.
 
-The three entry points are separate Lake libraries. Only `HotaruKernel` is a
+The four entry points are separate Lake libraries. Only `HotaruKernel` is a
 default build target; `HotaruKernelTests` is configured as Lake's `testDriver`.
 CI checks `HotaruKernelAudit` with the independent checker so the full development
 remains covered. Test declaration names are preserved; only their module paths
 have changed.
+
+## C interface
+
+`lake build hotaruC` builds a shared library with an opaque immutable state API.
+`lake build hotaruCTest` builds its C integration test; run it with
+`.lake/build/bin/test_hotaru`. These are explicit targets in `lakefile.lean`,
+separate from the default build. The pinned toolchain and dependency lock are
+unchanged. See [ffi/README.md](ffi/README.md) for the C API, JSON protocol,
+thread and ownership requirements, and compilation trust boundary.
 
 ## Proof architecture
 

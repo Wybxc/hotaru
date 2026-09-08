@@ -18,6 +18,11 @@ elab "audit_hotaru" : command => do
 
 audit_hotaru
 
+#print axioms HotaruKernel.FFI.applyCommands_spec
+#print axioms HotaruKernel.FFI.applyCommands_extends
+#print axioms HotaruKernel.FFI.applyCommands_sound
+#print axioms HotaruKernel.FFI.apply_failure
+
 #print axioms HotaruKernel.check_sound
 #print axioms HotaruKernel.Term.eval_substBound
 #print axioms HotaruKernel.Term.eval_substFree

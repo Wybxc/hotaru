@@ -28,3 +28,9 @@ jobs:
       - name: Check compiled declarations
         working-directory: HotaruKernel
         run: lake env leanchecker HotaruKernelAudit
+      - name: Build C interface and integration tests
+        working-directory: HotaruKernel
+        run: lake build hotaruCTest
+      - name: Test C interface
+        working-directory: HotaruKernel
+        run: .lake/build/bin/test_hotaru

@@ -1,4 +1,5 @@
 import HotaruKernel
+import HotaruKernelTests.FFI
 import HotaruKernelTests.Examples
 import HotaruKernelTests.Basic
 import HotaruKernelTests.Propositional
