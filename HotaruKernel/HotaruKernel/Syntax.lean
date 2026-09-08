@@ -45,15 +45,17 @@ instance : DecidableEq HolType := HolType.decEq
 
 abbrev TypeSubst := List (String × HolType)
 
+mutual
 def HolType.inst (s : TypeSubst) : HolType → HolType
   | .var n => (s.lookup n).getD (.var n)
   | .bool => .bool
   | .fn a b => .fn (a.inst s) (b.inst s)
-  | .op n args => .op n (args.attach.map (fun t => t.val.inst s))
-termination_by t => sizeOf t
-decreasing_by
-  all_goals simp_wf
-  all_goals first | omega | exact Nat.lt_trans (List.sizeOf_lt_of_mem t.property) (by omega)
+  | .op n args => .op n (HolType.instArgs s args)
+
+def HolType.instArgs (s : TypeSubst) : List HolType → List HolType
+  | [] => []
+  | a :: args => a.inst s :: HolType.instArgs s args
+end
 
 structure Signature where
   typeOps : List (QName × Nat) := []

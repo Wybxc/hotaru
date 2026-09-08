@@ -15,8 +15,8 @@ lake env lean HotaruKernel/Audit.lean
 LEAN_NUM_THREADS=2 lake env leanchecker HotaruKernel
 ```
 
-The default build includes all library modules, 81 regression examples, a proof
-composed using all five public operations, and the axiom audit. Tests use
+The default build includes all library modules, 97 regression examples, a proof
+composed using the five original M1 operations, and the axiom audit. Tests use
 `decide +kernel`, not native proof evaluation. The root repository's
 `.github/workflows/lean.yml` runs the build and checks the compiled declarations.
 The template workflows nested inside this package are not active root workflows.
@@ -28,6 +28,7 @@ The template workflows nested inside this package are not active root workflows.
 | Syntax | `HolType`, `Signature`, `RawTerm`, and indexed `Term` |
 | Checking | `check`, `HasType`, `check_sound`, `Term.validType` |
 | Substitution | `rename`, `substBound`, `open`, `substFree`, `replace`, `close` |
+| Type substitution | `HolType.inst_compose`, `Term.instType`, `instType_preserves_type` |
 | Semantics | `TypeModel`, `Model`, `Term.eval`, `Models`, `Theory.Entails` |
 | Inference | Independent `Derivable` judgment and `Derivable.sound` |
 | Executable kernel | `Thm`, twelve operations, `Thm.sound`, `Kernel.success_sound` |
@@ -102,7 +103,7 @@ assumptions, not new Lean axioms. No consistency claim is made for an arbitrary
 user-supplied axiom list.
 
 `Examples.composed_output` checks the exact assumptions and conclusion of an
-actual computation using all five operations. `Examples.composed_succeeds`
+actual computation using the five M1 operations. `Examples.composed_succeeds`
 proves it returns a theorem, and `Examples.composed_sound` supplies its semantic
 guarantee. `Examples.model` supplies a model of the empty theory;
 `Examples.falsehood_not_derivable` proves that `id = (lambda b. b = b)`, a false
@@ -142,9 +143,20 @@ implementation, parsing, printing, or theorem serialization.
 | M3 | Not implemented: checked declarations and definitions, model extensions, choice and infinity foundations |
 | M4 | Not implemented: execution traces containing theory extensions and their global correctness theorem |
 
-Before M2's `INST_TYPE`, prove interpretation transport under type substitution,
-including polymorphic constants and merging free variables of distinct original
-types. Checking an instantiated constant in M1 is not a proof of `INST_TYPE`.
+`TypeInstantiation.lean` now proves composition of type substitutions, type
+validity preservation, and native type-interpretation transport. Its executable
+`Term.instType` and `instantiateTermChecked` preserve types, binding indices, and
+the raw syntax specification. Regression cases cover free-variable type merging,
+nested binders, composed polymorphic constant instances, and invalid substitutions.
+These are term operations, not an implementation of the theorem rule `INST_TYPE`.
+
+Before exposing that rule, strengthen the semantic model to give constant
+declarations coherent interpretation families over type-variable assignments,
+with dependence only on their declared type parameters. `Models` must require
+the theory's axioms at all type assignments, and the proof must transport term
+interpretations and valuations. Satisfaction of an axiom at one fixed type
+assignment does not justify its type-instantiated forms. This obligation remains
+open; the existing soundness theorem covers exactly the implemented rules.
 Before M3, validate signature extensions and prove freshness, nonempty type
 definitions, and old-language interpretation preservation. The existing `Theory`
 structure does not certify that a signature or axiom list came from conservative
