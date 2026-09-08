@@ -32,6 +32,12 @@ def implicationView : (p : Formula s) → Except KernelError (ImplicationView p)
 
 namespace Kernel
 
+def INST_TYPE (t : Theory) (i : TypeSubst) (th : Thm t) : Except KernelError (Thm t) :=
+  if hi : i.Valid t.signature then
+    .ok ⟨th.assumptions.map (Term.instType i hi), th.conclusion.instType i hi,
+      .instType i hi th.derivation⟩
+  else .error .invalidType
+
 def ASSUME (t : Theory) (p : RawTerm) : Except KernelError (Thm t) := do
   let ⟨a, p', _⟩ ← check t.signature [] p
   if h : a = .bool then

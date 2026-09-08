@@ -1,8 +1,8 @@
 # HotaruKernel
 
 A Lean reimplementation of a HOL4-style logical kernel. **M1 is complete; M2 is
-in progress:** equality and propositional reasoning, simultaneous term and
-equational substitution, executable checking, and semantic soundness.
+in progress:** all eight basic inference interfaces, simultaneous term and
+equational substitution, polymorphic instantiation, and semantic soundness.
 This is not a verification of HOL4's SML source or a complete HOL4 kernel.
 
 ## Build and check
@@ -15,7 +15,7 @@ lake env lean HotaruKernel/Audit.lean
 LEAN_NUM_THREADS=2 lake env leanchecker HotaruKernel
 ```
 
-The default build includes all library modules, 97 regression examples, a proof
+The default build includes all library modules, 104 regression examples, a proof
 composed using the five original M1 operations, and the axiom audit. Tests use
 `decide +kernel`, not native proof evaluation. The root repository's
 `.github/workflows/lean.yml` runs the build and checks the compiled declarations.
@@ -29,9 +29,9 @@ The template workflows nested inside this package are not active root workflows.
 | Checking | `check`, `HasType`, `check_sound`, `Term.validType` |
 | Substitution | `rename`, `substBound`, `open`, `substFree`, `replace`, `close` |
 | Type substitution | `HolType.inst_compose`, `Term.instType`, `instType_preserves_type` |
-| Semantics | `TypeModel`, `Model`, `Term.eval`, `Models`, `Theory.Entails` |
+| Semantics | `TypeModel`, `PolymorphicModel`, `Model`, `Term.eval`, `Models`, `Theory.Entails` |
 | Inference | Independent `Derivable` judgment and `Derivable.sound` |
-| Executable kernel | `Thm`, twelve operations, `Thm.sound`, `Kernel.success_sound` |
+| Executable kernel | `Thm`, thirteen operations, `Thm.sound`, `Kernel.success_sound` |
 
 `RawTerm` uses names and types for free variables and de Bruijn indices for bound
 variables. `check` returns an internal term indexed by its type and binding
@@ -77,6 +77,7 @@ All operations are in `HotaruKernel.Kernel` and return
 | `EQ_MP` | Boolean equality and antecedent theorem | Right-hand proposition |
 | `INST` | List of `(variable, replacement)` pairs and theorem | Simultaneous substitution in hypotheses and conclusion |
 | `SUBST` | List of `(variable, equality theorem)` pairs, Boolean template, input theorem | Simultaneous equational substitution |
+| `INST_TYPE` | List of `(type-variable name, type)` pairs and theorem | Simultaneous type instantiation in hypotheses and conclusion |
 
 `SUBST` checks that substituting all left sides into the template gives the
 input conclusion. Its result substitutes all right sides simultaneously and
@@ -85,9 +86,19 @@ matching entry for repeated variables. Replacements are not substituted again.
 `SYM`, `TRANS`, and `EQ_MP` are verified derivable-but-primitive rules, with
 individual soundness cases, as opposed to unchecked host-language shortcuts.
 
+The eight basic interfaces correspond to the official `ASSUME`, `REFL`,
+`BETA_CONV`, `SUBST`, `ABS`, `INST_TYPE`, `DISCH`, and `MP` rules. Type-substitution
+keys are strings, so the interface enforces the type-variable domain by its
+input type. It checks validity of every replacement type. `MK_COMB`, `INST`,
+`SYM`, `TRANS`, and `EQ_MP` currently have their own inference constructors;
+reducing those constructors to the eight-rule basis remains an M2 obligation.
+
 `Equality.lean` proves that equal raw encodings of typed terms have equal types
 and equal internal terms. The executable term comparison uses this theorem;
 it never supplies a proof merely because an unverified Boolean comparison passed.
+Currently it also compares constant substitution witnesses literally. Recognizing
+distinct witnesses for the same constant instance in rule matching remains an
+M2 compatibility obligation; this limitation can reject valid HOL4 inferences.
 
 `Thm` stores its assumptions, Boolean conclusion, and a proof of `Derivable`.
 Constructing a `Thm` directly also requires that proof; there is no oracle or
@@ -98,7 +109,14 @@ cross-theory conversion.
 
 `Derivable.sound` and `Kernel.success_sound` establish that every successful
 output holds under every free-variable valuation satisfying its hypotheses,
-in every model satisfying all theory axioms. Theory axioms are object-logic
+in every polymorphic model satisfying all theory axioms at every type assignment.
+`PolymorphicModel.constant_support` requires a constant's interpretation to depend
+only on type variables in its declared scheme. This is a condition on semantic
+data, not an assumed inference theorem. `atTypes_constant` proves independence
+from the witness used to express a constant instance. `Term.eval_instType`
+transports arbitrary terms, free valuations, and bound valuations between type
+assignments; `Derivable.sound` uses it in its `instType` case.
+Theory axioms are object-logic
 assumptions, not new Lean axioms. No consistency claim is made for an arbitrary
 user-supplied axiom list.
 
@@ -109,6 +127,9 @@ guarantee. `Examples.model` supplies a model of the empty theory;
 `Examples.falsehood_not_derivable` proves that `id = (lambda b. b = b)`, a false
 Boolean-function equality, cannot be derived there. This establishes that the M1
 soundness result is not vacuous; it is not the M3 foundation theorem.
+`PolymorphicTests.models` constructs a model of a theory with a polymorphic
+identity constant and its defining equation as an axiom. Its checked
+`instantiatedAxiom` computation specializes that axiom to booleans.
 
 ## Validation and trust boundary
 
@@ -139,7 +160,7 @@ implementation, parsing, printing, or theorem serialization.
 | Milestone | Status and next obligations |
 | --- | --- |
 | M1 | Complete: fixed-signature semantic soundness and five executable operations |
-| M2 | In progress: propositional rules, `INST`, `SUBST`, `SYM`, `TRANS`, and `EQ_MP` complete; `INST_TYPE` remains |
+| M2 | All eight basic interfaces and polymorphic soundness proved; derived-rule reduction and constant-instance matching remain |
 | M3 | Not implemented: checked declarations and definitions, model extensions, choice and infinity foundations |
 | M4 | Not implemented: execution traces containing theory extensions and their global correctness theorem |
 
@@ -148,15 +169,11 @@ validity preservation, and native type-interpretation transport. Its executable
 `Term.instType` and `instantiateTermChecked` preserve types, binding indices, and
 the raw syntax specification. Regression cases cover free-variable type merging,
 nested binders, composed polymorphic constant instances, and invalid substitutions.
-These are term operations, not an implementation of the theorem rule `INST_TYPE`.
+`TypeInstantiationSemantics.lean` and `PolymorphicModel.lean` complete the semantic
+transport needed by `Kernel.INST_TYPE`. Tests also cover abstraction before and
+after variable-type merging: bound indices prevent newly merged free variables
+from becoming captured.
 
-Before exposing that rule, strengthen the semantic model to give constant
-declarations coherent interpretation families over type-variable assignments,
-with dependence only on their declared type parameters. `Models` must require
-the theory's axioms at all type assignments, and the proof must transport term
-interpretations and valuations. Satisfaction of an axiom at one fixed type
-assignment does not justify its type-instantiated forms. This obligation remains
-open; the existing soundness theorem covers exactly the implemented rules.
 Before M3, validate signature extensions and prove freshness, nonempty type
 definitions, and old-language interpretation preservation. The existing `Theory`
 structure does not certify that a signature or axiom list came from conservative

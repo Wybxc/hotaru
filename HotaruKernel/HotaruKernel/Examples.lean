@@ -4,17 +4,22 @@ namespace HotaruKernel.Examples
 
 def theory : Theory := ⟨{}, []⟩
 
-def model : Model theory.signature where
+def types : TypeModel where
   typeVar := fun _ => Nat
   typeOp := fun _ _ => Unit
   var_nonempty := fun _ => ⟨0⟩
   op_nonempty := fun _ _ _ => ⟨()⟩
-  constant := fun _ _ h => by
-    exact False.elim (by
-      obtain ⟨_, _, h, _⟩ := h
-      simp [theory] at h)
 
-theorem models : Models theory model := fun _ _ h => False.elim (List.not_mem_nil h)
+def polymorphicModel : PolymorphicModel theory.signature where
+  typeOp := types.typeOp
+  op_nonempty := types.op_nonempty
+  constant := fun _ _ h => False.elim (by simp [theory] at h)
+  constant_support := by intro _ _ h; simp [theory] at h
+
+noncomputable def model : Model theory.signature := polymorphicModel.atTypes types rfl
+
+theorem models : Models theory polymorphicModel :=
+  fun _ _ _ _ h => False.elim (List.not_mem_nil h)
 
 noncomputable def valuation : FreeEnv model :=
   fun a _ => Classical.choice (model.toTypeModel.interp_nonempty a)
@@ -25,7 +30,8 @@ def falsehood : Formula theory.signature :=
 
 theorem falsehood_not_derivable : ¬ Derivable theory [] falsehood := by
   intro d
-  have h := d.sound model models valuation (fun _ hp => False.elim (List.not_mem_nil hp))
+  have h := d.sound polymorphicModel models types rfl valuation
+    (fun _ hp => False.elim (List.not_mem_nil hp))
   have he := (eval_equal_true _ _ _ _ _).mp h
   have hf := congrFun he false
   simp [Term.eval, BoundEnv.cons] at hf

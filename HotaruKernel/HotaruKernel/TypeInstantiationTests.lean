@@ -51,4 +51,33 @@ example : run Tests.signature [("a", .op Tests.boxName [.bool])] (.fvar "v" alph
 example : run Tests.signature [("a", .op Tests.boxName [])] (.fvar "v" alpha) =
     .error .invalidType := by decide +kernel
 
+def instantiate (i : TypeSubst) (proof : Except KernelError (Thm theory)) :=
+  observe (proof >>= Kernel.INST_TYPE theory i)
+
+example : instantiate toBool (Kernel.REFL theory (.fvar "x" alpha)) =
+    .ok ([], .equal x x) := by decide +kernel
+example : instantiate toBool (Kernel.ASSUME theory merging) =
+    .ok ([.equal (.app (.fvar "f" (.fn .bool .bool)) x) x],
+      .equal (.app (.fvar "f" (.fn .bool .bool)) x) x) := by decide +kernel
+example : instantiate [] (Kernel.REFL theory identity) =
+    .ok ([], .equal identity identity) := by decide +kernel
+example : instantiate [("unused", .op Tests.boxName [])] (Kernel.REFL theory x) =
+    .error .invalidType := by decide +kernel
+
+def abstractBeforeMerge : Except KernelError (Thm theory) := do
+  let th ← Kernel.ASSUME theory (.equal (.fvar "x" alpha) (.fvar "y" alpha))
+  Kernel.ABS theory "x" beta th
+
+example : instantiate toBool abstractBeforeMerge =
+    .ok ([.equal x y], .equal (.lam .bool x) (.lam .bool y)) := by decide +kernel
+
+example : observe (do
+    let th ← Kernel.ASSUME theory (.equal (.fvar "x" alpha) (.fvar "y" alpha))
+    let th ← Kernel.INST_TYPE theory toBool th
+    Kernel.ABS theory "x" .bool th) = .error .freeInAssumptions := by decide +kernel
+
+theorem abstractBeforeMerge_sound (th : Thm theory)
+    (h : (abstractBeforeMerge >>= Kernel.INST_TYPE theory toBool) = .ok th) :
+    theory.Entails th.assumptions th.conclusion := Kernel.success_sound _ th h
+
 end HotaruKernel.TypeInstantiationTests

@@ -1,4 +1,4 @@
-import HotaruKernel.TypeInstantiationTests
+import HotaruKernel.PolymorphicTests
 import Lean.Util.CollectAxioms
 
 /-! Fail the build if any project declaration acquires an unapproved axiom. -/
@@ -27,6 +27,10 @@ audit_hotaru
 #print axioms HotaruKernel.HolType.inst_compose
 #print axioms HotaruKernel.TypeModel.interp_instantiate
 #print axioms HotaruKernel.instType_preserves_type
+#print axioms HotaruKernel.PolymorphicModel.atTypes_constant
+#print axioms HotaruKernel.Term.eval_instType
+#print axioms HotaruKernel.TypeInstantiationTests.abstractBeforeMerge_sound
+#print axioms HotaruKernel.PolymorphicTests.models
 #print axioms HotaruKernel.Derivable.sound
 #print axioms HotaruKernel.Kernel.success_sound
 #print axioms HotaruKernel.Examples.composed_output
