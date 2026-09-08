@@ -412,6 +412,39 @@ private theorem dbSubst_filter_shadowed_ctx :
       have ht := ih ((y, U) :: ctx) hmem'
       simpa [toDBAux, dbSubst] using ht
 
+/-- The filter `i.filter (not x)` does not change find? results for (y,U) when y ≠ x. -/
+private lemma find?_filter_not_x (l : List (Term × Term)) (y : String) (U : HOLType)
+    (x : String) (T : HOLType) (hyx : y ≠ x) :
+    (l.filter (fun p => !decide (p.fst = Term.var x T))).find? (fun p => p.fst = Term.var y U) =
+    l.find? (fun p => p.fst = Term.var y U) := by
+  induction l with
+  | nil => rfl
+  | cons h t ih => aesop
+
+/-- Capture case: commutativity of substitution and de Bruijn translation under capture risk.
+
+  When `captureRisk x T t i' = true`, `subst` renames the binder `x ↦ fresh` to avoid
+  capture. This lemma equates the de Bruijn translation of the renamed substitution
+  with the de Bruijn substitution of the original translation. It is the key lemma
+  for proving `subst_toDB_comm` in the `abs` capture case.
+
+  PROOF STATUS: only the `const` case is trivial; `var`, `app`, and `abs` all require
+  complex reasoning about context-dependent de Bruijn translation and are left
+  as future work. The statement is correct but the proof is incomplete. -/
+private theorem subst_toDBAux_comm_capture (ctx : List (String × HOLType))
+    (i : List (Term × Term)) (x : String) (T : HOLType) (t : Term) (fresh : String) :
+    SubstOk i →
+    (∀ (y : String) (U : HOLType), (y, U) ∈ ctx →
+      captureRisk y U t (i.filter (fun p => !decide (p.fst = Term.var x T))) = false ∧
+      (i.filter (fun p => !decide (p.fst = Term.var x T))).find? (fun p => p.fst = Term.var y U) = none) →
+    captureRisk x T t (i.filter (fun p => !decide (p.fst = Term.var x T))) = true →
+    ¬(Term.var fresh T).IsFreeVarIn (subst (i.filter (fun p => !decide (p.fst = Term.var x T))) t) →
+    toDBAux ((fresh, T) :: ctx) (subst ((Term.var x T, Term.var fresh T) :: i.filter (fun p => !decide (p.fst = Term.var x T))) t)
+      = dbSubst i (toDBAux ((x, T) :: ctx) t) := by
+  intro hOk hCtx hCap hFreshNoFree
+  let i' : List (Term × Term) := i.filter (fun p => !decide (p.fst = Term.var x T))
+  sorry
+
 private theorem subst_toDBAux_comm :
   ∀ (ctx : List (String × HOLType)) (i : List (Term × Term)) (body : Term),
     SubstOk i ->
@@ -473,35 +506,49 @@ private theorem subst_toDBAux_comm :
       set i' := i.filter (fun p => !decide (p.fst = Term.var x T))
       have hOk' : SubstOk i' := SubstOk.filter i (fun p => !decide (p.fst = Term.var x T)) hOk
       by_cases hCap : captureRisk x T t i' = true
-      · simp only [subst, hCap, ↓reduceIte, toDBAux, dbSubst, DBTerm.abs.injEq, true_and, i']
-        set i' := i.filter (fun p => !decide (p.fst = Term.var x T))
+      · have hFresh : ¬(Term.var (generateVariant (subst i' t) x T) T).IsFreeVarIn (subst i' t) := by
+          simpa using VariantFresh (subst i' t) x T
+        have hCap_body : captureRisk x T (.abs x T t) i = true := by
+          rcases (captureRisk_true x T t i').1 hCap with ⟨p, hp, hPair⟩
+          apply (captureRisk_true x T (.abs x T t) i).2
+          have hmem_i : p ∈ i := (List.mem_filter.mp hp).1
+          have hpNe : p.fst ≠ Term.var x T := by
+            have hPred : (!decide (p.fst = Term.var x T)) = true := (List.mem_filter.mp hp).2
+            by_contra hEq; simp [hEq] at hPred
+          refine ⟨p, hmem_i, hPair.1, ?_⟩
+          unfold Term.IsFreeVarIn Term.isFreeVarIn
+          rw [decide_eq_true_iff.mpr hpNe]
+          exact hPair.2
+        have hx_not_in_ctx : (x, T) ∉ ctx := by
+          intro hmem
+          have hxCapFalse := (hNoCap x T hmem).1
+          rw [hCap_body] at hxCapFalse
+          exact (by decide : true = false → False) hxCapFalse
         set fresh := generateVariant (subst i' t) x T
-        -- have hFreshNoName : ¬Term.HasName fresh (subst i' t) := by
-        --   simpa [fresh] using (VariantNoName (subst i' t) x T)
-        -- have hCtxNoCap :
-        --     ∀ (y : String) (U : HOLType), (y, U) ∈ ctx →
-        --       captureRisk y U t i' = false ∧ i'.find? (fun p => p.fst = Term.var y U) = none := by
-        --   intro y U hmem
-        --   have hOrig := hNoCap y U hmem
-        --   constructor
-        --   · apply (captureRisk_false y U t i').2
-        --     intro p hp hPair
-        --     have hpMem : p ∈ i := (List.mem_filter.mp hp).1
-        --     have hpNe : p.fst ≠ Term.var x T := by
-        --       have hPred : (!decide (p.fst = Term.var x T)) = true := (List.mem_filter.mp hp).2
-        --       by_contra hEq
-        --       simp [hEq] at hPred
-        --     apply (captureRisk_false y U (.abs x T t) i).mp hOrig.1 p hpMem
-        --     have hFreeAbs : p.fst.IsFreeVarIn (.abs x T t) := by
-        --       unfold Term.IsFreeVarIn Term.isFreeVarIn
-        --       rw [decide_eq_true_iff.mpr hpNe]
-        --       simpa using hPair.2
-        --     exact ⟨hPair.1, hFreeAbs⟩
-        --   · apply (List.find?_eq_none).2
-        --     intro p hp
-        --     have hpMem : p ∈ i := (List.mem_filter.mp hp).1
-        --     exact (List.find?_eq_none).1 hOrig.2 p hpMem
-        sorry
+        have hCall :
+          toDBAux ((fresh, T) :: ctx) (subst ((Term.var x T, Term.var fresh T) :: i') t)
+            = dbSubst i (toDBAux ((x, T) :: ctx) t) := by
+          apply subst_toDBAux_comm_capture ctx i x T t fresh hOk ?_ (by simpa [i'] using hCap) hFresh
+          intro y U hmem
+          have hOrig := hNoCap y U hmem
+          constructor
+          · apply (captureRisk_false y U t i').2
+            intro p hp hPair
+            have hpMem : p ∈ i := (List.mem_filter.mp hp).1
+            have hpNe : p.fst ≠ Term.var x T := by
+              have hPred : (!decide (p.fst = Term.var x T)) = true := (List.mem_filter.mp hp).2
+              by_contra hEq; simp [hEq] at hPred
+            apply (captureRisk_false y U (.abs x T t) i).mp hOrig.1 p hpMem
+            have hFreeAbs : p.fst.IsFreeVarIn (.abs x T t) := by
+              unfold Term.IsFreeVarIn Term.isFreeVarIn
+              rw [decide_eq_true_iff.mpr hpNe]
+              simpa using hPair.2
+            exact ⟨hPair.1, hFreeAbs⟩
+          · apply (List.find?_eq_none).2
+            intro p hp
+            have hpMem : p ∈ i := (List.mem_filter.mp hp).1
+            exact (List.find?_eq_none).1 hOrig.2 p hpMem
+        simp only [subst, hCap, ↓reduceIte, toDBAux, dbSubst, i', fresh, hCall]
       · have hShadow :
             dbSubst i (toDBAux ((x, T) :: ctx) t) = dbSubst i' (toDBAux ((x, T) :: ctx) t) := by
           simpa [i'] using dbSubst_filter_shadowed_ctx i x T ((x, T) :: ctx) t (by simp)
@@ -537,23 +584,80 @@ private theorem subst_toDBAux_comm :
         _ = dbSubst i (toDBAux ((x, T) :: ctx) t) := by
               simpa using hShadow.symm
 
-private theorem subst_toDBAux_comm_capture :
-  ∀ (ctx : List (String × HOLType)) (i : List (Term × Term))
-    (x : String) (T : HOLType) (t : Term) (fresh : String),
-    SubstOk i ->
-    let i' := i.filter (fun p => !decide (p.fst = Term.var x T))
-    (∀ (y : String) (U : HOLType), (y, U) ∈ ctx →
-      captureRisk y U t i' = false ∧ i'.find? (fun p => p.fst = Term.var y U) = none) ->
-    captureRisk x T t i' = true ->
-    ¬(Term.var fresh T).IsFreeVarIn (subst i' t) ->
-    toDBAux ((fresh, T) :: ctx) (subst ((Term.var x T, Term.var fresh T) :: i') t)
-      = dbSubst i (toDBAux ((x, T) :: ctx) t) := by
-  sorry
+/-- Rename a free variable to de Bruijn index 0 in a DB term. -/
+private def renFVarToBVar (z : String) (Z : HOLType) : DBTerm → DBTerm
+  | .fvar x T => if x = z ∧ T = Z then .bvar 0 else .fvar x T
+  | .bvar n => .bvar n
+  | .const c T => .const c T
+  | .app s t => .app (renFVarToBVar z Z s) (renFVarToBVar z Z t)
+  | .abs T t => .abs T (renFVarToBVar z Z t)
+
+private theorem toDB_one_binder (z : String) (Z : HOLType) : ∀ (t : Term),
+    toDBAux [(z, Z)] t = renFVarToBVar z Z t.toDB := by
+  intro t; induction t with
+  | var y U =>
+      simp [Term.toDB, toDBAux, renFVarToBVar]
+      by_cases hyz : y = z
+      · subst hyz; by_cases hUZ : U = Z; subst hUZ; simp; simp
+      · simp [hyz]
+  | const c U => simp [Term.toDB, toDBAux, renFVarToBVar]
+  | app s t ihs iht => simp [Term.toDB, toDBAux, renFVarToBVar, ihs, iht]
+  | abs y U t ih => simp [Term.toDB, toDBAux, renFVarToBVar, ih]
+
+/-- Key lemma: renFVarToBVar commutes with dbSubst for body.toDB under the capture condition.
+
+  `renFVarToBVar fresh T (dbSubst ((x↦fresh)::i') body.toDB) = dbSubst i' (renFVarToBVar x T body.toDB)`
+  when `fresh` is not free in `subst i' body`.
+
+  PROVED for var, const, app; abs case is the same hard nested-binder issue as
+  `subst_toDBAux_comm_capture` and is left as future work. -/
+private theorem ren_subst_comm_capture (x fresh : String) (T : HOLType) (i' : List (Term × Term))
+    (body : Term) (hFreshNoFree : ¬(Term.var fresh T).IsFreeVarIn (subst i' body)) :
+    renFVarToBVar fresh T (dbSubst ((Term.var x T, Term.var fresh T) :: i') body.toDB) =
+    dbSubst i' (renFVarToBVar x T body.toDB) := by
+  induction body generalizing x T fresh i' hFreshNoFree with
+  | var y U =>
+      simp [Term.toDB, renFVarToBVar, dbSubst]
+      by_cases hyx : (y = x ∧ U = T)
+      · rcases hyx with ⟨rfl, rfl⟩; simp
+      · by_cases hyf : (y = fresh ∧ U = T)
+        · rw [hyf.1, hyf.2]
+          rw [hyf.1, hyf.2] at hFreshNoFree
+          have hfind : i'.find? (fun p => p.fst = Term.var fresh T) = none ∨
+            ∃ u, i'.find? (fun p => p.fst = Term.var fresh T) = some (Term.var fresh T, u) := by
+            cases hfind' : i'.find? (fun p => p.fst = Term.var fresh T)
+            · left; exact hfind'
+            · rename_i p; rcases p with ⟨v, u⟩
+              have hv : v = Term.var fresh T := by
+                have hPred : decide (v = Term.var fresh T) = true :=
+                  (List.find?_eq_some_iff_getElem.mp hfind').1
+                exact (decide_eq_true_iff.1 hPred)
+              subst hv; right; exact ⟨u, hfind'⟩
+          rcases hfind with (hnone | ⟨u, hsome⟩)
+          · exfalso
+            apply hFreshNoFree
+            have hsubst : subst i' (Term.var fresh T) = Term.var fresh T := by simp [subst, hnone]
+            have hself : (Term.var fresh T).IsFreeVarIn (Term.var fresh T) := by
+              simp [Term.IsFreeVarIn, Term.isFreeVarIn]
+            rw [hsubst]; exact hself
+          · simp [hsome]
+        · simp [hyx, hyf]
+  | const c U => simp [Term.toDB, renFVarToBVar, dbSubst]
+  | app s t ihs iht =>
+      have hFreshNoFree_s : ¬(Term.var fresh T).IsFreeVarIn (subst i' s) := by
+        intro h; apply hFreshNoFree; simpa [subst] using h
+      have hFreshNoFree_t : ¬(Term.var fresh T).IsFreeVarIn (subst i' t) := by
+        intro h; apply hFreshNoFree; simpa [subst] using h
+      simp [Term.toDB, renFVarToBVar, dbSubst, ihs s x T fresh i' hFreshNoFree_s, iht t x T fresh i' hFreshNoFree_t]
+  | abs y U s ih =>
+      simp [Term.toDB, renFVarToBVar, dbSubst]
+      -- NEEDED: proof for nested abs; left as future work
+      sorry
 
 /-- abstraction branch when no capture risk. -/
 private theorem subst_toDB_comm_abs_no_capture :
   ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
-    SubstOk i ->
+    SubstOk i →
     let i' := i.filter (fun p => !decide (p.fst = Term.var x T))
     captureRisk x T body i' = false ->
     toDBAux [(x, T)] (subst i' body) = dbSubst i (toDBAux [(x, T)] body) := by
@@ -569,23 +673,7 @@ private theorem subst_toDB_comm_abs_no_capture :
         · aesop
   _ = dbSubst i (toDBAux [(x, T)] body) := by aesop
 
-/-- use alpha_debrujin to close the capture branch. -/
-private theorem subst_toDB_comm_abs_capture :
-  ∀ (i : List (Term × Term)) (x : String) (T : HOLType) (body : Term),
-    SubstOk i ->
-    let i' := i.filter (fun p => !decide (p.fst = Term.var x T))
-    captureRisk x T body i' = true ->
-    let fresh := generateVariant (subst i' body) x T
-    toDBAux [(fresh, T)] (subst ((Term.var x T, Term.var fresh T) :: i') body)
-      = dbSubst i (toDBAux [(x, T)] body) := by
-  intro i x T body hOk i' hCap
-  let fresh := generateVariant (subst i' body) x T
-  have hFreshNoFree : ¬(Term.var fresh T).IsFreeVarIn (subst i' body) := by
-    simpa [fresh] using (VariantFresh (subst i' body) x T)
-  simpa [fresh] using
-    subst_toDBAux_comm_capture [] i x T body fresh hOk (by intro y U hmem; cases hmem) (by simpa [i'] using hCap) (by simpa [fresh] using hFreshNoFree)
-
-theorem subst_toDB_comm :
+private theorem subst_toDB_comm :
   ∀ (i : List (Term × Term)) (t : Term),
     SubstOk i → (subst i t).toDB = dbSubst i t.toDB := by
   intro i t hOk
@@ -614,10 +702,26 @@ theorem subst_toDB_comm :
       set fresh := generateVariant (subst i' body) x T
       by_cases hCap : captureRisk x T body i' = true
       · simp only [hCap, ↓reduceIte, toDBAux, DBTerm.abs.injEq, true_and]
-        apply subst_toDB_comm_abs_capture
-        · exact hOk
-        · simpa [i'] using hCap
+        let fresh := generateVariant (subst i' body) x T
+        have hFreshNoFree : ¬(Term.var fresh T).IsFreeVarIn (subst i' body) := by
+          simpa [fresh] using (VariantFresh (subst i' body) x T)
+        -- The IH provides the commutativity for body with ANY well-typed substitution
+        have h_ih_body : (subst ((Term.var x T, Term.var fresh T) :: i') body).toDB =
+            dbSubst ((Term.var x T, Term.var fresh T) :: i') body.toDB := by
+          apply ih ((Term.var x T, Term.var fresh T) :: i')
+          intro u s hm
+          simp at hm; rcases hm with (⟨rfl, rfl⟩ | hm')
+          · exact ⟨x, T, rfl, Term.HasType.var fresh T⟩
+          · exact (SubstOk.filter i (fun p => !decide (p.fst = Term.var x T)) hOk) u s hm'
+        calc
+            toDBAux [(fresh, T)] (subst ((Term.var x T, Term.var fresh T) :: i') body)
+          = renFVarToBVar fresh T ((subst ((Term.var x T, Term.var fresh T) :: i') body).toDB) := by
+              rw [toDB_one_binder]
+          _ = renFVarToBVar fresh T (dbSubst ((Term.var x T, Term.var fresh T) :: i') body.toDB) := by rw [h_ih_body]
+          _ = dbSubst i (renFVarToBVar x T body.toDB) := by rw [renFVarToBVar_comp_dbSubst]
+          _ = dbSubst i (toDBAux [(x, T)] body) := by rw [toDB_one_binder]
       · simp only [hCap, Bool.false_eq_true, ↓reduceIte, toDBAux, DBTerm.abs.injEq, true_and]
         apply subst_toDB_comm_abs_no_capture
         · exact hOk
         · simpa [i'] using hCap
+
