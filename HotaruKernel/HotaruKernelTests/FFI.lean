@@ -1,42 +1,57 @@
 import HotaruKernelFFI
 
 namespace HotaruKernel.FFITests
-open Lean (toJson fromJson?)
-open Execution
-set_option linter.hashCommand false
+open FFI
 
-def p : RawTerm := .fvar "p" .bool
-def commands : List Command := [.infer (.refl p), .infer (.symm 4)]
+def state : Execution.State := Execution.initial
+def p : RawTerm := termFree "p" (typeBool ())
+def q : RawTerm := termFree "q" (typeBool ())
+def identity : RawTerm := termLam (typeBool ()) (termBound 0)
 
-def allCommands : List Command := [
-  .infer (.assume p), .infer (.refl p), .infer (.beta p), .infer (.abs "p" .bool 0),
-  .infer (.mkComb 0 1), .infer (.disch p 0), .infer (.mp 0 1), .infer (.symm 0),
-  .infer (.trans 0 1), .infer (.eqMp 0 1), .infer (.inst [(p, p)] 0),
-  .infer (.instType [("a", .bool)] 0), .infer (.subst [(p, 0)] p 0),
-  .declareType ⟨"test", "t"⟩ 1, .declareConstant ⟨"test", "c"⟩ (.var "a"),
-  .defineConstant ⟨"test", "id"⟩ (.lam .bool (.bvar 0)),
-  .defineType ⟨"test", "t"⟩ ["a"] p (some 0),
-  .defineType ⟨"test", "u"⟩ [] p none, .addAxiom p]
+def observe {s : Execution.State} (r : Result (Thm s.theory)) :
+    Result (List RawTerm × RawTerm) :=
+  r.map (fun th => (th.assumptions.map Term.raw, th.conclusion.raw))
 
-def terms : List RawTerm := [
-  .fvar "x" (.op ⟨"test", "t"⟩ [.fn (.var "a") .bool]), .bvar 2,
-  .const ⟨"test", "c"⟩ [("a", .bool)], .app p p, .lam .bool p, .equal p p, .imp p p]
+def composed : Result (Thm state.theory) := do
+  let a ← refl state identity
+  let b ← refl state p
+  let c ← mkComb state a b
+  symm state c
 
--- JSON parsing uses partial runtime code: these are behavior checks, not proofs.
-def check (name : String) (ok : Bool) : IO Unit :=
-  unless ok do throw (IO.userError name)
+example : observe composed = .ok ([], .equal (.app identity p) (.app identity p)) := by
+  decide +kernel
+example : observe (assume state p) = .ok ([p], p) := by decide +kernel
+example : observe (beta state (.app identity p)) = .ok ([], .equal (.app identity p) p) := by
+  decide +kernel
+example : observe (assume state identity) = .error 105 := by decide +kernel
+example : checkTerm state (.bvar 0) = .error 101 := by decide +kernel
+example : checkTerm state (.app p q) = .error 103 := by decide +kernel
+example : checkTerm state (.const ⟨"missing", "c"⟩ []) = .error 102 := by decide +kernel
 
-#eval do
-  check "commands roundtrip"
-    (decide ((fromJson? (toJson allCommands) : Except String (List Command)) =
-      Except.ok allCommands))
-  check "terms roundtrip"
-    (decide ((fromJson? (toJson terms) : Except String (List RawTerm)) = Except.ok terms))
-  check "composition" (FFI.apply initial (toJson commands).compress).success
-  check "invalid JSON" (!(FFI.apply initial "[").success)
-  check "invalid command" (!(FFI.apply initial "[{}]").success)
-  check "invalid reference" (!(FFI.apply initial
-    (toJson ([.infer (.symm 999)] : List Command)).compress).success)
+def badAbs : Result (Thm state.theory) := do
+  abs state "p" .bool (← assume state (.equal p p))
+example : observe badAbs = .error 108 := by decide +kernel
 
+def merged : Result (Thm state.theory) := do
+  instType state #[("a", .bool)] (← refl state (.fvar "x" (.var "a")))
+example : observe merged = .ok ([], .equal (.fvar "x" .bool) (.fvar "x" .bool)) := by
+  decide +kernel
+
+example : typeChild (.fn (.var "a") .bool) 1 = .ok .bool := by decide +kernel
+example : termChild (.lam .bool (.bvar 0)) 0 = .ok (.bvar 0) := by decide +kernel
+example : termAnnotation (.lam .bool (.bvar 0)) = .ok .bool := by decide +kernel
+example : termName (.app p q) = .error 6 := by decide +kernel
+example : instValue (.const ⟨"test", "c"⟩ [("a", .bool)]) 0 = .ok .bool := by
+  decide +kernel
+
+def extended : Result (Extension state) := declareType state "test" "new" 0
+def migrated : Result RawTerm := do
+  let e ← extended
+  let th ← refl state p
+  pure (rebase state e th).conclusion.raw
+example : migrated = .ok (.equal p p) := by decide +kernel
+
+example : (defineType state "test" "t" #[] identity none).map (fun _ => ()) =
+    .error 118 := by decide +kernel
 
 end HotaruKernel.FFITests

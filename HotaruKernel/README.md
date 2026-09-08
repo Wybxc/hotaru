@@ -21,8 +21,8 @@ LEAN_NUM_THREADS=2 lake env leanchecker HotaruKernelAudit
 `lake build` builds the implementation and its correctness proofs. `lake test`
 builds the test library, including 184 regression examples, proofs composed using
 kernel calls, and the complete operation-sequence test. Proof examples use
-`decide +kernel`, not native proof evaluation. Additional JSON behavior tests use
-`#eval` with failing IO checks and do not construct proofs.
+`decide +kernel`, not native proof evaluation. Additional handle-interface
+regression proofs use the same kernel-checked evaluation.
 The axiom audit is a separate build target.
 The root repository's `.github/workflows/lean.yml` explicitly runs the build,
 tests, axiom audit, and independent check of the compiled declarations.
@@ -35,7 +35,7 @@ The template workflows nested inside this package are not active root workflows.
 - `HotaruKernelTests/`: regression tests, executable examples, and test fixtures.
 - `HotaruKernelTests.lean`: explicit import of every test module.
 - `HotaruKernelAudit.lean`: axiom audit over the implementation and tests.
-- `HotaruKernelFFI.lean`: JSON transport, C exports, and transport correctness proofs.
+- `HotaruKernelFFI.lean`: typed C exports and interface correctness proofs.
 - `ffi/`: public C header, adapter, documentation, and separate C integration tests.
 
 The four entry points are separate Lake libraries. Only `HotaruKernel` is a
@@ -50,7 +50,8 @@ have changed.
 `lake build hotaruCTest` builds its C integration test; run it with
 `.lake/build/bin/test_hotaru`. These are explicit targets in `lakefile.lean`,
 separate from the default build. The pinned toolchain and dependency lock are
-unchanged. See [ffi/README.md](ffi/README.md) for the C API, JSON protocol,
+unchanged. ABI 2 provides type, term, theory-state and theorem handles instead of
+JSON commands. See [ffi/README.md](ffi/README.md) for the C API,
 thread and ownership requirements, and compilation trust boundary.
 
 ## Proof architecture

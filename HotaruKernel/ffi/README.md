@@ -1,9 +1,9 @@
-# C interface (ABI 1)
+# C handle interface (ABI 2)
 
-The C interface executes the Lean kernel through an opaque immutable state.
-It supports macOS and Linux and requires the pinned Lean 4.29.0 installation
-and a system C compiler with POSIX threads. It owns Lean initialization and
-must not share a process with another independently initialized Lean host.
+The library exposes opaque `hotaru_state`, `hotaru_type`, `hotaru_term`, and
+`hotaru_thm` handles. Constructors, inference, theory extensions, and inspection
+use C functions directly. ABI 1's JSON commands, numeric theorem references,
+`hotaru_apply`, and serialized theorem output have been removed.
 
 ## Build and test
 
@@ -17,147 +17,144 @@ lake build hotaruCTest
 
 The library is `.lake/build/lib/libhotaru.dylib` on macOS or
 `.lake/build/lib/libhotaru.so` on Linux. The public header is `ffi/hotaru.h`.
-The build embeds a search path to this toolchain's shared libraries. Distributing
-the library requires distributing the matching runtime libraries and adjusting
-loader paths; the output is not a standalone runtime-free binary.
-The first native build also compiles the export module's transitive imports.
-On macOS, Lake's default linker environment uses a future deployment-version
-marker. Set `MACOSX_DEPLOYMENT_TARGET` when building for a particular macOS
-deployment target; the generated objects and matching Lean runtime must also
-support that target.
+The build requires the pinned Lean 4.29.0 installation and a system C compiler
+with POSIX threads. It embeds a runtime search path to that toolchain.
+Distributing the library requires the matching Lean shared libraries and
+appropriate loader paths; the library does not contain a standalone runtime.
 
-`lake build` still builds only the kernel. `lake test` includes the Lean JSON
-behavior checks. CI explicitly builds and runs the C integration tests as well.
-The custom native targets live in `lakefile.lean`; dependency revisions and
-the existing `lake-manifest.json` lock are unchanged.
+The first native build compiles the export module's transitive imports.
+On macOS, Lake's default linker environment uses a future deployment-version
+marker. Set `MACOSX_DEPLOYMENT_TARGET` for a particular deployment target;
+generated objects and the matching runtime must support that target too.
+
+`lake build` builds only the implementation. `lake test` includes Lean handle
+interface regression proofs using `decide +kernel`. C integration tests remain
+an explicit target and CI step. Dependency versions and the lock are unchanged.
 
 ## Example
 
-```c
-#include "hotaru.h"
-#include <stdio.h>
-#include <string.h>
-
-int main(void) {
-    hotaru_state *base = NULL, *next = NULL;
-    char *response = NULL;
-    if (hotaru_state_new(&base) != HOTARU_OK) return 1;
-    const char *commands =
-        "[{\"infer\":{\"rule\":{\"refl\":{\"p\":{\"fvar\":[\"p\",\"bool\"]}}}}}]";
-    int status = hotaru_apply(base, commands, strlen(commands), &next, &response);
-    if (response) puts(response);
-    hotaru_string_free(response);
-    if (status == HOTARU_OK) {
-        status = hotaru_theorem(next, 4, &response);
-        if (response) puts(response);
-        hotaru_string_free(response);
-    }
-    hotaru_state_free(next);
-    hotaru_state_free(base);
-    return status == HOTARU_OK ? 0 : 1;
-}
-```
-
-For a source file `example.c`, compile and run from this directory's parent:
+The complete example is [examples/refl.c](examples/refl.c). It constructs a
+Boolean variable, proves its reflexive equality, and reads the result as a term
+handle. Build it with a regular C compiler:
 
 ```sh
-cc example.c -Iffi -L.lake/build/lib -lhotaru \
-  -Wl,-rpath,"$PWD/.lake/build/lib" -o example
-./example
+cc ffi/examples/refl.c -Iffi -L.lake/build/lib -lhotaru \
+  -Wl,-rpath,"$PWD/.lake/build/lib" -o .lake/build/bin/handle_example
+.lake/build/bin/handle_example
 ```
 
-## Ownership and errors
+The central calls are:
 
-All state operations must run on the OS thread that first initializes the
-library. Other threads receive `HOTARU_WRONG_THREAD`. Rust wrappers should make
-state handles neither `Send` nor `Sync`, or put all calls on a dedicated worker.
-The runtime stays initialized until process exit.
+```c
+hotaru_state_new(&state);
+hotaru_type_bool(&boolean);
+hotaru_term_free_var((hotaru_string_view){"p", 1}, boolean, &p);
+hotaru_refl(state, p, &proof);
+hotaru_thm_conclusion(proof, &conclusion);
+```
 
-Inputs are borrowed for the duration of each call. Outputs are owned: release
-states with `hotaru_state_free` and JSON strings with `hotaru_string_free`.
-All handles must be live pointers returned by this library. Do not fabricate,
-double-free, use freed handles, or overwrite an owned handle without releasing
-it. Output slots must not alias each other or input memory. NULL frees succeed.
+Check every return code, as the complete example does.
+For Rust, bind these functions with `extern "C"`, represent the opaque objects
+as pointers, and use RAII wrappers to call the corresponding free functions.
+`hotaru_string_view` and binding arrays have ordinary C struct layouts and can
+be represented with `#[repr(C)]`. No Rust code needs Lean's object layout.
 
-`hotaru_apply` executes a JSON array of commands atomically. Success returns a
-new state and `{"ok":true,"theoremCount":N}`. The input state remains usable.
-Rejection returns no state and `{"ok":false,"kind":K,"error":E}`; `kind` is
-`json`, `command`, or `kernel`. Kernel errors are constructor names such as
-`"freeInAssumptions"`. Earlier commands in a rejected batch are not published.
-Invalid C arguments and invalid UTF-8 return `HOTARU_INVALID_ARGUMENT` without
-a JSON response. Other C failures likewise leave outputs NULL.
-`HOTARU_OUT_OF_MEMORY` covers adapter allocations; Lean runtime allocation
-failure or a panic can terminate the process and is not a recoverable C error.
+## Ownership
 
-The initial state's theorem indices are 0: eta, 1: selection, 2: infinity,
-3: Boolean cases. New theorems append; declarations add no theorems.
-Indices are local to the state supplied to the call. There is no cross-state
-theorem import API. `hotaru_theorem` returns structured assumptions and conclusion,
-or a rejection for an out-of-range index.
+Every constructor, inference, accessor returning a handle, and migration returns
+an independently owned handle. Inputs are borrowed for the duration of the call.
+Release each output with its matching `hotaru_*_free`. NULL frees succeed.
+Handles must be live objects of the declared kind from this library; forged
+pointers, wrong-kind casts, double frees and use after free are C memory errors.
 
-## JSON protocol
+Terms retain their children, and theorems retain their theory state.
+Extensions retain their ancestors. Thus an input may be released while a
+result that depends on it is still alive. `hotaru_thm_state` returns an owned
+reference to the theorem's state. There is no global mutable current theory.
 
-ABI 1 uses the derived Lean JSON encoding below. The ABI version must change
-if the wire format changes. Qualified names have `theory` and `name` fields.
-Type substitutions are arrays of `[variableName, type]` pairs.
+All handle operations, including frees, must run on the OS thread that first
+initializes the library. Other threads receive `HOTARU_WRONG_THREAD`.
+Rust handle wrappers should be neither `Send` nor `Sync`; a dedicated worker
+thread is another option. Only `hotaru_string_free`, `hotaru_error_message`,
+and `hotaru_abi_version` are unrestricted.
+This library owns Lean initialization and cannot coexist with a separately
+initialized Lean host. The runtime remains initialized until process exit.
 
-| Type | JSON |
-| --- | --- |
-| Boolean | `"bool"` |
-| Type variable | `{"var":"a"}` |
-| Function | `{"fn":[domain,range]}` |
-| Type operator | `{"op":[qualifiedName,[arguments]]}` |
+## Syntax and checking
 
-| Term | JSON |
-| --- | --- |
-| Free variable | `{"fvar":[name,type]}` |
-| Bound variable | `{"bvar":index}` |
-| Constant instance | `{"const":[qualifiedName,substitution]}` |
-| Application | `{"app":[function,argument]}` |
-| Abstraction | `{"lam":[type,body]}` |
-| Equality | `{"equal":[left,right]}` |
-| Implication | `{"imp":[antecedent,consequent]}` |
+Types and terms are reusable raw syntax handles. Constructors do not assert
+that a type operator or constant exists in a particular theory. Construct
+lambda bodies with de Bruijn bound indices, then call `hotaru_check` on the
+completed term to obtain its type. Every inference also runs its existing
+kernel checks, so skipping an explicit check cannot bypass side conditions.
 
-An inference command is `{"infer":{"rule":{ruleName:fields}}}`:
+Type kinds are Boolean, variable, function and named operator.
+Term kinds are free variable, bound variable, constant instance, application,
+lambda, equality and implication. Inspect kinds, children, annotations, names,
+qualified-name scopes and constant substitutions with the accessor functions.
+A lambda has one term child (its body); its argument type is its annotation.
+Function types have domain and range children; operator types have argument
+children. Leaves have no children. Invalid accessor kinds or indices return
+`HOTARU_WRONG_KIND` or `HOTARU_OUT_OF_RANGE`.
 
-| Rule name | Fields |
-| --- | --- |
-| `assume`, `refl`, `beta` | `p` |
-| `abs` | `name`, `type`, `th` |
-| `mkComb`, `trans` | `left`, `right` (theorem indices) |
-| `disch` | `p`, `th` |
-| `mp` | `implication`, `antecedent` (theorem indices) |
-| `symm` | `th` |
-| `eqMp` | `equation`, `premise` (theorem indices) |
-| `inst` | `replacements` (pairs of terms), `th` |
-| `instType` | `substitution`, `th` |
-| `subst` | `equations` (term/index pairs), `template`, `th` |
+Input names are UTF-8 byte views; invalid UTF-8 is rejected. Embedded NUL bytes
+are preserved. Output names are allocated, NUL-terminated byte strings with an
+explicit length excluding the terminator; release them with
+`hotaru_string_free`. A NULL input view is allowed only when its length is zero.
+Array pointers may be NULL only when their count is zero.
 
-Theory commands have the form `{commandName:fields}`:
+## Inference and theory identity
 
-| Command name | Fields |
-| --- | --- |
-| `declareType` | `name` (qualified), `arity` |
-| `declareConstant` | `name` (qualified), `type` |
-| `defineConstant` | `name` (qualified), `rhs` |
-| `defineType` | `name` (qualified), `parameters`, `predicate`, `proof` (index or null) |
-| `addAxiom` | `formula` |
+All kernel rules have direct entry points, including substitution and type
+instantiation. Their theorem operands must belong to exactly the supplied
+state. Even separately created but structurally equal theories are distinct.
+Inference does not mutate the state, so independent proofs in one theory can
+be combined immediately without synchronizing theorem tables.
 
-## Proof boundary
+Declarations and definitions return a new state and leave the original intact.
+Definitions also return a theorem owned by that new state. The four foundation
+theorems are available through `hotaru_foundation_thm` and the
+`hotaru_foundation` enum.
 
-`FFI.applyCommands_spec` proves that successful transport execution corresponds
-to a decoded command sequence and an actual `Execution.run` result.
-`FFI.applyCommands_extends` proves theory extension, `FFI.apply_failure` proves
-failure leaves the Lean state unchanged, and `FFI.applyCommands_sound` proves
-validity of the resulting theorems in every model of the resulting theory.
-These declarations are included in the existing axiom audit.
+To use an old theorem in a new theory:
 
-Parsing is runtime code; the JSON tests are executable checks, not additional
-logical axioms. No `@[extern]` replaces a verified kernel operation. Lean erases
-proof fields in compiled code. The compiler, runtime, C adapter and caller's
-memory safety remain outside the Lean proof. JSON serialization fidelity is
-covered by behavior tests, not a universal codec roundtrip theorem.
-Arbitrary `addAxiom` commands retain only conditional soundness, not consistency.
-The existing conservative-execution consistency result applies when no such
-commands are used. Input size, execution time and memory use are not bounded
-by this ABI; an application requiring isolation should use a separate process.
+```c
+hotaru_declare_type(base, scope, name, 0, &extended);
+hotaru_thm_rebase(extended, old_proof, &migrated);
+hotaru_symm(extended, migrated, &result);
+```
+
+Migration accepts only the same state or a descendant along recorded, verified
+extensions. It invokes Lean's proved `Thm.rebase` at every extension.
+Backward migration, sibling migration and unrelated initial states are rejected.
+Directly passing `old_proof` to inference in `extended` is also rejected.
+The explicit rule applies to every theorem operand, including substitution
+equations and type-definition nonemptiness proofs.
+
+## Errors and proof boundary
+
+Functions return stable numeric status codes declared in the public header.
+`hotaru_error_message` returns a static diagnostic string, which must not be
+freed. Statuses 100-121 correspond to the existing kernel errors.
+Every output is set to NULL or zero on failure; output slots must not alias
+each other or input memory. Do not overwrite an owned handle without releasing
+it first. A failed operation does not mutate its input state.
+
+`HOTARU_OUT_OF_MEMORY` covers adapter allocations. Runtime allocation failure,
+panic or resource exhaustion may terminate the process. This ABI does not
+bound input size, memory use or execution time.
+
+`FFI.success_sound` proves soundness of successful theorem results.
+`FFI.extension_valid` proves theory-extension and signature invariants.
+`FFI.rebase_sound` proves validity after migration. Inference wrappers call
+the existing verified kernel operations without foreign replacements.
+These declarations and the regression proofs are included in the axiom audit.
+
+The C adapter's pointer ownership, identity checks and argument marshalling,
+the compiler, runtime, and caller memory safety remain outside the Lean proof.
+C integration tests cover every inference entry point, theory migration,
+rejected side conditions, nonempty type definitions, inspection and lifetime
+management. Tests do not constitute a proof of the C implementation.
+`hotaru_add_axiom` retains conditional soundness only; it does not promise
+consistency. The existing model-extension theorems apply to verified
+conservative extensions.
