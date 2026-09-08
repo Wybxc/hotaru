@@ -1,4 +1,4 @@
-import HotaruKernel.DerivedInstantiationTests
+import HotaruKernel.ExtensionTests
 import Lean.Util.CollectAxioms
 
 /-! Fail the build if any project declaration acquires an unapproved axiom. -/
@@ -32,6 +32,12 @@ audit_hotaru
 #print axioms HotaruKernel.Substitution.apply_cons_close
 #print axioms HotaruKernel.Derivable.inst
 #print axioms HotaruKernel.DerivedInstantiationTests.derived_inst_sound
+#print axioms HotaruKernel.Term.eval_rebase
+#print axioms HotaruKernel.Theory.Extends.entails
+#print axioms HotaruKernel.Kernel.declareType_model
+#print axioms HotaruKernel.Kernel.declareConstant_model
+#print axioms HotaruKernel.Derivable.rebase
+#print axioms HotaruKernel.Thm.rebase_sound
 #print axioms HotaruKernel.Substitution.eval_apply
 #print axioms HotaruKernel.rewrite_eval
 #print axioms HotaruKernel.HolType.inst_compose

@@ -15,7 +15,7 @@ lake env lean HotaruKernel/Audit.lean
 LEAN_NUM_THREADS=2 lake env leanchecker HotaruKernel
 ```
 
-The default build includes all library modules, 121 regression examples, a proof
+The default build includes all library modules, 139 regression examples, a proof
 composed using the five original M1 operations, and the axiom audit. Tests use
 `decide +kernel`, not native proof evaluation. The root repository's
 `.github/workflows/lean.yml` runs the build and checks the compiled declarations.
@@ -32,6 +32,7 @@ The template workflows nested inside this package are not active root workflows.
 | Semantics | `TypeModel`, `PolymorphicModel`, `Model`, `Term.eval`, `Models`, `Theory.Entails` |
 | Inference | Independent `Derivable` judgment and `Derivable.sound` |
 | Executable kernel | `Thm`, thirteen operations, `Thm.sound`, `Kernel.success_sound` |
+| Theory extensions | `Signature.Extends`, `Theory.Extends`, checked declarations, `Thm.rebase` |
 
 `RawTerm` uses names and types for free variables and de Bruijn indices for bound
 variables. `check` returns an internal term indexed by its type and binding
@@ -150,6 +151,36 @@ soundness result is not vacuous; it is not the M3 foundation theorem.
 identity constant and its defining equation as an axiom. Its checked
 `instantiatedAxiom` computation specializes that axiom to booleans.
 
+## Theory operations
+
+The theory context remains explicit and immutable. The additional operations are:
+
+| Operation | Inputs | Result |
+| --- | --- | --- |
+| `DECLARE_TYPE` | Theory, qualified name, arity | `Except KernelError (TheoryExtension theory)` |
+| `DECLARE_CONSTANT` | Theory, qualified name, type scheme | `Except KernelError (TheoryExtension theory)` |
+| `MIGRATE` | A checked extension and a theorem of its source theory | The theorem in the target theory |
+
+Declarations reject malformed source signatures, duplicate names, and invalid
+constant schemes. `Signature.WellFormed` checks unique type and constant names
+and validity of every constant scheme. `TheoryExtension` carries the target
+theory, its signature invariant, and a syntactic extension proof preserving all
+old declarations and axioms. Old terms keep their raw and logical encodings.
+
+`Kernel.declareType_model` and `Kernel.declareConstant_model` prove that every
+source model extends to a target model whose restriction equals the source
+model. `Term.eval_rebase` proves preservation of old-term interpretations.
+The constant declaration model uses a default nonempty-type inhabitant in the
+semantic proof only; declaration checking and theorem migration are executable.
+
+`Derivable.rebase` reconstructs a derivation across a theory extension, using
+proved commutation laws for substitution, abstraction, and type instantiation.
+`Kernel.MIGRATE` uses this theorem. Its input type prevents migration of a
+theorem from an unrelated source theory. Regression checks cover this rejection,
+direct cross-theory inference rejection, and successive checked migrations.
+An arbitrary `Theory.Extends` witness can permit additional axioms; preservation
+of model existence is claimed only for the operations with model-extension proofs.
+
 ## Validation and trust boundary
 
 Regression cases cover successful and rejected kernel operations, malformed
@@ -180,7 +211,7 @@ implementation, parsing, printing, or theorem serialization.
 | --- | --- |
 | M1 | Complete: fixed-signature semantic soundness and five executable operations |
 | M2 | Complete: eight basic interfaces, all five derived interfaces, polymorphic soundness, and logical constant-instance matching |
-| M3 | Not implemented: checked declarations and definitions, model extensions, choice and infinity foundations |
+| M3 | In progress: checked declarations, their model extensions, and theorem migration proved; constant/type definitions and the full foundation remain |
 | M4 | Not implemented: execution traces containing theory extensions and their global correctness theorem |
 
 `TypeInstantiation.lean` now proves composition of type substitutions, type
@@ -198,10 +229,11 @@ arbitrary binders and connects them to the executable substitutions. These
 syntactic lemmas justify the complete basic-rule derivation of `INST`, including
 open theory axioms and hypotheses with duplicate or logically equal encodings.
 
-Before M3, validate signature extensions and prove freshness, nonempty type
-definitions, and old-language interpretation preservation. The existing `Theory`
-structure does not certify that a signature or axiom list came from conservative
-extensions.
+The remaining M3 work is checked constant and nonempty type definitions, their
+model-extension proofs, and the foundation supporting extensionality, choice,
+and infinity with individuals interpreted by Nat. Direct construction of a
+`Theory` does not certify that it came from conservative extensions; the checked
+operation results and their model-extension theorems provide that evidence.
 
 ## References
 

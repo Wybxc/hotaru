@@ -17,6 +17,9 @@ inductive KernelError where
   | notImplication
   | notVariable
   | termMismatch
+  | invalidSignature
+  | duplicateType
+  | duplicateConstant
   deriving DecidableEq, Repr
 
 structure Checked (s : Signature) (ctx : List HolType) (r : RawTerm) where
