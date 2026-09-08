@@ -26,6 +26,7 @@ inductive KernelError where
   | missingNonemptyProof
   | nonemptyProofHasAssumptions
   | notPredicate
+  | invalidTheoremReference
   deriving DecidableEq, Repr
 
 structure Checked (s : Signature) (ctx : List HolType) (r : RawTerm) where

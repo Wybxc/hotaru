@@ -1,9 +1,11 @@
 # HotaruKernel
 
-A Lean reimplementation of a HOL4-style logical kernel. **M1 and M2 are
-complete:** all eight basic inference interfaces, simultaneous term and
-equational substitution, polymorphic instantiation, and semantic soundness.
-This is not a verification of HOL4's SML source or a complete HOL4 kernel.
+A Lean reimplementation of a HOL4-style logical kernel. **M1-M4 are complete:**
+basic and derived inference, polymorphic substitution, conservative theory
+definitions, a foundation model, and verified operation sequences. Every
+successfully produced theorem holds in every model of its final theory.
+This verifies the Lean implementation, not HOL4's SML source, compiler, machine
+code, or script compatibility.
 
 ## Build and check
 
@@ -15,8 +17,8 @@ lake env lean HotaruKernel/Audit.lean
 LEAN_NUM_THREADS=2 lake env leanchecker HotaruKernel
 ```
 
-The default build includes all library modules, 175 regression examples, a proof
-composed using the five original M1 operations, and the axiom audit. Tests use
+The default build includes all library modules, 184 regression examples, proofs
+composed using kernel calls, a complete operation-sequence test, and the axiom audit. Tests use
 `decide +kernel`, not native proof evaluation. The root repository's
 `.github/workflows/lean.yml` runs the build and checks the compiled declarations.
 The template workflows nested inside this package are not active root workflows.
@@ -27,18 +29,25 @@ The template workflows nested inside this package are not active root workflows.
 | --- | --- |
 | Syntax | `HolType`, `Signature`, `RawTerm`, and indexed `Term` |
 | Checking | `check`, `HasType`, `check_sound`, `Term.validType` |
+| Sequent legality | `Sequent.WellFormed`, `Thm.sequent_wellFormed`, `Kernel.success_wellFormed` |
 | Substitution | `rename`, `substBound`, `open`, `substFree`, `replace`, `close` |
 | Type substitution | `HolType.inst_compose`, `Term.instType`, `instType_preserves_type` |
 | Semantics | `TypeModel`, `PolymorphicModel`, `Model`, `Term.eval`, `Models`, `Theory.Entails` |
 | Inference | Independent `Derivable` judgment and `Derivable.sound` |
 | Executable kernel | `Thm`, thirteen operations, `Thm.sound`, `Kernel.success_sound` |
 | Theory extensions | `Signature.Extends`, `Theory.Extends`, checked declarations, `Thm.rebase` |
+| Model extensions | `ConstantDefinition.model_extension`, `TypeDefinition.model_extension` |
+| Foundation | `Foundation.models`, `Foundation.falsehood_not_derivable` |
+| Operation sequences | `Execution.execution_sound`, `Execution.execution_consistent` |
 
 `RawTerm` uses names and types for free variables and de Bruijn indices for bound
 variables. `check` returns an internal term indexed by its type and binding
 context, together with a proof that it erases to exactly the input. Every public
 kernel entry point checks raw terms in the empty binding context. Standalone
 checking in a nonempty context assumes that context's types are valid.
+`Sequent.WellFormed` separately requires every assumption and the conclusion to
+have Boolean type in the empty binding context. `Thm.sequent_wellFormed` proves
+this property for the raw sequent exported from every theorem.
 
 Types include variables, built-in booleans and functions, and named type operators
 with checked arities. Constants have theory-qualified names and polymorphic type
@@ -48,7 +57,7 @@ does not recursively substitute replacements. Constant interpretations depend on
 the qualified name and instantiated type, not the substitution witness.
 
 Equality is a built-in binary syntax form, interpreted as equality of semantic
-values. M1 does not expose HOL4's curried equality constant or its raw term format.
+values. The syntax does not expose HOL4's curried equality constant or its raw term format.
 Implication is another binary syntax form, with the usual Boolean interpretation.
 Function types denote full Lean function spaces. All type interpretations are
 proved nonempty. Equality of functions therefore uses Lean's function
@@ -61,7 +70,7 @@ rejects it when it occurs in any hypothesis.
 
 ## Kernel API and guarantee
 
-All operations are in `HotaruKernel.Kernel` and return
+All inference operations are in `HotaruKernel.Kernel` and return
 `Except KernelError (Thm theory)`:
 
 | Operation | Inputs after `theory` | Result |
@@ -250,6 +259,43 @@ are used in the preservation proof. `TypeParameters.lean` constructs the paramet
 assignment, and `TypeDefinitionModel.lean` verifies the parameterized subtype and
 its defining representation formula.
 
+## Operation sequences
+
+`Execution.Command` includes all thirteen inference interfaces, declarations,
+constant and type definitions, and explicit addition of a theory axiom.
+`Execution.execute` starts from the foundation theory and its four axiom
+theorems. Theorem references are zero-based indices into the current table;
+an invalid reference fails with `invalidTheoremReference`. Inference and
+definition results are appended. Every extension migrates the existing table
+using `Thm.rebase`, so old indices remain valid in the new theory.
+
+`CheckedStep` carries a syntactic theory-extension proof and, for conservative
+commands, a model-preservation proof built from the M3 results. `run` composes
+these proofs over the actual command list. Its result records the final state,
+extension from the initial theory, and conditional model preservation.
+`successful_run_wellFormed` and `successful_run_extends` state the resulting
+theory invariants; `CheckedStep.preserves_theorem` records table preservation.
+`execution_sequents_wellFormed` states legality of every final output sequent.
+These certificates contain Lean proofs, not unchecked validity flags.
+
+`Execution.execution_sound` is the final soundness theorem: every theorem in a
+successful execution's final table is valid in every model of its final theory,
+at every type assignment and every valuation satisfying that theorem's
+assumptions. `Execution.execution_consistent` proves that no assumption-free
+false theorem is derivable in the final theory when all commands are
+conservative. It uses the constructed foundation model and model extensions.
+
+`addAxiom` checks a Boolean formula and records it in the theory. It is always
+marked nonconservative, so arbitrary added axioms receive only conditional
+soundness. The tests deliberately add false as an axiom and verify that this
+execution is excluded from the consistency guarantee.
+
+`ExecutionTests.completeTrace` executes 27 commands, using all thirteen inference
+interfaces and all four declaration/definition operations. Its exact-output
+theorem checks a final table of 29 theorems. The nonemptiness premise for its type
+definition is itself proved earlier in the sequence; no theorem is imported.
+`completeTrace_consistent` applies the general consistency theorem to this run.
+
 ## Validation and trust boundary
 
 Regression cases cover successful and rejected kernel operations, malformed
@@ -274,14 +320,14 @@ Lean's kernel and foundations remain trusted. These proofs concern the Lean
 definitions; they do not verify Lean's code generator, runtime, HOL4's SML
 implementation, parsing, printing, or theorem serialization.
 
-## Remaining milestones
+## Milestones
 
-| Milestone | Status and next obligations |
+| Milestone | Verified result |
 | --- | --- |
 | M1 | Complete: fixed-signature semantic soundness and five executable operations |
 | M2 | Complete: eight basic interfaces, all five derived interfaces, polymorphic soundness, and logical constant-instance matching |
 | M3 | Complete: declarations, conservative constant and type definitions, theorem migration, and a Nat-based model of the foundation |
-| M4 | Not implemented: execution traces containing theory extensions and their global correctness theorem |
+| M4 | Complete: executable command sequences, theory/theorem invariants, final semantic soundness, and consistency for conservative executions |
 
 `TypeInstantiation.lean` now proves composition of type substitutions, type
 validity preservation, and native type-interpretation transport. Its executable
@@ -298,8 +344,7 @@ arbitrary binders and connects them to the executable substitutions. These
 syntactic lemmas justify the complete basic-rule derivation of `INST`, including
 open theory axioms and hypotheses with duplicate or logically equal encodings.
 
-Direct construction of a
-`Theory` does not certify that it came from conservative extensions; the checked
+Direct construction of a `Theory` does not certify that it came from conservative extensions; the checked
 operation results and their model-extension theorems provide that evidence.
 
 ## References
@@ -316,4 +361,4 @@ operation results and their model-extension theorems provide that evidence.
   supplies the basic-rule derivations and explains their dependence on the
   axioms and definitions of `bool`.
 - [Candle project](https://cakeml.org/candle/) verifies a HOL Light implementation
-  through CakeML. Its end-to-end guarantee is outside HotaruKernel M1's scope.
+  through CakeML. Its end-to-end guarantee is outside this project's scope.

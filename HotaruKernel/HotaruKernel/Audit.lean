@@ -1,4 +1,4 @@
-import HotaruKernel.FoundationTests
+import HotaruKernel.ExecutionTests
 import HotaruKernel.OperatorTransport
 import Lean.Util.CollectAxioms
 
@@ -58,6 +58,13 @@ audit_hotaru
 #print axioms HotaruKernel.Foundation.models
 #print axioms HotaruKernel.Foundation.falsehood_not_derivable
 #print axioms HotaruKernel.FoundationTests.booleanSelection_sound
+#print axioms HotaruKernel.Execution.execution_sound
+#print axioms HotaruKernel.Execution.execution_consistent
+#print axioms HotaruKernel.Execution.execution_sequents_wellFormed
+#print axioms HotaruKernel.Execution.successful_run_wellFormed
+#print axioms HotaruKernel.Execution.successful_run_extends
+#print axioms HotaruKernel.ExecutionTests.completeTrace_output
+#print axioms HotaruKernel.ExecutionTests.completeTrace_consistent
 #print axioms HotaruKernel.Substitution.eval_apply
 #print axioms HotaruKernel.rewrite_eval
 #print axioms HotaruKernel.HolType.inst_compose
