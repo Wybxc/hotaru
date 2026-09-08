@@ -1,0 +1,6 @@
+[package]
+name = "hotaru-sys"
+version = "0.0.0"
+edition = "2024"
+links = "hotaru_lean"
+description = "Rust handles for the verified Hotaru Lean kernel"

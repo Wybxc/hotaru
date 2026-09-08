@@ -1,0 +1,70 @@
+//! Exact signatures of the pinned Lean exports; object arguments consume a reference.
+use crate::runtime::Obj;
+
+unsafe extern "C" {
+    pub(crate) fn hotaru_lean_new(arg0: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_type_bool(arg0: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_type_var(arg0: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_type_fn(arg0: Obj, arg1: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_type_op(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_binding(arg0: Obj, arg1: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_term_pair(arg0: Obj, arg1: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_equation_pair(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_term_free(arg0: Obj, arg1: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_term_bound(arg0: u64) -> Obj;
+    pub(crate) fn hotaru_lean_term_const(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_term_app(arg0: Obj, arg1: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_term_lam(arg0: Obj, arg1: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_term_equal(arg0: Obj, arg1: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_term_imp(arg0: Obj, arg1: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_check(arg0: Obj, arg1: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_foundation(arg0: Obj, arg1: u64) -> Obj;
+    pub(crate) fn hotaru_lean_assume(arg0: Obj, arg1: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_refl(arg0: Obj, arg1: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_beta(arg0: Obj, arg1: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_abs(arg0: Obj, arg1: Obj, arg2: Obj, arg3: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_mk_comb(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_disch(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_mp(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_symm(arg0: Obj, arg1: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_trans(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_eq_mp(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_inst(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_inst_type(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_subst(arg0: Obj, arg1: Obj, arg2: Obj, arg3: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_extension_state(arg0: Obj, arg1: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_extension_thm(arg0: Obj, arg1: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_rebase(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_declare_type(arg0: Obj, arg1: Obj, arg2: Obj, arg3: u64) -> Obj;
+    pub(crate) fn hotaru_lean_declare_const(arg0: Obj, arg1: Obj, arg2: Obj, arg3: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_define_const(arg0: Obj, arg1: Obj, arg2: Obj, arg3: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_define_type(
+        arg0: Obj,
+        arg1: Obj,
+        arg2: Obj,
+        arg3: Obj,
+        arg4: Obj,
+        arg5: Obj,
+    ) -> Obj;
+    pub(crate) fn hotaru_lean_add_axiom(arg0: Obj, arg1: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_conclusion(arg0: Obj, arg1: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_assumption_count(arg0: Obj, arg1: Obj) -> u64;
+    pub(crate) fn hotaru_lean_assumption(arg0: Obj, arg1: Obj, arg2: u64) -> Obj;
+    pub(crate) fn hotaru_lean_type_eq(arg0: Obj, arg1: Obj) -> u8;
+    pub(crate) fn hotaru_lean_term_eq(arg0: Obj, arg1: Obj) -> u8;
+    pub(crate) fn hotaru_lean_type_kind(arg0: Obj) -> u32;
+    pub(crate) fn hotaru_lean_term_kind(arg0: Obj) -> u32;
+    pub(crate) fn hotaru_lean_type_name(arg0: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_type_scope(arg0: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_term_name(arg0: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_term_scope(arg0: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_type_arity(arg0: Obj) -> u64;
+    pub(crate) fn hotaru_lean_type_child(arg0: Obj, arg1: u64) -> Obj;
+    pub(crate) fn hotaru_lean_term_child(arg0: Obj, arg1: u64) -> Obj;
+    pub(crate) fn hotaru_lean_term_annotation(arg0: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_bound_index(arg0: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_inst_count(arg0: Obj) -> Obj;
+    pub(crate) fn hotaru_lean_inst_name(arg0: Obj, arg1: u64) -> Obj;
+    pub(crate) fn hotaru_lean_inst_value(arg0: Obj, arg1: u64) -> Obj;
+    pub(crate) fn hotaru_lean_some_thm(state: Obj, theorem: Obj) -> Obj;
+}

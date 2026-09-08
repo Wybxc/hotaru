@@ -35,8 +35,8 @@ The template workflows nested inside this package are not active root workflows.
 - `HotaruKernelTests/`: regression tests, executable examples, and test fixtures.
 - `HotaruKernelTests.lean`: explicit import of every test module.
 - `HotaruKernelAudit.lean`: axiom audit over the implementation and tests.
-- `HotaruKernelFFI.lean`: typed C exports and interface correctness proofs.
-- `ffi/`: public C header, adapter, documentation, and separate C integration tests.
+- `HotaruKernelFFI.lean`: internal native exports and interface correctness proofs.
+- `../hotaru-sys/`: Rust handles, runtime adapter, examples, and integration tests.
 
 The four entry points are separate Lake libraries. Only `HotaruKernel` is a
 default build target; `HotaruKernelTests` is configured as Lake's `testDriver`.
@@ -44,15 +44,15 @@ CI checks `HotaruKernelAudit` with the independent checker so the full developme
 remains covered. Test declaration names are preserved; only their module paths
 have changed.
 
-## C interface
+## Rust interface
 
-`lake build hotaruC` builds a shared library with an opaque immutable state API.
-`lake build hotaruCTest` builds its C integration test; run it with
-`.lake/build/bin/test_hotaru`. These are explicit targets in `lakefile.lean`,
-separate from the default build. The pinned toolchain and dependency lock are
-unchanged. ABI 2 provides type, term, theory-state and theorem handles instead of
-JSON commands. See [ffi/README.md](ffi/README.md) for the C API,
-thread and ownership requirements, and compilation trust boundary.
+From the workspace root, `cargo build -p hotaru-sys` builds the Rust library and
+invokes the explicit Lake target `hotaruLean` for the internal Lean shared library.
+Run `cargo test --workspace` and `cargo run -p hotaru-sys --example refl`.
+The public API consists of safe Rust handles with automatic reference management;
+there is no public C API or handwritten C adapter. The verified logical operations
+remain implemented in Lean. See [hotaru-sys/README.md](../hotaru-sys/README.md)
+for usage, thread restrictions, deployment, and the compilation trust boundary.
 
 ## Proof architecture
 

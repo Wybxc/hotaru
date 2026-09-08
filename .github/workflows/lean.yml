@@ -28,9 +28,11 @@ jobs:
       - name: Check compiled declarations
         working-directory: HotaruKernel
         run: lake env leanchecker HotaruKernelAudit
-      - name: Build C interface and integration tests
-        working-directory: HotaruKernel
-        run: lake build hotaruCTest
-      - name: Test C interface
-        working-directory: HotaruKernel
-        run: .lake/build/bin/test_hotaru
+      - name: Check Rust formatting
+        run: cargo fmt --all --check
+      - name: Check Rust adapter
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Test Rust interface
+        run: cargo test --workspace --locked
+      - name: Run Rust example
+        run: cargo run -p hotaru-sys --example refl --locked

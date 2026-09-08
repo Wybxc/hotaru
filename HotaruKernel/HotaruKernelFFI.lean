@@ -1,7 +1,7 @@
 import HotaruKernel
 
-/-! Typed exports for ABI 2. Foreign code checks handle ownership; all logical
-operations call the verified kernel. No parser or serialized theorem import. -/
+/-! Internal native exports for hotaru-sys. Rust checks handle ownership; all
+logical operations call the verified kernel. No serialized theorem import. -/
 namespace HotaruKernel.FFI
 
 abbrev Result (α : Type) := Except UInt32 α
@@ -38,6 +38,9 @@ def termPair (a b : RawTerm) : RawTerm × RawTerm := (a, b)
 @[export hotaru_lean_equation_pair]
 def equationPair (s : Execution.State) (a : RawTerm) (th : Thm s.theory) :
     RawTerm × Thm s.theory := (a, th)
+
+@[export hotaru_lean_some_thm]
+def someThm (s : Execution.State) (th : Thm s.theory) : Option (Thm s.theory) := some th
 
 @[export hotaru_lean_term_free]
 def termFree (name : String) (a : HolType) : RawTerm := .fvar name a
