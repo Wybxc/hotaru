@@ -13,14 +13,17 @@ From this directory, with the pinned Lean 4.29.0 toolchain:
 
 ```sh
 lake build
-lake env lean HotaruKernelAudit.lean
+lake test
+lake build HotaruKernelAudit
 LEAN_NUM_THREADS=2 lake env leanchecker HotaruKernelAudit
 ```
 
-The default build includes all library modules, 184 regression examples, proofs
-composed using kernel calls, a complete operation-sequence test, and the axiom audit. Tests use
-`decide +kernel`, not native proof evaluation. The root repository's
-`.github/workflows/lean.yml` runs the build and checks the compiled declarations.
+`lake build` builds the implementation and its correctness proofs. `lake test`
+builds the test library, including 184 regression examples, proofs composed using
+kernel calls, and the complete operation-sequence test. Tests use `decide +kernel`,
+not native proof evaluation. The axiom audit is a separate build target.
+The root repository's `.github/workflows/lean.yml` explicitly runs the build,
+tests, axiom audit, and independent check of the compiled declarations.
 The template workflows nested inside this package are not active root workflows.
 
 ## Source layout
@@ -31,11 +34,11 @@ The template workflows nested inside this package are not active root workflows.
 - `HotaruKernelTests.lean`: explicit import of every test module.
 - `HotaruKernelAudit.lean`: axiom audit over the implementation and tests.
 
-The three entry points are separate Lake libraries and default build targets.
-Use `lake build HotaruKernel` to build only the implementation, or `lake build`
-to include all tests and the audit. CI checks `HotaruKernelAudit` with the
-independent checker so the full development remains covered. Test declaration
-names are preserved; only their module paths have changed.
+The three entry points are separate Lake libraries. Only `HotaruKernel` is a
+default build target; `HotaruKernelTests` is configured as Lake's `testDriver`.
+CI checks `HotaruKernelAudit` with the independent checker so the full development
+remains covered. Test declaration names are preserved; only their module paths
+have changed.
 
 ## Proof architecture
 

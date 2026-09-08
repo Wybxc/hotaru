@@ -1,7 +1,8 @@
 name = "HotaruKernel"
 version = "0.1.0"
 keywords = ["math"]
-defaultTargets = ["HotaruKernel", "HotaruKernelTests", "HotaruKernelAudit"]
+defaultTargets = ["HotaruKernel"]
+testDriver = "HotaruKernelTests"
 
 [leanOptions]
 pp.unicode.fun = true # pretty-prints `fun a ↦ b`

@@ -19,7 +19,12 @@ jobs:
         with:
           lake-package-directory: HotaruKernel
           build: "true"
-          test: "false"
+          test: "true"
           lint: "false"
-          leanchecker: "true"
-          leanchecker-args: HotaruKernelAudit
+          leanchecker: "false"
+      - name: Audit axioms
+        working-directory: HotaruKernel
+        run: lake build HotaruKernelAudit
+      - name: Check compiled declarations
+        working-directory: HotaruKernel
+        run: lake env leanchecker HotaruKernelAudit
