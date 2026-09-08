@@ -2,7 +2,7 @@ import HotaruKernel.PolymorphicModel
 
 namespace HotaruKernel
 
-private theorem apply_heq {A B C D : Type} (ha : A = C) (hb : B = D)
+theorem ValueEquality.apply {A B C D : Type} (ha : A = C) (hb : B = D)
     {f : A → B} {g : C → D} {x : A} {y : C}
     (hf : HEq f g) (hx : HEq x y) : HEq (f x) (g y) := by
   cases ha
@@ -11,7 +11,7 @@ private theorem apply_heq {A B C D : Type} (ha : A = C) (hb : B = D)
   cases eq_of_heq hx
   rfl
 
-private theorem funext_heq {A B C D : Type} (ha : A = C) (hb : B = D)
+theorem ValueEquality.funext {A B C D : Type} (ha : A = C) (hb : B = D)
     {f : A → B} {g : C → D}
     (h : ∀ x y, HEq x y → HEq (f x) (g y)) : HEq f g := by
   cases ha
@@ -20,7 +20,7 @@ private theorem funext_heq {A B C D : Type} (ha : A = C) (hb : B = D)
   funext x
   exact eq_of_heq (h x x HEq.rfl)
 
-private theorem decide_equal_heq {A B : Type} (ha : A = B)
+theorem ValueEquality.decideEqual {A B : Type} (ha : A = B)
     {l r : A} {u v : B} (hl : HEq l u) (hr : HEq r v) :
     HEq (@decide (l = r) (Classical.propDecidable _))
       (@decide (u = v) (Classical.propDecidable _)) := by
@@ -55,10 +55,10 @@ theorem Term.eval_instType {ctx : List HolType} (t : Term s ctx a)
     rw [p.atTypes_constant, p.atTypes_constant]
     exact p.instanceValue_instantiate m hm n scheme hd j i
   | @app a b ctx f' x ihf ihx =>
-    exact apply_heq (m.interp_instantiate i a).symm (m.interp_instantiate i b).symm
+    exact ValueEquality.apply (m.interp_instantiate i a).symm (m.interp_instantiate i b).symm
       (ihf d e he) (ihx d e he)
   | @lam a b ctx valid body ih =>
-    apply funext_heq (m.interp_instantiate i a).symm (m.interp_instantiate i b).symm
+    apply ValueEquality.funext (m.interp_instantiate i a).symm (m.interp_instantiate i b).symm
     intro x y hxy
     apply ih (d.cons x) (e.cons y)
     intro a v
@@ -66,7 +66,7 @@ theorem Term.eval_instType {ctx : List HolType} (t : Term s ctx a)
     | zero => exact hxy
     | succ v => exact he _ v
   | @equal a ctx l r ihl ihr =>
-    exact decide_equal_heq (m.interp_instantiate i a).symm (ihl d e he) (ihr d e he)
+    exact ValueEquality.decideEqual (m.interp_instantiate i a).symm (ihl d e he) (ihr d e he)
   | imp l r ihl ihr =>
     apply heq_of_eq
     exact congrArg₂ (fun a b : Bool => !a || b) (eq_of_heq (ihl d e he))

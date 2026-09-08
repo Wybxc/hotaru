@@ -20,6 +20,8 @@ inductive KernelError where
   | invalidSignature
   | duplicateType
   | duplicateConstant
+  | freeVariablesInDefinition
+  | hiddenTypeVariables
   deriving DecidableEq, Repr
 
 structure Checked (s : Signature) (ctx : List HolType) (r : RawTerm) where

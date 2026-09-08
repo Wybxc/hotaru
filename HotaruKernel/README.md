@@ -15,7 +15,7 @@ lake env lean HotaruKernel/Audit.lean
 LEAN_NUM_THREADS=2 lake env leanchecker HotaruKernel
 ```
 
-The default build includes all library modules, 139 regression examples, a proof
+The default build includes all library modules, 152 regression examples, a proof
 composed using the five original M1 operations, and the axiom audit. Tests use
 `decide +kernel`, not native proof evaluation. The root repository's
 `.github/workflows/lean.yml` runs the build and checks the compiled declarations.
@@ -159,6 +159,7 @@ The theory context remains explicit and immutable. The additional operations are
 | --- | --- | --- |
 | `DECLARE_TYPE` | Theory, qualified name, arity | `Except KernelError (TheoryExtension theory)` |
 | `DECLARE_CONSTANT` | Theory, qualified name, type scheme | `Except KernelError (TheoryExtension theory)` |
+| `DEFINE_CONSTANT` | Theory, fresh qualified name, closed right-hand side | `Except KernelError (ConstantDefinition theory)` |
 | `MIGRATE` | A checked extension and a theorem of its source theory | The theorem in the target theory |
 
 Declarations reject malformed source signatures, duplicate names, and invalid
@@ -180,6 +181,22 @@ theorem from an unrelated source theory. Regression checks cover this rejection,
 direct cross-theory inference rejection, and successive checked migrations.
 An arbitrary `Theory.Extends` witness can permit additional axioms; preservation
 of model existence is claimed only for the operations with model-extension proofs.
+
+`DEFINE_CONSTANT` checks the right-hand side in the old signature, rejects free
+term variables, and requires every type variable appearing in the term to occur
+in its result type. `Term.typeVars` counts actual constant-instance types, not
+unused substitution-witness entries. The returned definition provides `target`,
+`extension`, and `definitionThm`; its equation is added to the target theory.
+`Kernel.defineConstant_spec` proves that a successful result uses the requested
+name and exact right-hand side.
+
+`Term.eval_typeVars` proves that interpretations depend only on the type
+variables that occur in a term. `ConstantDefinition.model_extension` uses this
+result to construct a coherent polymorphic interpretation of the new constant
+from the right-hand side. Every source model extends to a model satisfying the
+defining equation, and restriction recovers the source model. The computation
+in `ConstantDefinitionTests.composedDefinition` defines polymorphic identity,
+instantiates its defining theorem to Bool, and applies it using kernel rules.
 
 ## Validation and trust boundary
 
@@ -211,7 +228,7 @@ implementation, parsing, printing, or theorem serialization.
 | --- | --- |
 | M1 | Complete: fixed-signature semantic soundness and five executable operations |
 | M2 | Complete: eight basic interfaces, all five derived interfaces, polymorphic soundness, and logical constant-instance matching |
-| M3 | In progress: checked declarations, their model extensions, and theorem migration proved; constant/type definitions and the full foundation remain |
+| M3 | In progress: declarations, constant definitions, model extensions, and theorem migration proved; type definitions and the full foundation remain |
 | M4 | Not implemented: execution traces containing theory extensions and their global correctness theorem |
 
 `TypeInstantiation.lean` now proves composition of type substitutions, type
@@ -229,7 +246,7 @@ arbitrary binders and connects them to the executable substitutions. These
 syntactic lemmas justify the complete basic-rule derivation of `INST`, including
 open theory axioms and hypotheses with duplicate or logically equal encodings.
 
-The remaining M3 work is checked constant and nonempty type definitions, their
+The remaining M3 work is checked nonempty type definitions, their
 model-extension proofs, and the foundation supporting extensionality, choice,
 and infinity with individuals interpreted by Nat. Direct construction of a
 `Theory` does not certify that it came from conservative extensions; the checked

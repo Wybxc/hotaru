@@ -59,13 +59,17 @@ theorem PolymorphicModel.restrict_atTypes (p : PolymorphicModel u) (h : s.Extend
   funext n a ha
   exact hc n a ha
 
-theorem Formula.eval_rebase_polymorphic (t : Formula s) (h : s.Extends u)
+theorem Term.eval_rebase_polymorphic {ctx : List HolType} (t : Term s ctx a) (h : s.Extends u)
     (p : PolymorphicModel u) (m : TypeModel) (hm : m.typeOp = p.typeOp)
-    (f : FreeEnv (p.atTypes m hm)) :
-    (t.rebase h).eval (p.atTypes m hm) f BoundEnv.nil =
-      t.eval ((p.restrict h).atTypes m hm) f BoundEnv.nil := by
+    (f : FreeEnv (p.atTypes m hm)) (e : BoundEnv (p.atTypes m hm) ctx) :
+    (t.rebase h).eval (p.atTypes m hm) f e =
+      t.eval ((p.restrict h).atTypes m hm) f e := by
   rw [Term.eval_rebase]
-  apply congrArg (fun constant => t.eval (Model.mk m constant) f BoundEnv.nil)
+  let evaluate (constant : (n : QName) → (a : HolType) →
+      (∃ scheme i, s.constants.lookup n = some scheme ∧ scheme.inst i = a) → m.interp a) :
+      m.interp a := t.eval (Model.mk m constant) f e
+  change evaluate _ = evaluate _
+  apply congrArg evaluate
   funext n a ha
   obtain ⟨scheme, i, hd, rfl⟩ := ha
   change (p.atTypes m hm).constant n (scheme.inst i) _ =
@@ -73,5 +77,12 @@ theorem Formula.eval_rebase_polymorphic (t : Formula s) (h : s.Extends u)
   rw [p.atTypes_constant m hm n scheme (h.constants n scheme hd) i,
     (p.restrict h).atTypes_constant m hm n scheme hd i]
   rfl
+
+theorem Formula.eval_rebase_polymorphic (t : Formula s) (h : s.Extends u)
+    (p : PolymorphicModel u) (m : TypeModel) (hm : m.typeOp = p.typeOp)
+    (f : FreeEnv (p.atTypes m hm)) :
+    (t.rebase h).eval (p.atTypes m hm) f BoundEnv.nil =
+      t.eval ((p.restrict h).atTypes m hm) f BoundEnv.nil :=
+  Term.eval_rebase_polymorphic t h p m hm f BoundEnv.nil
 
 end HotaruKernel
