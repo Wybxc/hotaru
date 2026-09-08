@@ -1,4 +1,4 @@
-import HotaruKernel.Tests
+import HotaruKernel.PropositionalTests
 import Lean.Util.CollectAxioms
 
 /-! Fail the build if any project declaration acquires an unapproved axiom. -/
@@ -21,6 +21,9 @@ audit_hotaru
 #print axioms HotaruKernel.check_sound
 #print axioms HotaruKernel.Term.eval_substBound
 #print axioms HotaruKernel.Term.eval_substFree
+#print axioms HotaruKernel.Term.raw_heq
+#print axioms HotaruKernel.Substitution.eval_apply
+#print axioms HotaruKernel.rewrite_eval
 #print axioms HotaruKernel.Derivable.sound
 #print axioms HotaruKernel.Kernel.success_sound
 #print axioms HotaruKernel.Examples.composed_output

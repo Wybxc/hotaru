@@ -14,6 +14,9 @@ inductive KernelError where
   | notEquation
   | notBetaRedex
   | freeInAssumptions
+  | notImplication
+  | notVariable
+  | termMismatch
   deriving DecidableEq, Repr
 
 structure Checked (s : Signature) (ctx : List HolType) (r : RawTerm) where
@@ -64,6 +67,15 @@ def check (s : Signature) (ctx : List HolType) :
       if h : rt = lt then
         return ⟨.bool, .equal l' (h ▸ r'), by subst rt; simp [Term.raw, hl, hr]⟩
       else .error .typeMismatch
+  | .imp p q => do
+      let ⟨pt, p', hp⟩ ← check s ctx p
+      let ⟨qt, q', hq⟩ ← check s ctx q
+      if hpt : pt = .bool then
+        if hqt : qt = .bool then
+          return ⟨.bool, .imp (hpt ▸ p') (hqt ▸ q'), by
+            subst pt; subst qt; simp [Term.raw, hp, hq]⟩
+        else .error .notBoolean
+      else .error .notBoolean
 
 -- An extrinsic typing judgment makes the checker specification independent
 -- of both the checking algorithm and the theorem inference system.
@@ -79,6 +91,8 @@ inductive HasType (s : Signature) : List HolType → RawTerm → HolType → Pro
       HasType s ctx (.lam a b) (.fn a t)
   | equal {ctx : List HolType} : HasType s ctx l a → HasType s ctx r a →
       HasType s ctx (.equal l r) .bool
+  | imp {ctx : List HolType} : HasType s ctx p .bool → HasType s ctx q .bool →
+      HasType s ctx (.imp p q) .bool
 
 theorem Term.hasType (t : Term s ctx a) : HasType s ctx t.raw a := by
   induction t with
@@ -88,6 +102,7 @@ theorem Term.hasType (t : Term s ctx a) : HasType s ctx t.raw a := by
   | app _ _ hf hx => exact .app hf hx
   | lam h _ hb => exact .lam h hb
   | equal _ _ hl hr => exact .equal hl hr
+  | imp _ _ hp hq => exact .imp hp hq
 
 theorem BVar.validType {s : Signature} (v : BVar ctx a)
     (h : ∀ b ∈ ctx, s.validType b = true) :
@@ -114,6 +129,7 @@ theorem Term.validType (t : Term s ctx a) (h : ∀ b ∈ ctx, s.validType b = tr
     · exact hv
     · exact h b hb
   | equal => simp [Signature.validType]
+  | imp => simp [Signature.validType]
 
 theorem check_sound (s : Signature) (ctx : List HolType) (r : RawTerm)
     (c : Checked s ctx r) (_h : check s ctx r = .ok c) : HasType s ctx r c.type := by

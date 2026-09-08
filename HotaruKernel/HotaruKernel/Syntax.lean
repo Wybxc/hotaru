@@ -80,6 +80,7 @@ inductive RawTerm where
   | app : RawTerm → RawTerm → RawTerm
   | lam : HolType → RawTerm → RawTerm
   | equal : RawTerm → RawTerm → RawTerm
+  | imp : RawTerm → RawTerm → RawTerm
   deriving DecidableEq, Repr
 
 inductive BVar : List HolType → HolType → Type where
@@ -101,6 +102,7 @@ inductive Term (s : Signature) : List HolType → HolType → Type where
   | lam {ctx : List HolType} (valid : s.validType a = true) :
       Term s (a :: ctx) b → Term s ctx (.fn a b)
   | equal {ctx : List HolType} : Term s ctx a → Term s ctx a → Term s ctx .bool
+  | imp {ctx : List HolType} : Term s ctx .bool → Term s ctx .bool → Term s ctx .bool
 
 variable {ctx dst : List HolType}
 
@@ -114,6 +116,7 @@ def Term.raw {ctx : List HolType} : Term s ctx a → RawTerm
   | .app f x => .app f.raw x.raw
   | @Term.lam _ a _ _ _ b => .lam a b.raw
   | .equal l r => .equal l.raw r.raw
+  | .imp p q => .imp p.raw q.raw
 
 def Term.freeVars {ctx : List HolType} : Term s ctx a → List FVar
   | .fvar n a _ => [(n, a)]
@@ -122,6 +125,7 @@ def Term.freeVars {ctx : List HolType} : Term s ctx a → List FVar
   | .app f x => f.freeVars ++ x.freeVars
   | .lam _ b => b.freeVars
   | .equal l r => l.freeVars ++ r.freeVars
+  | .imp p q => p.freeVars ++ q.freeVars
 
 abbrev Renaming (ctx dst : List HolType) := ∀ {a}, BVar ctx a → BVar dst a
 
@@ -136,6 +140,7 @@ def Term.rename {ctx dst : List HolType} (r : Renaming ctx dst) : Term s ctx a �
   | .app f x => .app (f.rename r) (x.rename r)
   | .lam h b => .lam h (b.rename r.lift)
   | .equal l t => .equal (l.rename r) (t.rename r)
+  | .imp p q => .imp (p.rename r) (q.rename r)
 
 def Term.weaken (t : Term s ctx a) : Term s (b :: ctx) a := t.rename BVar.succ
 
@@ -154,6 +159,7 @@ def Term.substBound {ctx dst : List HolType} (r : BoundSubst s ctx dst) :
   | .app f x => .app (f.substBound r) (x.substBound r)
   | .lam h b => .lam h (b.substBound r.lift)
   | .equal l t => .equal (l.substBound r) (t.substBound r)
+  | .imp p q => .imp (p.substBound r) (q.substBound r)
 
 def BoundSubst.single (x : Term s ctx a) : BoundSubst s (a :: ctx) ctx
   | _, .zero => x
@@ -177,6 +183,7 @@ def Term.substFree {ctx dst : List HolType} (r : FreeSubst s dst) (q : Renaming 
   | .app f x => .app (f.substFree r q) (x.substFree r q)
   | .lam h b => .lam h (b.substFree r.lift q.lift)
   | .equal l t => .equal (l.substFree r q) (t.substFree r q)
+  | .imp p t => .imp (p.substFree r q) (t.substFree r q)
 
 def FreeSubst.close (n : String) (a : HolType) : FreeSubst s (a :: ctx) :=
   fun m b h => if ht : b = a then

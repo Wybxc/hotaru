@@ -66,6 +66,7 @@ noncomputable def Term.eval {ctx : List HolType}
   | .app g x => (g.eval m f e) (x.eval m f e)
   | .lam _ b => fun x => b.eval m f (e.cons x)
   | .equal l r => @decide (l.eval m f e = r.eval m f e) (Classical.propDecidable _)
+  | .imp p q => !(p.eval m f e) || q.eval m f e
 
 theorem Term.eval_rename (t : Term s ctx a) (m : Model s) (f : FreeEnv m)
     (r : Renaming ctx dst) (e : BoundEnv m ctx) (d : BoundEnv m dst)
@@ -76,6 +77,7 @@ theorem Term.eval_rename (t : Term s ctx a) (m : Model s) (f : FreeEnv m)
   | bvar v => exact h _ v
   | const => rfl
   | app g x hg hx => simp only [rename, eval, hg r e d h, hx r e d h]
+  | imp p q hp hq => simp only [rename, eval, hp r e d h, hq r e d h]
   | equal l u hl hu =>
     simp only [rename, eval]
     rw [hl r e d h, hu r e d h]
@@ -101,6 +103,7 @@ theorem Term.eval_substBound (t : Term s ctx a) (m : Model s) (f : FreeEnv m)
   | bvar v => exact h _ v
   | const => rfl
   | app g x hg hx => simp only [substBound, eval, hg r e d h, hx r e d h]
+  | imp p q hp hq => simp only [substBound, eval, hp r e d h, hq r e d h]
   | equal l u hl hu =>
     simp only [substBound, eval]
     rw [hl r e d h, hu r e d h]
@@ -130,6 +133,7 @@ theorem Term.eval_substFree (t : Term s ctx a) (m : Model s)
   | bvar v => exact hb _ v
   | const => rfl
   | app g x hg hx => simp only [substFree, eval, hg _ _ _ _ hf hb, hx _ _ _ _ hf hb]
+  | imp p t hp ht => simp only [substFree, eval, hp r q e d hf hb, ht r q e d hf hb]
   | equal l u hl hu =>
     simp only [substFree, eval]
     rw [hl r q e d hf hb, hu r q e d hf hb]
@@ -184,6 +188,10 @@ theorem Term.eval_free_congr (t : Term s ctx a) (m : Model s)
     rw [ht e (fun n a hn => h n a (by simp [freeVars, hn])),
       hu e (fun n a hn => h n a (by simp [freeVars, hn]))]
   | equal t u ht hu =>
+    simp only [eval]
+    rw [ht e (fun n a hn => h n a (by simp [freeVars, hn])),
+      hu e (fun n a hn => h n a (by simp [freeVars, hn]))]
+  | imp t u ht hu =>
     simp only [eval]
     rw [ht e (fun n a hn => h n a (by simp [freeVars, hn])),
       hu e (fun n a hn => h n a (by simp [freeVars, hn]))]
