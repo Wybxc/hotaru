@@ -15,7 +15,7 @@ lake env lean HotaruKernel/Audit.lean
 LEAN_NUM_THREADS=2 lake env leanchecker HotaruKernel
 ```
 
-The default build includes all library modules, 104 regression examples, a proof
+The default build includes all library modules, 116 regression examples, a proof
 composed using the five original M1 operations, and the axiom audit. Tests use
 `decide +kernel`, not native proof evaluation. The root repository's
 `.github/workflows/lean.yml` runs the build and checks the compiled declarations.
@@ -83,22 +83,27 @@ All operations are in `HotaruKernel.Kernel` and return
 input conclusion. Its result substitutes all right sides simultaneously and
 includes hypotheses of the equality theorems. `INST` and `SUBST` use the first
 matching entry for repeated variables. Replacements are not substituted again.
-`SYM`, `TRANS`, and `EQ_MP` are verified derivable-but-primitive rules, with
-individual soundness cases, as opposed to unchecked host-language shortcuts.
+`SYM`, `TRANS`, `EQ_MP`, and `MK_COMB` are proved from the basic rules using
+`SUBST` and `REFL`. They have no independent inference constructors or soundness
+cases. `freshName_not_mem` and `Substitution.apply_fresh` justify the fresh
+template variables used in these derivations.
 
 The eight basic interfaces correspond to the official `ASSUME`, `REFL`,
 `BETA_CONV`, `SUBST`, `ABS`, `INST_TYPE`, `DISCH`, and `MP` rules. Type-substitution
 keys are strings, so the interface enforces the type-variable domain by its
-input type. It checks validity of every replacement type. `MK_COMB`, `INST`,
-`SYM`, `TRANS`, and `EQ_MP` currently have their own inference constructors;
-reducing those constructors to the eight-rule basis remains an M2 obligation.
+input type. It checks validity of every replacement type. `INST` currently has
+its own inference constructor; deriving it from the eight-rule basis remains
+an M2 obligation.
 
 `Equality.lean` proves that equal raw encodings of typed terms have equal types
 and equal internal terms. The executable term comparison uses this theorem;
 it never supplies a proof merely because an unverified Boolean comparison passed.
-Currently it also compares constant substitution witnesses literally. Recognizing
-distinct witnesses for the same constant instance in rule matching remains an
-M2 compatibility obligation; this limitation can reject valid HOL4 inferences.
+Rule matching uses the separate `LogicalTerm` representation, which identifies
+constants by qualified name and instantiated type. `Term.eval_logical` proves
+that equal logical representations have equal interpretations, independently
+of the substitution witnesses. `MP`, `TRANS`, `EQ_MP`, `SUBST`, and `DISCH` use
+this executable comparison. Distinct constant names or instance types still
+fail to match. The raw representation and its exact erasure proof are preserved.
 
 `Thm` stores its assumptions, Boolean conclusion, and a proof of `Derivable`.
 Constructing a `Thm` directly also requires that proof; there is no oracle or
@@ -106,6 +111,10 @@ unchecked constructor. Hypotheses are lists, with order and duplicates preserved
 Their semantics is conjunction, so those representation choices do not affect
 soundness. A theorem is indexed by its immutable theory; there is no implicit
 cross-theory conversion.
+The structural `Derivable.context` rule changes a hypothesis list only when its
+membership set is equal, and `Derivable.conversion` changes a conclusion only
+when its logical representation is equal. Their semantic preservation is
+proved in `Derivable.sound`; neither accepts semantic validity as a premise.
 
 `Derivable.sound` and `Kernel.success_sound` establish that every successful
 output holds under every free-variable valuation satisfying its hypotheses,
@@ -160,7 +169,7 @@ implementation, parsing, printing, or theorem serialization.
 | Milestone | Status and next obligations |
 | --- | --- |
 | M1 | Complete: fixed-signature semantic soundness and five executable operations |
-| M2 | All eight basic interfaces and polymorphic soundness proved; derived-rule reduction and constant-instance matching remain |
+| M2 | All eight basic interfaces, polymorphic soundness, and logical constant-instance matching proved; only `INST` still has an extra inference constructor |
 | M3 | Not implemented: checked declarations and definitions, model extensions, choice and infinity foundations |
 | M4 | Not implemented: execution traces containing theory extensions and their global correctness theorem |
 
@@ -173,6 +182,12 @@ nested binders, composed polymorphic constant instances, and invalid substitutio
 transport needed by `Kernel.INST_TYPE`. Tests also cover abstraction before and
 after variable-type merging: bound indices prevent newly merged free variables
 from becoming captured.
+
+The remaining `INST` derivation needs the Boolean foundation relating implication
+and equality (the role of HOL4's `IMP_ANTISYM_AX`), together with syntactic lemmas
+for simultaneous substitution through abstraction and beta reduction. The current
+extra `inst` constructor has a proved semantic soundness case, but that is not
+yet a derivation from the basic inference rules and Boolean foundation.
 
 Before M3, validate signature extensions and prove freshness, nonempty type
 definitions, and old-language interpretation preservation. The existing `Theory`
@@ -187,5 +202,8 @@ extensions.
 - [Candle standard development](https://github.com/CakeML/cakeml/tree/master/candle/standard)
   motivates the separation of syntax, semantic soundness, and executable
   refinement. This project does not port its set-theoretic proofs line by line.
+- [HOL4 derived inference rules](https://hol-theorem-prover.org/docs/trindemossen-2/Description/drules)
+  supplies the basic-rule derivations and explains their dependence on the
+  axioms and definitions of `bool`.
 - [Candle project](https://cakeml.org/candle/) verifies a HOL Light implementation
   through CakeML. Its end-to-end guarantee is outside HotaruKernel M1's scope.

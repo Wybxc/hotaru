@@ -92,17 +92,16 @@ def DISCH (t : Theory) (p : RawTerm) (th : Thm t) : Except KernelError (Thm t) :
   let ⟨a, p', _⟩ ← check t.signature [] p
   if h : a = .bool then
     let q : Term t.signature [] .bool := h ▸ p'
-    return ⟨th.assumptions.filter (fun p => decide (p ≠ q)), .imp q th.conclusion,
+    return ⟨th.assumptions.filter (fun p => decide (¬ p.Equivalent q)), .imp q th.conclusion,
       .disch q th.derivation⟩
   else .error .notBoolean
 
 def MP (t : Theory) (ti tp : Thm t) : Except KernelError (Thm t) := do
   let e ← implicationView ti.conclusion
-  if h : e.antecedent = tp.conclusion then
+  if h : e.antecedent.Equivalent tp.conclusion then
     have di : Derivable t ti.assumptions (.imp e.antecedent e.consequent) := by
       rw [← e.equation]; exact ti.derivation
-    have dp : Derivable t tp.assumptions e.antecedent := by
-      rw [h]; exact tp.derivation
+    have dp : Derivable t tp.assumptions e.antecedent := .conversion h.symm tp.derivation
     return ⟨ti.assumptions ++ tp.assumptions, e.consequent, .mp di dp⟩
   else .error .termMismatch
 
@@ -118,11 +117,12 @@ def TRANS (t : Theory) (tl tr : Thm t) : Except KernelError (Thm t) := do
   if ht : b = a then
     let middle : Term t.signature [] a := ht ▸ r'
     let last : Term t.signature [] a := ht ▸ u
-    if hm : r = middle then
+    if hm : r.Equivalent middle then
       have dl : Derivable t tl.assumptions (.equal l r) := by
         rw [← hl]; exact tl.derivation
       have dr : Derivable t tr.assumptions (.equal r last) := by
-        rw [hm]
+        apply Derivable.conversion (p := .equal middle last) (q := .equal r last)
+          (congrArg (fun x => LogicalTerm.equal x last.logical) hm.symm)
         subst b
         rw [← hr]; exact tr.derivation
       return ⟨tl.assumptions ++ tr.assumptions, .equal l last, .trans dl dr⟩
@@ -134,12 +134,11 @@ def EQ_MP (t : Theory) (te tp : Thm t) : Except KernelError (Thm t) := do
   if ht : a = .bool then
     let antecedent : Term t.signature [] .bool := ht ▸ p
     let consequent : Term t.signature [] .bool := ht ▸ q
-    if hp : antecedent = tp.conclusion then
+    if hp : antecedent.Equivalent tp.conclusion then
       have de : Derivable t te.assumptions (.equal antecedent consequent) := by
         subst a
         rw [← he]; exact te.derivation
-      have dp : Derivable t tp.assumptions antecedent := by
-        rw [hp]; exact tp.derivation
+      have dp : Derivable t tp.assumptions antecedent := .conversion hp.symm tp.derivation
       return ⟨te.assumptions ++ tp.assumptions, consequent, .eqMp de dp⟩
     else .error .termMismatch
   else .error .notBoolean
@@ -190,8 +189,8 @@ def SUBST (t : Theory) (rs : List (RawTerm × Thm t)) (template : RawTerm) (th :
   if ha : a = .bool then
     let body : Term t.signature [] .bool := ha ▸ p
     let left := (rewriteSubst rules false).apply body
-    if hc : left = th.conclusion then
-      have d : Derivable t th.assumptions left := by rw [hc]; exact th.derivation
+    if hc : left.Equivalent th.conclusion then
+      have d : Derivable t th.assumptions left := .conversion hc.symm th.derivation
       return ⟨rewriteHypotheses rules ++ th.assumptions,
         (rewriteSubst rules true).apply body, .subst rules body eqs d⟩
     else .error .termMismatch

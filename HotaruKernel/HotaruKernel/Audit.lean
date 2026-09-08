@@ -1,4 +1,4 @@
-import HotaruKernel.PolymorphicTests
+import HotaruKernel.LogicalEqualityTests
 import Lean.Util.CollectAxioms
 
 /-! Fail the build if any project declaration acquires an unapproved axiom. -/
@@ -22,6 +22,11 @@ audit_hotaru
 #print axioms HotaruKernel.Term.eval_substBound
 #print axioms HotaruKernel.Term.eval_substFree
 #print axioms HotaruKernel.Term.raw_heq
+#print axioms HotaruKernel.Term.eval_logical
+#print axioms HotaruKernel.Derivable.eqMp
+#print axioms HotaruKernel.Derivable.symm
+#print axioms HotaruKernel.Derivable.trans
+#print axioms HotaruKernel.Derivable.mkComb
 #print axioms HotaruKernel.Substitution.eval_apply
 #print axioms HotaruKernel.rewrite_eval
 #print axioms HotaruKernel.HolType.inst_compose
