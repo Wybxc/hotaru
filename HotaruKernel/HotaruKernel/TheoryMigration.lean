@@ -66,7 +66,7 @@ theorem Derivable.rebase {t u : Theory} (h : t.Extends u)
 
 def Thm.rebase {t u : Theory} (h : t.Extends u) (th : Thm t) : Thm u :=
   ⟨th.assumptions.map (Term.rebase h.signature), th.conclusion.rebase h.signature,
-    th.derivation.rebase h⟩
+    th.derivation.rebase h, (th.origin.join t.origin).join u.origin⟩
 
 def Kernel.MIGRATE {t : Theory} (e : TheoryExtension t) (th : Thm t) :
     Except KernelError (Thm e.target) := .ok (th.rebase e.extension)

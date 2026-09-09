@@ -15,6 +15,7 @@ structure TypeDefinition (t : Theory) where
   closed : predicate.freeVars = []
   supported : ∀ n ∈ predicate.typeVars, n ∈ parameters
   nonemptyProof : Derivable t [] (predicate.existsT representationValid)
+  proofOrigin : Provenance.Origin
 
 namespace TypeDefinition
 
@@ -41,7 +42,8 @@ def formula (d : TypeDefinition t) : Formula d.signature :=
     (d.extendsSignature.validType _ d.representationValid)
 
 def target (d : TypeDefinition t) : Theory :=
-  ⟨d.signature, d.formula :: t.axioms.map (Term.rebase d.extendsSignature)⟩
+  ⟨d.signature, d.formula :: t.axioms.map (Term.rebase d.extendsSignature),
+    t.origin.join d.proofOrigin⟩
 
 def extension (d : TypeDefinition t) : TheoryExtension t where
   target := d.target
@@ -50,7 +52,8 @@ def extension (d : TypeDefinition t) : TheoryExtension t where
   wellFormed := d.wellFormed.addType d.name d.parameters.length d.fresh
 
 def definitionThm (d : TypeDefinition t) : Thm d.target :=
-  ⟨[], d.formula, Derivable.axiom (t := d.target) d.formula (List.mem_cons_self ..)⟩
+  ⟨[], d.formula, Derivable.axiom (t := d.target) d.formula (List.mem_cons_self ..),
+    d.target.origin⟩
 
 theorem definition_sound (d : TypeDefinition t) : d.target.Entails [] d.formula :=
   d.definitionThm.sound
@@ -83,7 +86,7 @@ def Kernel.DEFINE_TYPE (t : Theory) (n : QName) (parameters : List String)
                 if hh : th.assumptions = [] then
                   if he : th.conclusion.Equivalent (p.existsT hv) then
                     return ⟨n, parameters, a, p, hv, hw, hn, hd, hc, ht,
-                      Derivable.conversion he (hh ▸ th.derivation)⟩
+                      Derivable.conversion he (hh ▸ th.derivation), th.origin⟩
                   else .error .termMismatch
                 else .error .nonemptyProofHasAssumptions
             else .error .hiddenTypeVariables

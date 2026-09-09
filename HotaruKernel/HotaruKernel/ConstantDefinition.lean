@@ -34,7 +34,7 @@ def equation (d : ConstantDefinition t) : Formula d.signature :=
   .equal d.constant (d.rhs.rebase d.extendsSignature)
 
 def target (d : ConstantDefinition t) : Theory :=
-  ⟨d.signature, d.equation :: t.axioms.map (Term.rebase d.extendsSignature)⟩
+  ⟨d.signature, d.equation :: t.axioms.map (Term.rebase d.extendsSignature), t.origin⟩
 
 def extension (d : ConstantDefinition t) : TheoryExtension t where
   target := d.target
@@ -43,7 +43,8 @@ def extension (d : ConstantDefinition t) : TheoryExtension t where
   wellFormed := d.signatureWellFormed
 
 def definitionThm (d : ConstantDefinition t) : Thm d.target :=
-  ⟨[], d.equation, Derivable.axiom (t := d.target) d.equation (List.mem_cons_self ..)⟩
+  ⟨[], d.equation, Derivable.axiom (t := d.target) d.equation (List.mem_cons_self ..),
+    d.target.origin⟩
 
 theorem definition_sound (d : ConstantDefinition t) : d.target.Entails [] d.equation :=
   d.definitionThm.sound

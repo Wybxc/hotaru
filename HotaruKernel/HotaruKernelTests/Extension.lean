@@ -19,7 +19,7 @@ example : observe (Kernel.DECLARE_CONSTANT theory Tests.constName (.var "a")) =
 example : observe (Kernel.DECLARE_CONSTANT theory Tests.constName (.op Tests.boxName [])) =
     .error .invalidType := by decide +kernel
 
-def boxTheory : Theory := ⟨⟨[(Tests.boxName, 1)], []⟩, []⟩
+def boxTheory : Theory := ⟨⟨[(Tests.boxName, 1)], []⟩, [], .local⟩
 example : observe (Kernel.DECLARE_TYPE boxTheory Tests.boxName 1) =
     .error .duplicateType := by decide +kernel
 example : observe (Kernel.DECLARE_TYPE boxTheory Tests.boxName 2) =
@@ -30,18 +30,18 @@ example : observe (Kernel.DECLARE_CONSTANT boxTheory Tests.constName (.op Tests.
 example : observe (Kernel.DECLARE_CONSTANT boxTheory Tests.constName (.op Tests.boxName [])) =
     .error .invalidType := by decide +kernel
 
-def declaredTheory : Theory := ⟨Tests.signature, []⟩
+def declaredTheory : Theory := ⟨Tests.signature, [], .local⟩
 example : observe (Kernel.DECLARE_CONSTANT declaredTheory Tests.constName .bool) =
     .error .duplicateConstant := by decide +kernel
 
-def malformed : Theory := ⟨⟨[(Tests.boxName, 1), (Tests.boxName, 2)], []⟩, []⟩
+def malformed : Theory := ⟨⟨[(Tests.boxName, 1), (Tests.boxName, 2)], []⟩, [], .local⟩
 example : observe (Kernel.DECLARE_CONSTANT malformed Tests.constName .bool) =
     .error .invalidSignature := by decide +kernel
 example : observe (Kernel.DECLARE_TYPE malformed ⟨"other", "box"⟩ 0) =
     .error .invalidSignature := by decide +kernel
 
 def malformedConstant : Theory :=
-  ⟨⟨[], [(Tests.constName, .op Tests.boxName [])]⟩, []⟩
+  ⟨⟨[], [(Tests.constName, .op Tests.boxName [])]⟩, [], .local⟩
 example : observe (Kernel.DECLARE_TYPE malformedConstant Tests.boxName 0) =
     .error .invalidSignature := by decide +kernel
 

@@ -7,6 +7,10 @@ structure Thm (t : Theory) where
   assumptions : List (Formula t.signature)
   conclusion : Formula t.signature
   derivation : Derivable t assumptions conclusion
+  origin : Provenance.Origin
+
+def Thm.mark (th : Thm t) (source : Provenance.Source) : Thm t :=
+  { th with origin := (th.origin.join t.origin).join (.source source) }
 
 theorem Thm.sound (h : Thm t) : t.Entails h.assumptions h.conclusion :=
   h.derivation.sound
@@ -35,23 +39,23 @@ namespace Kernel
 def INST_TYPE (t : Theory) (i : TypeSubst) (th : Thm t) : Except KernelError (Thm t) :=
   if hi : i.Valid t.signature then
     .ok ⟨th.assumptions.map (Term.instType i hi), th.conclusion.instType i hi,
-      .instType i hi th.derivation⟩
+      .instType i hi th.derivation, t.origin.join th.origin⟩
   else .error .invalidType
 
 def ASSUME (t : Theory) (p : RawTerm) : Except KernelError (Thm t) := do
   let ⟨a, p', _⟩ ← check t.signature [] p
   if h : a = .bool then
     let q : Term t.signature [] .bool := h ▸ p'
-    return ⟨[q], q, .assume q⟩
+    return ⟨[q], q, .assume q, t.origin⟩
   else .error .notBoolean
 
 def REFL (t : Theory) (r : RawTerm) : Except KernelError (Thm t) := do
   let p ← check t.signature [] r
-  return ⟨[], .equal p.term p.term, .refl p.term⟩
+  return ⟨[], .equal p.term p.term, .refl p.term, t.origin⟩
 
 def betaChecked (t : Theory) : Closed t.signature a → Except KernelError (Thm t)
   | .app (.lam valid b) x =>
-      .ok ⟨[], .equal (.app (.lam valid b) x) (b.open x), .beta valid b x⟩
+      .ok ⟨[], .equal (.app (.lam valid b) x) (b.open x), .beta valid b x, t.origin⟩
   | _ => .error .notBetaRedex
 
 def BETA_CONV (t : Theory) (r : RawTerm) : Except KernelError (Thm t) := do
@@ -68,7 +72,7 @@ def ABS (t : Theory) (n : String) (a : HolType) (th : Thm t) :
         exact th.derivation
       return ⟨th.assumptions,
         .equal (e.left.abstract n a valid) (e.right.abstract n a valid),
-        .abs n a valid fresh d⟩
+        .abs n a valid fresh d, (t.origin.join th.origin)⟩
     else .error .freeInAssumptions
   else .error .invalidType
 
@@ -84,7 +88,8 @@ def MK_COMB (t : Theory) (tf tx : Thm t) : Except KernelError (Thm t) := do
           subst xt
           rw [← hx]; exact tx.derivation
         return ⟨tf.assumptions ++ tx.assumptions,
-          .equal (.app f (h ▸ x)) (.app g (h ▸ y)), .mkComb df dx⟩
+          .equal (.app f (h ▸ x)) (.app g (h ▸ y)), .mkComb df dx,
+          (t.origin.join tf.origin).join tx.origin⟩
       else .error .typeMismatch
   | _ => .error .notFunction
 
@@ -93,7 +98,7 @@ def DISCH (t : Theory) (p : RawTerm) (th : Thm t) : Except KernelError (Thm t) :
   if h : a = .bool then
     let q : Term t.signature [] .bool := h ▸ p'
     return ⟨th.assumptions.filter (fun p => decide (¬ p.Equivalent q)), .imp q th.conclusion,
-      .disch q th.derivation⟩
+      .disch q th.derivation, t.origin.join th.origin⟩
   else .error .notBoolean
 
 def MP (t : Theory) (ti tp : Thm t) : Except KernelError (Thm t) := do
@@ -102,14 +107,15 @@ def MP (t : Theory) (ti tp : Thm t) : Except KernelError (Thm t) := do
     have di : Derivable t ti.assumptions (.imp e.antecedent e.consequent) := by
       rw [← e.equation]; exact ti.derivation
     have dp : Derivable t tp.assumptions e.antecedent := .conversion h.symm tp.derivation
-    return ⟨ti.assumptions ++ tp.assumptions, e.consequent, .mp di dp⟩
+    return ⟨ti.assumptions ++ tp.assumptions, e.consequent, .mp di dp,
+      (t.origin.join ti.origin).join tp.origin⟩
   else .error .termMismatch
 
 def SYM (t : Theory) (th : Thm t) : Except KernelError (Thm t) := do
   let e ← equationView th.conclusion
   have d : Derivable t th.assumptions (.equal e.left e.right) := by
     rw [← e.equation]; exact th.derivation
-  return ⟨th.assumptions, .equal e.right e.left, .symm d⟩
+  return ⟨th.assumptions, .equal e.right e.left, .symm d, t.origin.join th.origin⟩
 
 def TRANS (t : Theory) (tl tr : Thm t) : Except KernelError (Thm t) := do
   let ⟨a, l, r, hl⟩ ← equationView tl.conclusion
@@ -125,7 +131,8 @@ def TRANS (t : Theory) (tl tr : Thm t) : Except KernelError (Thm t) := do
           (congrArg (fun x => LogicalTerm.equal x last.logical) hm.symm)
         subst b
         rw [← hr]; exact tr.derivation
-      return ⟨tl.assumptions ++ tr.assumptions, .equal l last, .trans dl dr⟩
+      return ⟨tl.assumptions ++ tr.assumptions, .equal l last, .trans dl dr,
+        (t.origin.join tl.origin).join tr.origin⟩
     else .error .termMismatch
   else .error .typeMismatch
 
@@ -139,7 +146,8 @@ def EQ_MP (t : Theory) (te tp : Thm t) : Except KernelError (Thm t) := do
         subst a
         rw [← he]; exact te.derivation
       have dp : Derivable t tp.assumptions antecedent := .conversion hp.symm tp.derivation
-      return ⟨te.assumptions ++ tp.assumptions, consequent, .eqMp de dp⟩
+      return ⟨te.assumptions ++ tp.assumptions, consequent, .eqMp de dp,
+        (t.origin.join te.origin).join tp.origin⟩
     else .error .termMismatch
   else .error .notBoolean
 
@@ -158,7 +166,7 @@ def INST (t : Theory) (rs : List (RawTerm × RawTerm)) (th : Thm t) :
     Except KernelError (Thm t) := do
   let subst ← rs.mapM (fun (v, r) => checkReplacement t.signature v r)
   return ⟨th.assumptions.map (Substitution.apply subst),
-    Substitution.apply subst th.conclusion, .inst subst th.derivation⟩
+    Substitution.apply subst th.conclusion, .inst subst th.derivation, t.origin.join th.origin⟩
 
 structure CertifiedRewrite (t : Theory) where
   entry : RewriteEntry t.signature
@@ -192,7 +200,8 @@ def SUBST (t : Theory) (rs : List (RawTerm × Thm t)) (template : RawTerm) (th :
     if hc : left.Equivalent th.conclusion then
       have d : Derivable t th.assumptions left := .conversion hc.symm th.derivation
       return ⟨rewriteHypotheses rules ++ th.assumptions,
-        (rewriteSubst rules true).apply body, .subst rules body eqs d⟩
+        (rewriteSubst rules true).apply body, .subst rules body eqs d,
+        t.origin.collect (th.origin :: rs.map (fun r => r.2.origin))⟩
     else .error .termMismatch
   else .error .notBoolean
 

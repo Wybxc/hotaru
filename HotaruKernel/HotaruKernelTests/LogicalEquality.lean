@@ -7,7 +7,7 @@ open Examples
 def otherName : QName := ⟨"test", "otherId"⟩
 def theory : Theory := ⟨⟨[],
   [(Tests.constName, .fn (.var "a") (.var "a")),
-   (otherName, .fn (.var "a") (.var "a"))]⟩, []⟩
+   (otherName, .fn (.var "a") (.var "a"))]⟩, [], .local⟩
 
 def c : RawTerm := .const Tests.constName [("a", .bool)]
 def c' : RawTerm := .const Tests.constName [("unused", .var "b"), ("a", .bool)]

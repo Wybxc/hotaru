@@ -2,7 +2,7 @@ import HotaruKernel.Kernel
 
 namespace HotaruKernel.Examples
 
-def theory : Theory := ⟨{}, []⟩
+def theory : Theory := ⟨{}, [], .local⟩
 
 def types : TypeModel where
   typeVar := fun _ => Nat

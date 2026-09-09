@@ -56,9 +56,10 @@ for usage, thread restrictions, deployment, and the compilation trust boundary.
 
 ## Proof architecture
 
-The native interface uses the Lean `Tracking` kernel layer. The underlying
-`Kernel` remains the logical implementation; `Tracking` pairs its results with
-provenance and proves propagation for every inference and theory change.
+`Theory` and `Thm` carry provenance directly. Core `Kernel` operations combine
+the theory's origin with every supplied theorem's origin when constructing a
+result. The native Rust interface calls these same operations, with no separate
+tracking state, theorem wrapper, or inference dispatcher.
 `Provenance.Trace` records source events and joins, and the independent inductive
 `Provenance.Depends` relation specifies source reachability.
 `Origin` caches a deduplicated source list alongside the shared history.
@@ -69,21 +70,24 @@ The following results are checked by the axiom audit:
 
 - `Origin.complete` and `Origin.kind_absent`: reachable events are reported;
   absence of a kind rules out reachable events of that kind.
-- `Tracking.Inference.sources` and `dependencies`: each successful rule
-  inherits exactly its theory and all supplied theorem premises.
-- `Tracking.Change.sources`: each successful extension inherits its theory,
-  definition premises, and any explicitly introduced source.
-- `Tracking.Extension.produced_sources` and `rebase_sources`: definitions
-  and transported theorems preserve the relevant sources.
+- `Kernel.*_origin`: each successful core inference has exactly the specified
+  history and cached sources, including its theory and all supplied premises.
+- `Kernel.subst_sources` and `defineType_sources`: every supplied rewrite
+  equation contributes, and nonemptiness evidence propagates into the new theory.
+- Declaration, definition, annotation, and `Thm.rebase_sources` results:
+  extensions and transported theorems preserve the relevant sources.
+- `Execution.run_context_preserved`: a successful command sequence cannot
+  discard sources from its starting theory.
 - `FFI.theorem_sources_complete` and `theory_sources_complete`: the native
   query arrays expose the complete recorded sources.
 
-The tracking guarantee applies to the `Tracking` operations and their native
-exports, not arbitrary manually constructed Lean records or foreign raw pointers.
+The propagation guarantee applies to core kernel operations, execution, and native
+exports. Arbitrary manually constructed Lean records or foreign raw pointers are
+not a verified construction history.
 Source annotations are additive and identify theory files or checkpoints.
 They are provenance claims, not authentication or proof of an artifact's validity.
 No unchecked theorem recovery, file loader, or new logical axiom is introduced.
-Raw `Kernel` operations remain available for logical proofs and do not track sources.
+`Derivable` and semantic soundness do not assume source completeness or authenticity.
 
 | Layer | Definitions and results |
 | --- | --- |
@@ -185,7 +189,8 @@ of the substitution witnesses. `MP`, `TRANS`, `EQ_MP`, `SUBST`, and `DISCH` use
 this executable comparison. Distinct constant names or instance types still
 fail to match. The raw representation and its exact erasure proof are preserved.
 
-`Thm` stores its assumptions, Boolean conclusion, and a proof of `Derivable`.
+`Thm` stores its assumptions, Boolean conclusion, a proof of `Derivable`, and
+an explicit `Origin` with its completeness proof.
 Constructing a `Thm` directly also requires that proof; there is no oracle or
 unchecked constructor. Hypotheses are lists, with order and duplicates preserved.
 Their semantics is conjunction, so those representation choices do not affect

@@ -1,4 +1,5 @@
-import HotaruKernel.Execution
+import Mathlib.Data.List.Dedup
+import Aesop
 
 /-! Provenance describes construction dependencies, not authenticity of artifacts. -/
 namespace HotaruKernel.Provenance
@@ -25,7 +26,7 @@ inductive Depends : Trace → Source → Prop where
   | left : Depends l s → Depends (.join l r) s
   | right : Depends r s → Depends (.join l r) s
 
-/-- The history witnesses actual propagation; the cached list contains no duplicates. -/
+/-- The cached source list exactly describes reachability in the history. -/
 structure Origin where
   history : Trace
   sources : List Source

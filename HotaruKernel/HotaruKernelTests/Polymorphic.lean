@@ -42,7 +42,7 @@ def axiomTerm : Formula signature :=
   .equal (.const Tests.constName (.fn alpha alpha) [] (by decide +kernel) (by decide +kernel))
     (.lam (by decide +kernel) (.bvar .zero))
 
-def theory : Theory := ⟨signature, [axiomTerm]⟩
+def theory : Theory := ⟨signature, [axiomTerm], .local⟩
 
 theorem models : Models theory poly := by
   intro m hm f q hq
@@ -58,7 +58,7 @@ theorem models : Models theory poly := by
 
 def instantiatedAxiom : Except KernelError (Thm theory) :=
   Kernel.INST_TYPE theory [("a", .bool)]
-    ⟨[], axiomTerm, Derivable.axiom (t := theory) axiomTerm (List.mem_cons_self ..)⟩
+    ⟨[], axiomTerm, Derivable.axiom (t := theory) axiomTerm (List.mem_cons_self ..), theory.origin⟩
 
 example : observe instantiatedAxiom = .ok ([], .equal
     (.const Tests.constName [("a", .bool)]) identity) := by decide +kernel

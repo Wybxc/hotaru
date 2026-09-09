@@ -20,7 +20,7 @@ def errorCode : KernelError → UInt32
 def result (r : Except KernelError α) : Result α := r.mapError errorCode
 
 @[export hotaru_lean_new]
-def newState (_ : Unit) : Tracking.State := Tracking.initial
+def newState (_ : Unit) : Execution.State := Execution.initial
 
 @[export hotaru_lean_type_bool]
 def typeBool (_ : Unit) : HolType := .bool
@@ -36,11 +36,11 @@ def binding (name : String) (a : HolType) : String × HolType := (name, a)
 @[export hotaru_lean_term_pair]
 def termPair (a b : RawTerm) : RawTerm × RawTerm := (a, b)
 @[export hotaru_lean_equation_pair]
-def equationPair (s : Tracking.State) (a : RawTerm) (th : Tracking.Theorem s) :
-    RawTerm × Tracking.Theorem s := (a, th)
+def equationPair (s : Execution.State) (a : RawTerm) (th : Thm s.theory) :
+    RawTerm × Thm s.theory := (a, th)
 
 @[export hotaru_lean_some_thm]
-def someThm (s : Tracking.State) (th : Tracking.Theorem s) : Option (Tracking.Theorem s) := some th
+def someThm (s : Execution.State) (th : Thm s.theory) : Option (Thm s.theory) := some th
 
 @[export hotaru_lean_term_free]
 def termFree (name : String) (a : HolType) : RawTerm := .fvar name a
@@ -59,92 +59,101 @@ def termEqual (a b : RawTerm) : RawTerm := .equal a b
 def termImp (a b : RawTerm) : RawTerm := .imp a b
 
 @[export hotaru_lean_check]
-def checkTerm (s : Tracking.State) (p : RawTerm) : Result HolType :=
-  result ((check s.value.theory.signature [] p).map Checked.type)
+def checkTerm (s : Execution.State) (p : RawTerm) : Result HolType :=
+  result ((check s.theory.signature [] p).map Checked.type)
 @[export hotaru_lean_foundation]
-def foundation (s : Tracking.State) (index : UInt64) : Result (Tracking.Theorem s) :=
-  if index < 4 then result (Tracking.foundation s index.toNat) else .error 8
+def foundation (s : Execution.State) (index : UInt64) : Result (Thm s.theory) :=
+  if index < 4 then result (s.get index.toNat) else .error 8
 
 @[export hotaru_lean_assume]
-def assume (s : Tracking.State) (p : RawTerm) : Result (Tracking.Theorem s) :=
-  result (Tracking.Inference.run s (.assume p))
+def assume (s : Execution.State) (p : RawTerm) : Result (Thm s.theory) :=
+  result (Kernel.ASSUME s.theory p)
 @[export hotaru_lean_refl]
-def refl (s : Tracking.State) (p : RawTerm) : Result (Tracking.Theorem s) :=
-  result (Tracking.Inference.run s (.refl p))
+def refl (s : Execution.State) (p : RawTerm) : Result (Thm s.theory) :=
+  result (Kernel.REFL s.theory p)
 @[export hotaru_lean_beta]
-def beta (s : Tracking.State) (p : RawTerm) : Result (Tracking.Theorem s) :=
-  result (Tracking.Inference.run s (.beta p))
+def beta (s : Execution.State) (p : RawTerm) : Result (Thm s.theory) :=
+  result (Kernel.BETA_CONV s.theory p)
 @[export hotaru_lean_abs]
-def abs (s : Tracking.State) (name : String) (a : HolType) (th : Tracking.Theorem s) :
-    Result (Tracking.Theorem s) := result (Tracking.Inference.run s (.abs name a th))
+def abs (s : Execution.State) (name : String) (a : HolType) (th : Thm s.theory) :
+    Result (Thm s.theory) := result (Kernel.ABS s.theory name a th)
 @[export hotaru_lean_mk_comb]
-def mkComb (s : Tracking.State) (a b : Tracking.Theorem s) : Result (Tracking.Theorem s) :=
-  result (Tracking.Inference.run s (.mkComb a b))
+def mkComb (s : Execution.State) (a b : Thm s.theory) : Result (Thm s.theory) :=
+  result (Kernel.MK_COMB s.theory a b)
 @[export hotaru_lean_disch]
-def disch (s : Tracking.State) (p : RawTerm) (th : Tracking.Theorem s) :
-    Result (Tracking.Theorem s) :=
-  result (Tracking.Inference.run s (.disch p th))
+def disch (s : Execution.State) (p : RawTerm) (th : Thm s.theory) :
+    Result (Thm s.theory) :=
+  result (Kernel.DISCH s.theory p th)
 @[export hotaru_lean_mp]
-def mp (s : Tracking.State) (a b : Tracking.Theorem s) : Result (Tracking.Theorem s) :=
-  result (Tracking.Inference.run s (.mp a b))
+def mp (s : Execution.State) (a b : Thm s.theory) : Result (Thm s.theory) :=
+  result (Kernel.MP s.theory a b)
 @[export hotaru_lean_symm]
-def symm (s : Tracking.State) (th : Tracking.Theorem s) : Result (Tracking.Theorem s) :=
-  result (Tracking.Inference.run s (.symm th))
+def symm (s : Execution.State) (th : Thm s.theory) : Result (Thm s.theory) :=
+  result (Kernel.SYM s.theory th)
 @[export hotaru_lean_trans]
-def trans (s : Tracking.State) (a b : Tracking.Theorem s) : Result (Tracking.Theorem s) :=
-  result (Tracking.Inference.run s (.trans a b))
+def trans (s : Execution.State) (a b : Thm s.theory) : Result (Thm s.theory) :=
+  result (Kernel.TRANS s.theory a b)
 @[export hotaru_lean_eq_mp]
-def eqMp (s : Tracking.State) (a b : Tracking.Theorem s) : Result (Tracking.Theorem s) :=
-  result (Tracking.Inference.run s (.eqMp a b))
+def eqMp (s : Execution.State) (a b : Thm s.theory) : Result (Thm s.theory) :=
+  result (Kernel.EQ_MP s.theory a b)
 @[export hotaru_lean_inst]
-def inst (s : Tracking.State) (rs : Array (RawTerm × RawTerm)) (th : Tracking.Theorem s) :
-    Result (Tracking.Theorem s) := result (Tracking.Inference.run s (.inst rs.toList th))
+def inst (s : Execution.State) (rs : Array (RawTerm × RawTerm)) (th : Thm s.theory) :
+    Result (Thm s.theory) := result (Kernel.INST s.theory rs.toList th)
 @[export hotaru_lean_inst_type]
-def instType (s : Tracking.State) (rs : Array (String × HolType)) (th : Tracking.Theorem s) :
-    Result (Tracking.Theorem s) := result (Tracking.Inference.run s (.instType rs.toList th))
+def instType (s : Execution.State) (rs : Array (String × HolType)) (th : Thm s.theory) :
+    Result (Thm s.theory) := result (Kernel.INST_TYPE s.theory rs.toList th)
 @[export hotaru_lean_subst]
-def subst (s : Tracking.State) (rs : Array (RawTerm × Tracking.Theorem s)) (p : RawTerm)
-    (th : Tracking.Theorem s) : Result (Tracking.Theorem s) :=
-  result (Tracking.Inference.run s (.subst rs.toList p th))
+def subst (s : Execution.State) (rs : Array (RawTerm × Thm s.theory)) (p : RawTerm)
+    (th : Thm s.theory) : Result (Thm s.theory) :=
+  result (Kernel.SUBST s.theory rs.toList p th)
 
-abbrev Extension (s : Tracking.State) := Tracking.Extension s
+/-- Packages a native extension result; provenance lives in its core theory and theorem. -/
+structure Extension (s : Execution.State) where
+  data : TheoryExtension s.theory
+  produced : Option (Thm data.target)
 
 @[export hotaru_lean_extension_state]
-def Extension.state (s : Tracking.State) (e : Extension s) : Tracking.State :=
-  Tracking.Extension.state e
+def Extension.state (s : Execution.State) (e : Extension s) : Execution.State :=
+  ⟨e.data.target, e.data.wellFormed, s.theorems.map (Thm.rebase e.data.extension)⟩
 
 @[export hotaru_lean_extension_thm]
-def Extension.theorem (s : Tracking.State) (e : Extension s) :
-    Result (Tracking.Theorem e.state) :=
-  match Tracking.Extension.theorem e with | none => .error 8 | some th => .ok th
+def Extension.theorem (s : Execution.State) (e : Extension s) :
+    Result (Thm e.state.theory) :=
+  match e.produced with | none => .error 8 | some th => .ok th
 
 @[export hotaru_lean_rebase]
-def rebase (s : Tracking.State) (e : Extension s) (th : Tracking.Theorem s) :
-    Tracking.Theorem e.state := e.rebase th
+def rebase (s : Execution.State) (e : Extension s) (th : Thm s.theory) :
+    Thm e.state.theory := th.rebase e.data.extension
 
 @[export hotaru_lean_declare_type]
-def declareType (s : Tracking.State) (scope name : String) (arity : UInt64) :
+def declareType (s : Execution.State) (scope name : String) (arity : UInt64) :
     Result (Extension s) :=
-  result (Tracking.Change.run s (.declareType ⟨scope, name⟩ arity.toNat))
+  result (do return ⟨← Kernel.DECLARE_TYPE s.theory ⟨scope, name⟩ arity.toNat, none⟩)
 
 @[export hotaru_lean_declare_const]
-def declareConst (s : Tracking.State) (scope name : String) (a : HolType) :
+def declareConst (s : Execution.State) (scope name : String) (a : HolType) :
     Result (Extension s) :=
-  result (Tracking.Change.run s (.declareConstant ⟨scope, name⟩ a))
+  result (do return ⟨← Kernel.DECLARE_CONSTANT s.theory ⟨scope, name⟩ a, none⟩)
 
 @[export hotaru_lean_define_const]
-def defineConst (s : Tracking.State) (scope name : String) (p : RawTerm) :
+def defineConst (s : Execution.State) (scope name : String) (p : RawTerm) :
     Result (Extension s) :=
-  result (Tracking.Change.run s (.defineConstant ⟨scope, name⟩ p))
+  result (do
+    let d ← Kernel.DEFINE_CONSTANT s.theory ⟨scope, name⟩ p
+    return ⟨d.extension, some d.definitionThm⟩)
 
 @[export hotaru_lean_define_type]
-def defineType (s : Tracking.State) (scope name : String) (parameters : Array String)
-    (predicate : RawTerm) (proof : Option (Tracking.Theorem s)) : Result (Extension s) :=
-  result (Tracking.Change.run s (.defineType ⟨scope, name⟩ parameters.toList predicate proof))
+def defineType (s : Execution.State) (scope name : String) (parameters : Array String)
+    (predicate : RawTerm) (proof : Option (Thm s.theory)) : Result (Extension s) :=
+  result (do
+    let d ← Kernel.DEFINE_TYPE s.theory ⟨scope, name⟩ parameters.toList predicate proof
+    return ⟨d.extension, some d.definitionThm⟩)
 
 @[export hotaru_lean_add_axiom]
-def addAxiom (s : Tracking.State) (p : RawTerm) : Result (Extension s) :=
-  result (Tracking.Change.run s (.addAxiom p))
+def addAxiom (s : Execution.State) (p : RawTerm) : Result (Extension s) :=
+  result (do
+    let step ← Execution.checkStep s (.addAxiom p)
+    return ⟨step.extension, step.produced.head?⟩)
 
 @[export hotaru_lean_source]
 def source (kind : UInt32) (artifact : String) : Result Provenance.Source :=
@@ -154,19 +163,19 @@ def source (kind : UInt32) (artifact : String) : Result Provenance.Source :=
   | _ => .error 6
 
 @[export hotaru_lean_mark_theorem]
-def markTheorem (s : Tracking.State) (th : Tracking.Theorem s) (src : Provenance.Source) :
-    Tracking.Theorem s := th.mark src
+def markTheorem (s : Execution.State) (th : Thm s.theory) (src : Provenance.Source) :
+    Thm s.theory := th.mark src
 
 @[export hotaru_lean_mark_theory]
-def markTheory (s : Tracking.State) (src : Provenance.Source) : Result (Extension s) :=
-  result (Tracking.Change.run s (.mark src))
+def markTheory (s : Execution.State) (src : Provenance.Source) : Result (Extension s) :=
+  result (do return ⟨← Kernel.MARK_THEORY s.theory src, none⟩)
 
 @[export hotaru_lean_theorem_sources]
-def theoremSources (s : Tracking.State) (th : Tracking.Theorem s) : Array Provenance.Source :=
+def theoremSources (s : Execution.State) (th : Thm s.theory) : Array Provenance.Source :=
   th.origin.sources.toArray
 
 @[export hotaru_lean_theory_sources]
-def theorySources (s : Tracking.State) : Array Provenance.Source := s.origin.sources.toArray
+def theorySources (s : Execution.State) : Array Provenance.Source := s.theory.origin.sources.toArray
 
 @[export hotaru_lean_sources_count]
 def sourcesCount (xs : Array Provenance.Source) : UInt64 := xs.size.toUInt64
@@ -183,13 +192,13 @@ def sourceKind (src : Provenance.Source) : UInt32 :=
 def sourceArtifact (src : Provenance.Source) : String := src.artifact
 
 @[export hotaru_lean_conclusion]
-def conclusion (s : Tracking.State) (th : Tracking.Theorem s) : RawTerm := th.value.conclusion.raw
+def conclusion (s : Execution.State) (th : Thm s.theory) : RawTerm := th.conclusion.raw
 @[export hotaru_lean_assumption_count]
-def assumptionCount (s : Tracking.State) (th : Tracking.Theorem s) : UInt64 :=
-  th.value.assumptions.length.toUInt64
+def assumptionCount (s : Execution.State) (th : Thm s.theory) : UInt64 :=
+  th.assumptions.length.toUInt64
 @[export hotaru_lean_assumption]
-def assumption (s : Tracking.State) (th : Tracking.Theorem s) (i : UInt64) : Result RawTerm :=
-  match th.value.assumptions[i.toNat]? with | none => .error 8 | some p => .ok p.raw
+def assumption (s : Execution.State) (th : Thm s.theory) (i : UInt64) : Result RawTerm :=
+  match th.assumptions[i.toNat]? with | none => .error 8 | some p => .ok p.raw
 
 @[export hotaru_lean_type_eq]
 def typeEq (a b : HolType) : Bool := a == b
@@ -246,28 +255,28 @@ def instValue (p : RawTerm) (i : UInt64) : Result HolType :=
   | .const _ xs => match xs[i.toNat]? with | some x => .ok x.2 | none => .error 8
   | _ => .error 6
 
-theorem success_sound (s : Tracking.State) (r : Result (Tracking.Theorem s))
-    (th : Tracking.Theorem s) (_h : r = .ok th) :
-    s.value.theory.Entails th.value.assumptions th.value.conclusion := th.value.sound
+theorem success_sound (s : Execution.State) (r : Result (Thm s.theory))
+    (th : Thm s.theory) (_h : r = .ok th) :
+    s.theory.Entails th.assumptions th.conclusion := th.sound
 
-theorem extension_valid (s : Tracking.State) (e : Extension s) :
-    s.value.theory.Extends e.state.value.theory ∧ e.state.value.theory.signature.WellFormed :=
-  ⟨e.core.data.extension, e.core.data.wellFormed⟩
+theorem extension_valid (s : Execution.State) (e : Extension s) :
+    s.theory.Extends e.state.theory ∧ e.state.theory.signature.WellFormed :=
+  ⟨e.data.extension, e.data.wellFormed⟩
 
-theorem rebase_sound (s : Tracking.State) (e : Extension s) (th : Tracking.Theorem s) :
-    e.state.value.theory.Entails (rebase s e th).value.assumptions
-      (rebase s e th).value.conclusion := (rebase s e th).value.sound
+theorem rebase_sound (s : Execution.State) (e : Extension s) (th : Thm s.theory) :
+    e.state.theory.Entails (rebase s e th).assumptions
+      (rebase s e th).conclusion := (rebase s e th).sound
 
-theorem theorem_sources_complete (s : Tracking.State) (th : Tracking.Theorem s)
+theorem theorem_sources_complete (s : Execution.State) (th : Thm s.theory)
     (src : Provenance.Source) (h : Provenance.Depends th.origin.history src) :
     src ∈ theoremSources s th := by
   simpa [theoremSources] using th.complete h
 
-theorem theory_sources_complete (s : Tracking.State) (src : Provenance.Source)
-    (h : Provenance.Depends s.origin.history src) : src ∈ theorySources s := by
-  simpa [theorySources] using s.complete h
+theorem theory_sources_complete (s : Execution.State) (src : Provenance.Source)
+    (h : Provenance.Depends s.theory.origin.history src) : src ∈ theorySources s := by
+  simpa [theorySources] using s.theory.origin.complete h
 
-theorem theorem_sources_kind_absent (s : Tracking.State) (th : Tracking.Theorem s)
+theorem theorem_sources_kind_absent (s : Execution.State) (th : Thm s.theory)
     (kind : Provenance.Kind)
     (h : ∀ src ∈ theoremSources s th, src.kind ≠ kind) :
     ∀ src, src.kind = kind → ¬ Provenance.Depends th.origin.history src := by
@@ -275,10 +284,10 @@ theorem theorem_sources_kind_absent (s : Tracking.State) (th : Tracking.Theorem 
   intro src hs
   exact h src (by simpa [theoremSources] using hs)
 
-theorem theory_sources_kind_absent (s : Tracking.State) (kind : Provenance.Kind)
+theorem theory_sources_kind_absent (s : Execution.State) (kind : Provenance.Kind)
     (h : ∀ src ∈ theorySources s, src.kind ≠ kind) :
-    ∀ src, src.kind = kind → ¬ Provenance.Depends s.origin.history src := by
-  apply s.origin.kind_absent kind
+    ∀ src, src.kind = kind → ¬ Provenance.Depends s.theory.origin.history src := by
+  apply s.theory.origin.kind_absent kind
   intro src hs
   exact h src (by simpa [theorySources] using hs)
 

@@ -66,9 +66,9 @@ axiom; it does not guarantee consistency.
 
 ## Provenance
 
-All native inference and theory extension calls run through Lean's `Tracking`
-layer, which maintains source metadata and proves its propagation. Rust does not
-compute or merge sources itself.
+Lean's core `Theory` and `Thm` store sources directly. Every native inference and
+theory extension calls the core kernel, whose operations prove source propagation.
+Rust does not compute or merge sources itself.
 
 `Source` contains a `SourceKind::TheoryFile` or `SourceKind::Checkpoint` and an
 artifact string. `Theory::sources()` and `Theorem::sources()` return distinct

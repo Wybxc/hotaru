@@ -73,6 +73,7 @@ inductive Command where
   | defineConstant (name : QName) (rhs : RawTerm)
   | defineType (name : QName) (parameters : List String) (predicate : RawTerm) (proof : Option Nat)
   | addAxiom (formula : RawTerm)
+  | mark (source : Provenance.Source)
   deriving Repr, DecidableEq
 
 def Command.conservative : Command → Bool
@@ -97,6 +98,10 @@ theorem CheckedStep.theorem_count (step : CheckedStep s c) :
   simp only [state, List.length_append, List.length_map]
 
 def checkStep (s : State) : (c : Command) → Except KernelError (CheckedStep s c)
+  | .mark source =>
+    .ok ⟨⟨{ s.theory with origin := s.theory.origin.join (.source source) },
+      ⟨.refl _, fun _ hp => by simpa only [Term.rebase_refl] using hp⟩,
+      s.wellFormed⟩, [], fun _ h => h⟩
   | .infer rule => do
     let th ← rule.run s
     return ⟨⟨s.theory, .refl _, s.wellFormed⟩, [th], fun _ h => h⟩
@@ -127,11 +132,12 @@ def checkStep (s : State) : (c : Command) → Except KernelError (CheckedStep s 
     let ⟨a, term, _⟩ ← check s.theory.signature [] raw
     if ha : a = .bool then
       let q : Formula s.theory.signature := cast (congrArg (Closed s.theory.signature) ha) term
-      let target : Theory := ⟨s.theory.signature, q :: s.theory.axioms⟩
+      let target : Theory := ⟨s.theory.signature, q :: s.theory.axioms, s.theory.origin⟩
       let ext : TheoryExtension s.theory := ⟨target,
         ⟨.refl _, fun p hp => by
           simpa only [Term.rebase_refl] using List.mem_cons_of_mem q hp⟩, s.wellFormed⟩
-      return ⟨ext, [⟨[], q, .axiom _ (List.mem_cons_self ..)⟩], fun h => by cases h⟩
+      return ⟨ext, [⟨[], q, .axiom _ (List.mem_cons_self ..), target.origin⟩],
+        fun h => by cases h⟩
     else .error .notBoolean
 
 structure Result (s : State) (commands : List Command) where

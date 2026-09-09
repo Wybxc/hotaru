@@ -3,6 +3,8 @@ import HotaruKernel.LogicalEquality
 import HotaruKernel.TypeInstantiationSemantics
 import HotaruKernel.BooleanFoundation
 
+import HotaruKernel.Provenance
+
 namespace HotaruKernel
 
 variable {ctx : List HolType}
@@ -10,6 +12,7 @@ variable {ctx : List HolType}
 structure Theory where
   signature : Signature
   axioms : List (Formula signature) := []
+  origin : Provenance.Origin := .local
 
 def Models (t : Theory) (p : PolymorphicModel t.signature) : Prop :=
   ∀ (m : TypeModel) (hm : m.typeOp = p.typeOp) f, Satisfies (p.atTypes m hm) f t.axioms

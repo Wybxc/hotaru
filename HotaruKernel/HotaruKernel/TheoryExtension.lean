@@ -36,7 +36,7 @@ theorem Theory.Extends.entails {t u : Theory} (h : t.Extends u)
     (hh _ (List.mem_map.mpr ⟨a, ha, rfl⟩))
 
 def Theory.withSignature (t : Theory) (s : Signature) (h : t.signature.Extends s) : Theory :=
-  ⟨s, t.axioms.map (Term.rebase h)⟩
+  ⟨s, t.axioms.map (Term.rebase h), t.origin⟩
 
 theorem Theory.extends_withSignature (t : Theory) (s : Signature)
     (h : t.signature.Extends s) : t.Extends (t.withSignature s h) where
@@ -58,6 +58,13 @@ structure TheoryExtension (t : Theory) where
   wellFormed : target.signature.WellFormed
 
 namespace Kernel
+
+def MARK_THEORY (t : Theory) (source : Provenance.Source) :
+    Except KernelError (TheoryExtension t) :=
+  if hw : t.signature.WellFormed then
+    .ok ⟨{ t with origin := t.origin.join (.source source) },
+      ⟨.refl _, fun _ hp => by simpa only [Term.rebase_refl] using hp⟩, hw⟩
+  else .error .invalidSignature
 
 def DECLARE_TYPE (t : Theory) (n : QName) (arity : Nat) :
     Except KernelError (TheoryExtension t) := do

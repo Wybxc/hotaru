@@ -5,9 +5,10 @@ namespace HotaruKernel.DerivedInstantiationTests
 open Examples
 
 def openAxiom : Formula ({} : Signature) := .fvar "x" .bool (by decide +kernel)
-def axiomTheory : Theory := ⟨{}, [openAxiom]⟩
+def axiomTheory : Theory := ⟨{}, [openAxiom], .local⟩
 def axiomTheorem : Thm axiomTheory :=
-  ⟨[], openAxiom, Derivable.axiom (t := axiomTheory) openAxiom (List.mem_cons_self ..)⟩
+  ⟨[], openAxiom, Derivable.axiom (t := axiomTheory) openAxiom (List.mem_cons_self ..),
+    axiomTheory.origin⟩
 
 example : observe (Kernel.INST axiomTheory [(x, y)] axiomTheorem) =
     .ok ([], y) := by decide +kernel

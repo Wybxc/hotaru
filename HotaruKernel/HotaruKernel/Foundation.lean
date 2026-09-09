@@ -39,16 +39,16 @@ def boolCasesAxiom : Formula signature :=
   Term.forallT (.lam hb (.imp (Term.equal (.bvar .zero) .trueT).notT
     (.equal (.bvar .zero) .falseT))) hb
 
-def theory : Theory := ⟨signature, [etaAxiom, selectAxiom, infinityAxiom, boolCasesAxiom]⟩
+def theory : Theory := ⟨signature, [etaAxiom, selectAxiom, infinityAxiom, boolCasesAxiom], .local⟩
 
-def eta : Thm theory := ⟨[], etaAxiom, .axiom _ (List.mem_cons_self ..)⟩
+def eta : Thm theory := ⟨[], etaAxiom, .axiom _ (List.mem_cons_self ..), theory.origin⟩
 def selection : Thm theory := ⟨[], selectAxiom,
-  .axiom _ (List.mem_cons_of_mem _ (List.mem_cons_self ..))⟩
+  .axiom _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)), theory.origin⟩
 def infinity : Thm theory := ⟨[], infinityAxiom,
-  .axiom _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))⟩
+  .axiom _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..))), theory.origin⟩
 def boolCases : Thm theory := ⟨[], boolCasesAxiom,
   .axiom _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _
-    (List.mem_cons_of_mem _ (List.mem_cons_self ..))))⟩
+    (List.mem_cons_of_mem _ (List.mem_cons_self ..)))), theory.origin⟩
 
 theorem eta_valid (m : Model signature) (f : FreeEnv m) :
     etaAxiom.eval m f BoundEnv.nil = true := by

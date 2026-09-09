@@ -37,7 +37,7 @@ example : observe (Kernel.DEFINE_CONSTANT ExtensionTests.declaredTheory name
     (.const Tests.constName [("a", .bool)])) =
     .ok (.equal (.const name []) (.const Tests.constName [("a", .bool)])) := by decide +kernel
 
-def monomorphic : Theory := ⟨⟨[], [(Tests.constName, .bool)]⟩, []⟩
+def monomorphic : Theory := ⟨⟨[], [(Tests.constName, .bool)]⟩, [], .local⟩
 -- Unused entries in an instance witness are not dependencies of the constant.
 example : observe (Kernel.DEFINE_CONSTANT monomorphic name
     (.const Tests.constName [("unused", alpha)])) =
