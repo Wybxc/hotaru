@@ -149,6 +149,61 @@ impl Name {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SourceKind {
+    TheoryFile,
+    Checkpoint,
+}
+
+/// A claimed construction source, not authentication of an artifact.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Source {
+    pub kind: SourceKind,
+    pub artifact: String,
+}
+
+impl Source {
+    pub fn new(kind: SourceKind, artifact: impl Into<String>) -> Self {
+        Self {
+            kind,
+            artifact: artifact.into(),
+        }
+    }
+
+    fn to_native(&self) -> Result<Owned> {
+        let kind = match self.kind {
+            SourceKind::TheoryFile => 0,
+            SourceKind::Checkpoint => 1,
+        };
+
+        unsafe {
+            checked(hotaru_lean_source(
+                kind,
+                Owned::string(&self.artifact).into_raw(),
+            ))
+        }
+    }
+}
+
+fn sources(array: Owned) -> Result<Vec<Source>> {
+    let count = unsafe { hotaru_lean_sources_count(array.argument()) };
+
+    (0..count)
+        .map(|i| {
+            let source = unsafe { checked(hotaru_lean_sources_get(array.argument(), i))? };
+            let kind = match unsafe { hotaru_lean_source_kind(source.argument()) } {
+                0 => SourceKind::TheoryFile,
+                1 => SourceKind::Checkpoint,
+                _ => unreachable!("Lean returned an invalid source kind"),
+            };
+            let artifact =
+                string(unsafe { Owned::from_raw(hotaru_lean_source_artifact(source.argument())) });
+
+            Ok(Source { kind, artifact })
+        })
+        .collect()
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Foundation {
     Eta,
     Selection,
@@ -485,6 +540,20 @@ impl Theory {
         self.context.value.argument()
     }
 
+    /// Records an additional source in a new descendant theory.
+    /// This does not load or authenticate a file.
+    pub fn with_source(&self, source: &Source) -> Result<Theory> {
+        let source = source.to_native()?;
+        let edge = unsafe { checked(hotaru_lean_mark_theory(self.arg(), source.into_raw()))? };
+
+        Ok(self.extend(edge))
+    }
+
+    /// Distinct sources of this theory's construction, including definition premises.
+    pub fn sources(&self) -> Result<Vec<Source>> {
+        sources(unsafe { Owned::from_raw(hotaru_lean_theory_sources(self.arg())) })
+    }
+
     fn owns(&self, th: &Theorem) -> Result<()> {
         if Rc::ptr_eq(&self.context, &th.context) {
             Ok(())
@@ -766,6 +835,33 @@ impl Theory {
 }
 
 impl Theorem {
+    /// Adds a claimed source while preserving all existing theorem and theory sources.
+    pub fn with_source(&self, source: &Source) -> Result<Theorem> {
+        let source = source.to_native()?;
+        let value = unsafe {
+            Owned::from_raw(hotaru_lean_mark_theorem(
+                self.context.value.argument(),
+                self.value.argument(),
+                source.into_raw(),
+            ))
+        };
+
+        Ok(Theorem {
+            value,
+            context: self.context.clone(),
+        })
+    }
+
+    /// Distinct sources inherited from the theory and all inference premises.
+    pub fn sources(&self) -> Result<Vec<Source>> {
+        sources(unsafe {
+            Owned::from_raw(hotaru_lean_theorem_sources(
+                self.context.value.argument(),
+                self.value.argument(),
+            ))
+        })
+    }
+
     pub fn theory(&self) -> Theory {
         Theory {
             context: self.context.clone(),

@@ -1,5 +1,6 @@
 use hotaru_sys::{
-    Error, Foundation, KernelError as K, Name, Result, Term, TermKind, Theory, Type, TypeKind,
+    Error, Foundation, KernelError as K, Name, Result, Source, SourceKind, Term, TermKind, Theorem,
+    Theory, Type, TypeKind,
 };
 
 fn rejects<T: std::fmt::Debug>(result: Result<T>, error: Error) {
@@ -241,6 +242,8 @@ fn kernel_handles() -> Result<()> {
     assert_eq!(axiom.assumption_count(), 0);
     assert_eq!(axioms.check(&axiom.conclusion())?, b);
 
+    provenance(&base, &b, &p, &q, &id, &pred, &nonempty)?;
+
     assert!(
         std::thread::spawn(|| matches!(Type::bool(), Err(Error::WrongThread)))
             .join()
@@ -260,5 +263,131 @@ fn kernel_handles() -> Result<()> {
     drop(p);
     assert_eq!(rp.conclusion(), eqpp);
 
+    Ok(())
+}
+
+fn assert_sources(actual: Vec<Source>, expected: &[&Source]) {
+    assert_eq!(actual.len(), expected.len(), "sources must be deduplicated");
+    assert!(
+        expected.iter().all(|source| actual.contains(source)),
+        "{actual:?}"
+    );
+}
+
+fn provenance(
+    base: &Theory,
+    b: &Type,
+    p: &Term,
+    q: &Term,
+    id: &Term,
+    predicate: &Term,
+    nonempty: &Theorem,
+) -> Result<()> {
+    let a = Source::new(SourceKind::TheoryFile, "context");
+    let b_source = Source::new(SourceKind::TheoryFile, "proof\0\u{03b1}");
+    let c = Source::new(SourceKind::Checkpoint, "proof\0\u{03b1}");
+    assert_sources(base.sources()?, &[]);
+    assert_sources(base.refl(p)?.sources()?, &[]);
+
+    let s = base.with_source(&a)?;
+    assert_sources(s.sources()?, &[&a]);
+    assert_sources(s.with_source(&a)?.sources()?, &[&a]);
+    assert_sources(s.assume(p)?.sources()?, &[&a]);
+    assert_sources(s.refl(p)?.sources()?, &[&a]);
+    assert_sources(s.beta(&Term::app(id, p)?)?.sources()?, &[&a]);
+    for f in [
+        Foundation::Eta,
+        Foundation::Selection,
+        Foundation::Infinity,
+        Foundation::BoolCases,
+    ] {
+        assert_sources(s.foundation(f)?.sources()?, &[&a]);
+    }
+
+    let left = s.refl(p)?.with_source(&b_source)?;
+    let right = s.refl(p)?.with_source(&c)?;
+    let premise = s.assume(p)?.with_source(&c)?;
+    assert_sources(left.with_source(&b_source)?.sources()?, &[&a, &b_source]);
+    assert_sources(left.clone().sources()?, &[&a, &b_source]);
+    assert_sources(s.symm(&left)?.sources()?, &[&a, &b_source]);
+    assert_sources(s.abs("p", b, &left)?.sources()?, &[&a, &b_source]);
+    assert_sources(s.disch(p, &left)?.sources()?, &[&a, &b_source]);
+    assert_sources(s.inst(&[(p, q)], &left)?.sources()?, &[&a, &b_source]);
+    assert_sources(
+        s.inst_type(&[("a", b)], &left)?.sources()?,
+        &[&a, &b_source],
+    );
+
+    assert_sources(s.trans(&left, &right)?.sources()?, &[&a, &b_source, &c]);
+    assert_sources(s.eq_mp(&left, &premise)?.sources()?, &[&a, &b_source, &c]);
+    let implication = s.disch(p, &s.assume(p)?)?.with_source(&b_source)?;
+    assert_sources(
+        s.mp(&implication, &premise)?.sources()?,
+        &[&a, &b_source, &c],
+    );
+    let function = s.refl(id)?.with_source(&b_source)?;
+    assert_sources(
+        s.mk_comb(&function, &right)?.sources()?,
+        &[&a, &b_source, &c],
+    );
+    // Even an equation not used by this template remains a construction input.
+    assert_sources(
+        s.subst(&[(p, &left), (q, &right)], p, &s.assume(p)?)?
+            .sources()?,
+        &[&a, &b_source, &c],
+    );
+    rejects(s.symm(&premise), Error::Kernel(K::NotEquation));
+    assert_sources(s.sources()?, &[&a]);
+    assert_sources(premise.sources()?, &[&a, &c]);
+
+    let marked = base.refl(p)?.with_source(&b_source)?;
+    let migrated = marked.rebase(&s)?;
+    assert_sources(migrated.sources()?, &[&a, &b_source]);
+    let descendant = s.with_source(&c)?;
+    assert_sources(
+        migrated.rebase(&descendant)?.sources()?,
+        &[&a, &b_source, &c],
+    );
+    rejects(
+        migrated.rebase(&base.with_source(&a)?),
+        Error::TheoryMismatch,
+    );
+    rejects(s.symm(&marked), Error::TheoryMismatch);
+
+    let declared = s.declare_type(&Name::new("provenance", "declared"), 0)?;
+    assert_sources(declared.sources()?, &[&a]);
+    let declared = declared.declare_const(&Name::new("provenance", "constant"), b)?;
+    assert_sources(declared.sources()?, &[&a]);
+    let (defined, definition) = declared.define_const(&Name::new("provenance", "id"), id)?;
+    assert_sources(defined.sources()?, &[&a]);
+    assert_sources(definition.sources()?, &[&a]);
+    let (axioms, axiom) = defined.add_axiom(p)?;
+    assert_sources(axioms.sources()?, &[&a]);
+    assert_sources(axiom.sources()?, &[&a]);
+
+    let evidence = nonempty
+        .with_source(&b_source)?
+        .with_source(&c)?
+        .rebase(&s)?;
+    let (defined, definition) = s.define_type(
+        &Name::new("provenance", "inhabited"),
+        &[],
+        predicate,
+        &evidence,
+    )?;
+    assert_sources(defined.sources()?, &[&a, &b_source, &c]);
+    assert_sources(definition.sources()?, &[&a, &b_source, &c]);
+    // Context-only inference must inherit the type definition's proof sources.
+    assert_sources(defined.refl(p)?.sources()?, &[&a, &b_source, &c]);
+    assert_sources(
+        defined.foundation(Foundation::Eta)?.sources()?,
+        &[&a, &b_source, &c],
+    );
+    assert_sources(marked.rebase(&defined)?.sources()?, &[&a, &b_source, &c]);
+
+    drop(defined);
+    drop(evidence);
+    assert_sources(definition.sources()?, &[&a, &b_source, &c]);
+    assert_sources(definition.theory().sources()?, &[&a, &b_source, &c]);
     Ok(())
 }

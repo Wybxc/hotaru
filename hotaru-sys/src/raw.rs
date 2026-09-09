@@ -86,4 +86,14 @@ unsafe extern "C" {
     pub fn hotaru_lean_inst_value(arg0: Obj, arg1: u64) -> Obj;
 
     pub fn hotaru_lean_some_thm(state: Obj, theorem: Obj) -> Obj;
+
+    pub fn hotaru_lean_source(kind: u32, artifact: Obj) -> Obj;
+    pub fn hotaru_lean_mark_theorem(state: Obj, theorem: Obj, source: Obj) -> Obj;
+    pub fn hotaru_lean_mark_theory(state: Obj, source: Obj) -> Obj;
+    pub fn hotaru_lean_theorem_sources(state: Obj, theorem: Obj) -> Obj;
+    pub fn hotaru_lean_theory_sources(state: Obj) -> Obj;
+    pub fn hotaru_lean_sources_count(sources: Obj) -> u64;
+    pub fn hotaru_lean_sources_get(sources: Obj, index: u64) -> Obj;
+    pub fn hotaru_lean_source_kind(source: Obj) -> u32;
+    pub fn hotaru_lean_source_artifact(source: Obj) -> Obj;
 }

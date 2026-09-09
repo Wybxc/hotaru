@@ -22,6 +22,27 @@ audit_hotaru
 #print axioms HotaruKernel.FFI.extension_valid
 #print axioms HotaruKernel.FFI.rebase_sound
 
+#print axioms HotaruKernel.Provenance.Origin.complete
+#print axioms HotaruKernel.Provenance.Origin.kind_absent
+#print axioms HotaruKernel.Tracking.Inference.sources
+#print axioms HotaruKernel.Tracking.Inference.dependencies
+#print axioms HotaruKernel.Tracking.Inference.premise_preserved
+#print axioms HotaruKernel.Tracking.Inference.context_preserved
+#print axioms HotaruKernel.Tracking.Change.sources
+#print axioms HotaruKernel.Tracking.Change.premise_preserved
+#print axioms HotaruKernel.Tracking.Change.context_preserved
+#print axioms HotaruKernel.Tracking.Extension.produced_sources
+#print axioms HotaruKernel.Tracking.Extension.rebase_sources
+#print axioms HotaruKernel.Tracking.Theorem.mark_sources
+#print axioms HotaruKernel.Tracking.Theorem.complete
+#print axioms HotaruKernel.Tracking.Theorem.kind_absent
+#print axioms HotaruKernel.FFI.theorem_sources_complete
+#print axioms HotaruKernel.FFI.theory_sources_complete
+#print axioms HotaruKernel.FFI.theorem_sources_kind_absent
+#print axioms HotaruKernel.FFI.theory_sources_kind_absent
+#print axioms HotaruKernel.ProvenanceTests.subst_equation_preserved
+#print axioms HotaruKernel.ProvenanceTests.type_definition_preserved
+
 #print axioms HotaruKernel.check_sound
 #print axioms HotaruKernel.Term.eval_substBound
 #print axioms HotaruKernel.Term.eval_substFree

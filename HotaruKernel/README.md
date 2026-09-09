@@ -56,6 +56,35 @@ for usage, thread restrictions, deployment, and the compilation trust boundary.
 
 ## Proof architecture
 
+The native interface uses the Lean `Tracking` kernel layer. The underlying
+`Kernel` remains the logical implementation; `Tracking` pairs its results with
+provenance and proves propagation for every inference and theory change.
+`Provenance.Trace` records source events and joins, and the independent inductive
+`Provenance.Depends` relation specifies source reachability.
+`Origin` caches a deduplicated source list alongside the shared history.
+Its proof field establishes exact correspondence between the list and history.
+This history records provenance only, not HOL proof steps.
+
+The following results are checked by the axiom audit:
+
+- `Origin.complete` and `Origin.kind_absent`: reachable events are reported;
+  absence of a kind rules out reachable events of that kind.
+- `Tracking.Inference.sources` and `dependencies`: each successful rule
+  inherits exactly its theory and all supplied theorem premises.
+- `Tracking.Change.sources`: each successful extension inherits its theory,
+  definition premises, and any explicitly introduced source.
+- `Tracking.Extension.produced_sources` and `rebase_sources`: definitions
+  and transported theorems preserve the relevant sources.
+- `FFI.theorem_sources_complete` and `theory_sources_complete`: the native
+  query arrays expose the complete recorded sources.
+
+The tracking guarantee applies to the `Tracking` operations and their native
+exports, not arbitrary manually constructed Lean records or foreign raw pointers.
+Source annotations are additive and identify theory files or checkpoints.
+They are provenance claims, not authentication or proof of an artifact's validity.
+No unchecked theorem recovery, file loader, or new logical axiom is introduced.
+Raw `Kernel` operations remain available for logical proofs and do not track sources.
+
 | Layer | Definitions and results |
 | --- | --- |
 | Syntax | `HolType`, `Signature`, `RawTerm`, and indexed `Term` |

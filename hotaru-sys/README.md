@@ -64,6 +64,50 @@ Failures use `Result<T, Error>`, with logical errors in `Error::Kernel`.
 `add_axiom` gives conditional soundness relative to models satisfying the new
 axiom; it does not guarantee consistency.
 
+## Provenance
+
+All native inference and theory extension calls run through Lean's `Tracking`
+layer, which maintains source metadata and proves its propagation. Rust does not
+compute or merge sources itself.
+
+`Source` contains a `SourceKind::TheoryFile` or `SourceKind::Checkpoint` and an
+artifact string. `Theory::sources()` and `Theorem::sources()` return distinct
+sources, including inherited context dependencies. Treat these lists as sets;
+their ordering is not a persistent identifier.
+
+`with_source(&source)` adds a claimed source without removing existing sources.
+On a theory it returns a new descendant; existing theorem handles must be rebased
+explicitly. On a theorem it returns a new handle in the same theory.
+These methods annotate already valid objects. They do not load files, bypass
+proofs, or establish artifact authenticity.
+
+```rust
+use hotaru_sys::{Result, Source, SourceKind, Term, Theory, Type};
+
+fn main() -> Result<()> {
+    let base = Theory::new()?;
+    let source = Source::new(SourceKind::TheoryFile, "arithmetic");
+    let theory = base.with_source(&source)?;
+    let p = Term::free("p", &Type::bool()?)?;
+    let theorem = theory.refl(&p)?;
+
+    assert_eq!(theorem.sources()?, vec![source]);
+    Ok(())
+}
+```
+
+Even inference without theorem premises inherits the theory's sources.
+A type definition also passes its nonemptiness proof's sources into the new
+theory, so later proofs retain that dependency. All supplied SUBST equations
+contribute sources, including equations unused by the template. Failed calls
+leave existing handles unchanged.
+
+Lean proves exact propagation against an independent source-reachability
+relation, and that absence of a source kind excludes dependencies of that kind.
+The tracked history is a shared provenance graph, not a stored HOL proof.
+These guarantees concern construction history, not whether an alternative proof
+could avoid the source, and do not establish that a source is trustworthy.
+
 ## Linking and trust
 
 At build time, bindgen reads `include/lean/lean.h` from the selected Lean
