@@ -66,26 +66,44 @@ def MARK_THEORY (t : Theory) (source : Provenance.Source) :
       ⟨.refl _, fun _ hp => by simpa only [Term.rebase_refl] using hp⟩, hw⟩
   else .error .invalidSignature
 
+def DECLARE_TYPE_VALID (t : Theory) (hw : t.signature.WellFormed) (n : QName) (arity : Nat) :
+    Except KernelError (TheoryExtension t) := do
+  if hn : t.signature.typeOps.lookup n = none then
+    let h := t.signature.extends_addType n arity hn
+    return ⟨t.withSignature _ h, t.extends_withSignature _ h, hw.addType n arity hn⟩
+  else .error .duplicateType
+
 def DECLARE_TYPE (t : Theory) (n : QName) (arity : Nat) :
     Except KernelError (TheoryExtension t) := do
   if hw : t.signature.WellFormed then
-    if hn : t.signature.typeOps.lookup n = none then
-      let h := t.signature.extends_addType n arity hn
-      return ⟨t.withSignature _ h, t.extends_withSignature _ h, hw.addType n arity hn⟩
-    else .error .duplicateType
+    DECLARE_TYPE_VALID t hw n arity
   else .error .invalidSignature
+
+theorem DECLARE_TYPE_of_wellFormed (t : Theory) (hw : t.signature.WellFormed)
+    (n : QName) (arity : Nat) :
+    DECLARE_TYPE t n arity = DECLARE_TYPE_VALID t hw n arity := by
+  simp [DECLARE_TYPE, hw]
+
+def DECLARE_CONSTANT_VALID (t : Theory) (hw : t.signature.WellFormed)
+    (n : QName) (scheme : HolType) : Except KernelError (TheoryExtension t) := do
+  if hn : t.signature.constants.lookup n = none then
+    if hv : t.signature.validType scheme = true then
+      let h := t.signature.extends_addConstant n scheme hn
+      return ⟨t.withSignature _ h, t.extends_withSignature _ h,
+        hw.addConstant n scheme hn hv⟩
+    else .error .invalidType
+  else .error .duplicateConstant
 
 def DECLARE_CONSTANT (t : Theory) (n : QName) (scheme : HolType) :
     Except KernelError (TheoryExtension t) := do
   if hw : t.signature.WellFormed then
-    if hn : t.signature.constants.lookup n = none then
-      if hv : t.signature.validType scheme = true then
-        let h := t.signature.extends_addConstant n scheme hn
-        return ⟨t.withSignature _ h, t.extends_withSignature _ h,
-          hw.addConstant n scheme hn hv⟩
-      else .error .invalidType
-    else .error .duplicateConstant
+    DECLARE_CONSTANT_VALID t hw n scheme
   else .error .invalidSignature
+
+theorem DECLARE_CONSTANT_of_wellFormed (t : Theory) (hw : t.signature.WellFormed)
+    (n : QName) (scheme : HolType) :
+    DECLARE_CONSTANT t n scheme = DECLARE_CONSTANT_VALID t hw n scheme := by
+  simp [DECLARE_CONSTANT, hw]
 
 theorem extension_success {t : Theory} (result : Except KernelError (TheoryExtension t))
     (e : TheoryExtension t) (_h : result = .ok e) :

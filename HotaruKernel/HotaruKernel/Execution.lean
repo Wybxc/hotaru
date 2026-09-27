@@ -106,16 +106,22 @@ def checkStep (s : State) : (c : Command) → Except KernelError (CheckedStep s 
     let th ← rule.run s
     return ⟨⟨s.theory, .refl _, s.wellFormed⟩, [th], fun _ h => h⟩
   | .declareType name arity =>
-    match he : Kernel.DECLARE_TYPE s.theory name arity with
+    match he : Kernel.DECLARE_TYPE_VALID s.theory s.wellFormed name arity with
     | .error e => .error e
     | .ok ext => .ok ⟨ext, [], fun _ ⟨p, hp⟩ => by
-        obtain ⟨q, hq, _⟩ := Kernel.declareType_model name arity ext he p hp
+        have he' : Kernel.DECLARE_TYPE s.theory name arity = .ok ext := by
+          rw [Kernel.DECLARE_TYPE_of_wellFormed s.theory s.wellFormed]
+          exact he
+        obtain ⟨q, hq, _⟩ := Kernel.declareType_model name arity ext he' p hp
         exact ⟨q, hq⟩⟩
   | .declareConstant name a =>
-    match he : Kernel.DECLARE_CONSTANT s.theory name a with
+    match he : Kernel.DECLARE_CONSTANT_VALID s.theory s.wellFormed name a with
     | .error e => .error e
     | .ok ext => .ok ⟨ext, [], fun _ ⟨p, hp⟩ => by
-        obtain ⟨q, hq, _⟩ := Kernel.declareConstant_model name a ext he p hp
+        have he' : Kernel.DECLARE_CONSTANT s.theory name a = .ok ext := by
+          rw [Kernel.DECLARE_CONSTANT_of_wellFormed s.theory s.wellFormed]
+          exact he
+        obtain ⟨q, hq, _⟩ := Kernel.declareConstant_model name a ext he' p hp
         exact ⟨q, hq⟩⟩
   | .defineConstant name rhs => do
     let d ← Kernel.DEFINE_CONSTANT s.theory name rhs

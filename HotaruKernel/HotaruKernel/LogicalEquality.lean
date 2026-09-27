@@ -22,6 +22,50 @@ def Term.logical {ctx : List HolType} : Term s ctx a → LogicalTerm
   | .equal l r => .equal l.logical r.logical
   | .imp p q => .imp p.logical q.logical
 
+def Term.logicalEq {ctx dst : List HolType} {a b : HolType}
+    (t : Term s ctx a) (u : Term s dst b) : Bool :=
+  match t with
+  | .fvar n a _ =>
+      match u with
+      | .fvar m b _ => n == m && a == b
+      | _ => false
+  | .bvar v =>
+      match u with
+      | .bvar w => v.index == w.index
+      | _ => false
+  | .const n scheme i _ _ =>
+      match u with
+      | .const m other j _ _ => n == m && scheme.inst i == other.inst j
+      | _ => false
+  | .app f x =>
+      match u with
+      | .app g y => f.logicalEq g && x.logicalEq y
+      | _ => false
+  | @Term.lam _ a _ _ _ body =>
+      match u with
+      | @Term.lam _ b _ _ _ other => a == b && body.logicalEq other
+      | _ => false
+  | .equal l r =>
+      match u with
+      | .equal l' r' => l.logicalEq l' && r.logicalEq r'
+      | _ => false
+  | .imp p q =>
+      match u with
+      | .imp p' q' => p.logicalEq p' && q.logicalEq q'
+      | _ => false
+
+theorem Term.logicalEq_correct {ctx dst : List HolType} {a b : HolType}
+    (t : Term s ctx a) (u : Term s dst b) :
+    t.logicalEq u = true ↔ t.logical = u.logical := by
+  induction t generalizing dst b with
+  | fvar n a _ => cases u <;> simp [logicalEq, logical]
+  | bvar v => cases u <;> simp [logicalEq, logical]
+  | const n scheme i _ _ => cases u <;> simp [logicalEq, logical]
+  | app f x ihf ihx => cases u <;> simp [logicalEq, logical, ihf, ihx]
+  | lam _ body ih => cases u <;> simp [logicalEq, logical, ih]
+  | equal l r ihl ihr => cases u <;> simp [logicalEq, logical, ihl, ihr]
+  | imp p q ihp ihq => cases u <;> simp [logicalEq, logical, ihp, ihq]
+
 def LogicalTerm.freeVars : LogicalTerm → List FVar
   | .fvar n a => [(n, a)]
   | .bvar _ | .const .. => []
@@ -120,7 +164,7 @@ def Term.Equivalent {ctx : List HolType} (t u : Term s ctx a) : Prop :=
   t.logical = u.logical
 
 instance {ctx : List HolType} (t u : Term s ctx a) : Decidable (t.Equivalent u) :=
-  inferInstanceAs (Decidable (t.logical = u.logical))
+  decidable_of_iff (t.logicalEq u = true) (t.logicalEq_correct u)
 
 theorem Term.Equivalent.eval {ctx : List HolType} {t u : Term s ctx a}
     (h : t.Equivalent u) (m : Model s) (f : FreeEnv m) (e : BoundEnv m ctx) :

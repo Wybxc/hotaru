@@ -90,9 +90,12 @@ The inference API exposes eight basic HOL-style rules and five derived rules.
 The basic interfaces are `ASSUME`, `REFL`, `BETA_CONV`, `ABS`, `DISCH`, `MP`,
 `INST_TYPE`, and `SUBST`; `MK_COMB`, `SYM`, `TRANS`, `EQ_MP`, and `INST` are
 derived rather than added as inference assumptions. Each operation takes an
-explicit theory, checks its inputs, and returns
-`Except KernelError (Thm theory)`. The Boolean antisymmetry schema is proved
-valid in the model semantics rather than assumed as a Lean axiom.
+explicit theory, checks its raw inputs, and returns
+`Except KernelError (Thm theory)`. Repeated calls can instead share a
+`CheckedTerm theory` produced by `checkClosed`; checked variants of the rules
+consume that term without repeating validation. The Boolean antisymmetry
+schema is proved valid in the model semantics rather than assumed as a Lean
+axiom.
 
 The theory API controls declarations, definitions, and theorem migration.
 Its operations add types and constants, define constants and nonempty types,

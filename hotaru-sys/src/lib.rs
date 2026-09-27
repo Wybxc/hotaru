@@ -240,6 +240,13 @@ pub struct Term {
     value: Owned,
 }
 
+/// A term validated for one exact theory. Retaining it also retains the typed Lean term.
+#[derive(Clone)]
+pub struct CheckedTerm {
+    value: Owned,
+    context: Rc<Context>,
+}
+
 #[derive(Clone)]
 pub struct Theory {
     context: Rc<Context>,
@@ -279,6 +286,12 @@ impl std::fmt::Debug for Type {
 impl std::fmt::Debug for Term {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Term").finish_non_exhaustive()
+    }
+}
+
+impl std::fmt::Debug for CheckedTerm {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CheckedTerm").finish_non_exhaustive()
     }
 }
 
@@ -495,6 +508,20 @@ impl Term {
     }
 }
 
+impl CheckedTerm {
+    /// Returns the type established by the Lean checker.
+    pub fn ty(&self) -> Type {
+        Type {
+            value: unsafe {
+                Owned::from_raw(hotaru_lean_checked_type(
+                    self.context.value.argument(),
+                    self.value.argument(),
+                ))
+            },
+        }
+    }
+}
+
 impl Type {
     pub fn name(&self) -> Result<String> {
         Ok(string(unsafe {
@@ -562,6 +589,14 @@ impl Theory {
         }
     }
 
+    fn owns_checked(&self, term: &CheckedTerm) -> Result<()> {
+        if Rc::ptr_eq(&self.context, &term.context) {
+            Ok(())
+        } else {
+            Err(Error::TheoryMismatch)
+        }
+    }
+
     fn theorem(&self, value: Owned) -> Theorem {
         Theorem {
             value,
@@ -572,6 +607,15 @@ impl Theory {
     pub fn check(&self, term: &Term) -> Result<Type> {
         Ok(Type {
             value: unsafe { checked(hotaru_lean_check(self.arg(), term.value.argument()))? },
+        })
+    }
+
+    /// Checks a term once for repeated inference in this exact theory.
+    /// The caller controls how long the checked representation remains in memory.
+    pub fn check_term(&self, term: &Term) -> Result<CheckedTerm> {
+        Ok(CheckedTerm {
+            value: unsafe { checked(hotaru_lean_check_term(self.arg(), term.value.argument()))? },
+            context: self.context.clone(),
         })
     }
 
@@ -587,12 +631,36 @@ impl Theory {
         )
     }
 
+    pub fn assume_checked(&self, term: &CheckedTerm) -> Result<Theorem> {
+        self.owns_checked(term)?;
+        Ok(self.theorem(unsafe {
+            checked(hotaru_lean_assume_checked(
+                self.arg(),
+                term.value.argument(),
+            ))?
+        }))
+    }
+
     pub fn refl(&self, term: &Term) -> Result<Theorem> {
         Ok(self.theorem(unsafe { checked(hotaru_lean_refl(self.arg(), term.value.argument()))? }))
     }
 
+    pub fn refl_checked(&self, term: &CheckedTerm) -> Result<Theorem> {
+        self.owns_checked(term)?;
+        Ok(self.theorem(unsafe {
+            Owned::from_raw(hotaru_lean_refl_checked(self.arg(), term.value.argument()))
+        }))
+    }
+
     pub fn beta(&self, term: &Term) -> Result<Theorem> {
         Ok(self.theorem(unsafe { checked(hotaru_lean_beta(self.arg(), term.value.argument()))? }))
+    }
+
+    pub fn beta_checked(&self, term: &CheckedTerm) -> Result<Theorem> {
+        self.owns_checked(term)?;
+        Ok(self.theorem(unsafe {
+            checked(hotaru_lean_beta_checked(self.arg(), term.value.argument()))?
+        }))
     }
 
     pub fn mk_comb(&self, a: &Theorem, b: &Theorem) -> Result<Theorem> {
@@ -671,6 +739,19 @@ impl Theory {
 
         Ok(self.theorem(unsafe {
             checked(hotaru_lean_disch(
+                self.arg(),
+                term.value.argument(),
+                th.value.argument(),
+            ))?
+        }))
+    }
+
+    pub fn disch_checked(&self, term: &CheckedTerm, th: &Theorem) -> Result<Theorem> {
+        self.owns_checked(term)?;
+        self.owns(th)?;
+
+        Ok(self.theorem(unsafe {
+            checked(hotaru_lean_disch_checked(
                 self.arg(),
                 term.value.argument(),
                 th.value.argument(),

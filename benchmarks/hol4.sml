@@ -99,6 +99,12 @@ fun run_case (kind, parameter, iterations) =
     in
       measure kind parameter iterations expected 0 (fn () => Thm.REFL term)
     end
+  | "refl_checked" => let
+      val term = build parameter p
+      val expected = Thm.concl (Thm.REFL term)
+    in
+      measure kind parameter iterations expected 0 (fn () => Thm.REFL term)
+    end
   | "refl_retain" => let
       val term = build parameter p
       val expected = Thm.concl (Thm.REFL term)

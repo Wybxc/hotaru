@@ -61,6 +61,11 @@ def termImp (a b : RawTerm) : RawTerm := .imp a b
 @[export hotaru_lean_check]
 def checkTerm (s : Execution.State) (p : RawTerm) : Result HolType :=
   result ((check s.theory.signature [] p).map Checked.type)
+@[export hotaru_lean_check_term]
+def checkTermHandle (s : Execution.State) (p : RawTerm) : Result (CheckedTerm s.theory) :=
+  result (checkClosed s.theory p)
+@[export hotaru_lean_checked_type]
+def checkedType (s : Execution.State) (p : CheckedTerm s.theory) : HolType := p.type
 @[export hotaru_lean_foundation]
 def foundation (s : Execution.State) (index : UInt64) : Result (Thm s.theory) :=
   if index < 4 then result (s.get index.toNat) else .error 8
@@ -68,12 +73,21 @@ def foundation (s : Execution.State) (index : UInt64) : Result (Thm s.theory) :=
 @[export hotaru_lean_assume]
 def assume (s : Execution.State) (p : RawTerm) : Result (Thm s.theory) :=
   result (Kernel.ASSUME s.theory p)
+@[export hotaru_lean_assume_checked]
+def assumeChecked (s : Execution.State) (p : CheckedTerm s.theory) : Result (Thm s.theory) :=
+  result (Kernel.ASSUME_CHECKED s.theory p)
 @[export hotaru_lean_refl]
 def refl (s : Execution.State) (p : RawTerm) : Result (Thm s.theory) :=
   result (Kernel.REFL s.theory p)
+@[export hotaru_lean_refl_checked]
+def reflChecked (s : Execution.State) (p : CheckedTerm s.theory) : Thm s.theory :=
+  Kernel.REFL_CHECKED s.theory p
 @[export hotaru_lean_beta]
 def beta (s : Execution.State) (p : RawTerm) : Result (Thm s.theory) :=
   result (Kernel.BETA_CONV s.theory p)
+@[export hotaru_lean_beta_checked]
+def betaCheckedTerm (s : Execution.State) (p : CheckedTerm s.theory) : Result (Thm s.theory) :=
+  result (Kernel.BETA_CONV_CHECKED s.theory p)
 @[export hotaru_lean_abs]
 def abs (s : Execution.State) (name : String) (a : HolType) (th : Thm s.theory) :
     Result (Thm s.theory) := result (Kernel.ABS s.theory name a th)
@@ -84,6 +98,10 @@ def mkComb (s : Execution.State) (a b : Thm s.theory) : Result (Thm s.theory) :=
 def disch (s : Execution.State) (p : RawTerm) (th : Thm s.theory) :
     Result (Thm s.theory) :=
   result (Kernel.DISCH s.theory p th)
+@[export hotaru_lean_disch_checked]
+def dischChecked (s : Execution.State) (p : CheckedTerm s.theory) (th : Thm s.theory) :
+    Result (Thm s.theory) :=
+  result (Kernel.DISCH_CHECKED s.theory p th)
 @[export hotaru_lean_mp]
 def mp (s : Execution.State) (a b : Thm s.theory) : Result (Thm s.theory) :=
   result (Kernel.MP s.theory a b)
@@ -128,12 +146,14 @@ def rebase (s : Execution.State) (e : Extension s) (th : Thm s.theory) :
 @[export hotaru_lean_declare_type]
 def declareType (s : Execution.State) (scope name : String) (arity : UInt64) :
     Result (Extension s) :=
-  result (do return ⟨← Kernel.DECLARE_TYPE s.theory ⟨scope, name⟩ arity.toNat, none⟩)
+  result (do return ⟨← Kernel.DECLARE_TYPE_VALID s.theory s.wellFormed
+    ⟨scope, name⟩ arity.toNat, none⟩)
 
 @[export hotaru_lean_declare_const]
 def declareConst (s : Execution.State) (scope name : String) (a : HolType) :
     Result (Extension s) :=
-  result (do return ⟨← Kernel.DECLARE_CONSTANT s.theory ⟨scope, name⟩ a, none⟩)
+  result (do return ⟨← Kernel.DECLARE_CONSTANT_VALID s.theory s.wellFormed
+    ⟨scope, name⟩ a, none⟩)
 
 @[export hotaru_lean_define_const]
 def defineConst (s : Execution.State) (scope name : String) (p : RawTerm) :

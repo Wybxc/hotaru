@@ -31,9 +31,29 @@ fn kernel_handles() -> Result<()> {
 
     let rp = base.refl(&p)?;
     let ap = base.assume(&p)?;
+    let checked_p = base.check_term(&p)?;
+    assert_eq!(checked_p.ty(), b);
+    assert_eq!(base.refl_checked(&checked_p)?.conclusion(), rp.conclusion());
+    assert_eq!(
+        base.assume_checked(&checked_p)?.conclusion(),
+        ap.conclusion()
+    );
+    let retained_checked = {
+        let temporary = Theory::new()?;
+        let transient = Term::free("transient", &b)?;
+        let checked = temporary.check_term(&transient)?;
+        drop(transient);
+        assert_eq!(temporary.refl_checked(&checked)?.assumption_count(), 0);
+        checked
+    };
+    assert_eq!(retained_checked.ty(), b);
     assert_eq!(rp.conclusion(), eqpp);
     assert_eq!(ap.conclusion(), p);
     assert_eq!(base.beta(&app)?.conclusion(), Term::equal(&app, &p)?);
+    assert_eq!(
+        base.beta_checked(&base.check_term(&app)?)?.conclusion(),
+        base.beta(&app)?.conclusion()
+    );
     assert_eq!(base.abs("p", &b, &rp)?.conclusion(), Term::equal(&id, &id)?);
 
     let ri = base.refl(&id)?;
@@ -43,6 +63,10 @@ fn kernel_handles() -> Result<()> {
     );
 
     let dis = base.disch(&p, &ap)?;
+    assert_eq!(
+        base.disch_checked(&checked_p, &ap)?.conclusion(),
+        dis.conclusion()
+    );
     assert_eq!(dis.conclusion(), Term::imp(&p, &p)?);
     assert_eq!(base.mp(&dis, &ap)?.conclusion(), p);
 
@@ -85,8 +109,17 @@ fn kernel_handles() -> Result<()> {
     }
 
     rejects(base.assume(&id), Error::Kernel(K::NotBoolean));
+    rejects(
+        base.assume_checked(&base.check_term(&id)?),
+        Error::Kernel(K::NotBoolean),
+    );
     rejects(base.refl(&v0), Error::Kernel(K::UnboundVariable));
+    rejects(base.check_term(&v0), Error::Kernel(K::UnboundVariable));
     rejects(base.beta(&p), Error::Kernel(K::NotBetaRedex));
+    rejects(
+        base.beta_checked(&checked_p),
+        Error::Kernel(K::NotBetaRedex),
+    );
     rejects(base.mk_comb(&rp, &rp), Error::Kernel(K::NotFunction));
     rejects(base.mp(&rp, &ap), Error::Kernel(K::NotImplication));
     rejects(base.symm(&ap), Error::Kernel(K::NotEquation));
@@ -142,6 +175,8 @@ fn kernel_handles() -> Result<()> {
 
     let foreign = other.refl(&p)?;
     rejects(base.trans(&rp, &foreign), Error::TheoryMismatch);
+    rejects(other.refl_checked(&checked_p), Error::TheoryMismatch);
+    rejects(other.disch_checked(&checked_p, &ap), Error::TheoryMismatch);
     rejects(foreign.rebase(&base), Error::TheoryMismatch);
 
     let poly_name = Name::new("test", "poly");
@@ -151,6 +186,7 @@ fn kernel_handles() -> Result<()> {
     assert_eq!(poly.check(&pc)?, bb);
     rejects(base.check(&pc), Error::Kernel(K::UnknownConstant));
     rejects(poly.symm(&rp), Error::TheoryMismatch);
+    rejects(poly.refl_checked(&checked_p), Error::TheoryMismatch);
 
     let migrated = rp.rebase(&poly)?;
     assert_eq!(poly.symm(&migrated)?.conclusion(), eqpp);

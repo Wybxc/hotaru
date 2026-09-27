@@ -16,6 +16,7 @@ clock starts.
 | Case | Timed transaction | Setup and expected theorem |
 | --- | --- | --- |
 | `refl_reuse/d` | `REFL` on one prebuilt `f^d(p)` | `|- f^d(p) = f^d(p)`, no assumptions |
+| `refl_checked/d` | `REFL` on one prebuilt and prevalidated `f^d(p)` | The same theorem; Hotaru's checked term is held for the trial |
 | `refl_retain/d` | The same `REFL`, retaining every result until the clock stops | The same theorem and prebuilt input |
 | `refl_build/d` | Build a fresh `f^d(p)`, then call `REFL` | The same theorem; `f` and `p` are prebuilt |
 | `assume/0` | `ASSUME p` | `p |- p` |
@@ -96,13 +97,15 @@ and prover versions fixed, and compare distributions rather than one fastest
 trial. The installed HOL Light package version and library hash identify the
 actual linked artifact; a nearby HOL Light source checkout need not match it.
 
-The timing boundary must accompany every published number. In particular,
-`refl_reuse` excludes term construction, while `refl_build` includes it;
-Hotaru validates raw terms during `REFL`, whereas the ML interfaces validate
-many term operations during construction. The six-step `trace` is a common
-logical task, but the implementations may use different internal
-representations and derived-rule paths. These results characterize the
-selected APIs, not the total capability of each proof assistant.
+The timing boundary must accompany every published number. `refl_reuse`
+excludes term construction but includes Hotaru's raw-term validation, while
+`refl_build` includes both. `refl_checked` excludes Hotaru's one-time
+`check_term` call and retains its typed term across the trial; the ML systems
+use the same prebuilt term as `refl_reuse` because their constructors already
+validate it. The six-step `trace` is a common logical task, but the
+implementations may use different internal representations and derived-rule
+paths. These results characterize the selected APIs, not the total capability
+of each proof assistant.
 
 Memory footprint, cold-start latency, theory loading, and tactic performance
 are separate dimensions. The present runner does not report those metrics;

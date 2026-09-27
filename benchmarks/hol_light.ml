@@ -80,7 +80,7 @@ let equality_chain vars first last =
 
 let run_case (kind, parameter, iterations) =
   match kind with
-  | "refl_reuse" | "refl_retain" ->
+  | "refl_reuse" | "refl_checked" | "refl_retain" ->
       let term = build parameter p in
       measure kind parameter iterations (mk_eq (term, term)) 0
         (fun () -> REFL (Sys.opaque_identity term))

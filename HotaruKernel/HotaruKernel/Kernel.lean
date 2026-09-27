@@ -3,6 +3,14 @@ import HotaruKernel.InstDerivation
 
 namespace HotaruKernel
 
+structure CheckedTerm (t : Theory) where
+  type : HolType
+  term : Closed t.signature type
+
+def checkClosed (t : Theory) (r : RawTerm) : Except KernelError (CheckedTerm t) := do
+  let p ← check t.signature [] r
+  return ⟨p.type, p.term⟩
+
 structure Thm (t : Theory) where
   assumptions : List (Formula t.signature)
   conclusion : Formula t.signature
@@ -42,25 +50,31 @@ def INST_TYPE (t : Theory) (i : TypeSubst) (th : Thm t) : Except KernelError (Th
       .instType i hi th.derivation, t.origin.join th.origin⟩
   else .error .invalidType
 
-def ASSUME (t : Theory) (p : RawTerm) : Except KernelError (Thm t) := do
-  let ⟨a, p', _⟩ ← check t.signature [] p
-  if h : a = .bool then
-    let q : Term t.signature [] .bool := h ▸ p'
+def ASSUME_CHECKED (t : Theory) (p : CheckedTerm t) : Except KernelError (Thm t) := do
+  if h : p.type = .bool then
+    let q : Term t.signature [] .bool := h ▸ p.term
     return ⟨[q], q, .assume q, t.origin⟩
   else .error .notBoolean
 
+def ASSUME (t : Theory) (p : RawTerm) : Except KernelError (Thm t) := do
+  ASSUME_CHECKED t (← checkClosed t p)
+
+def REFL_CHECKED (t : Theory) (p : CheckedTerm t) : Thm t :=
+  ⟨[], .equal p.term p.term, .refl p.term, t.origin⟩
+
 def REFL (t : Theory) (r : RawTerm) : Except KernelError (Thm t) := do
-  let p ← check t.signature [] r
-  return ⟨[], .equal p.term p.term, .refl p.term, t.origin⟩
+  return REFL_CHECKED t (← checkClosed t r)
 
 def betaChecked (t : Theory) : Closed t.signature a → Except KernelError (Thm t)
   | .app (.lam valid b) x =>
       .ok ⟨[], .equal (.app (.lam valid b) x) (b.open x), .beta valid b x, t.origin⟩
   | _ => .error .notBetaRedex
 
-def BETA_CONV (t : Theory) (r : RawTerm) : Except KernelError (Thm t) := do
-  let p ← check t.signature [] r
+def BETA_CONV_CHECKED (t : Theory) (p : CheckedTerm t) : Except KernelError (Thm t) :=
   betaChecked t p.term
+
+def BETA_CONV (t : Theory) (r : RawTerm) : Except KernelError (Thm t) := do
+  BETA_CONV_CHECKED t (← checkClosed t r)
 
 def ABS (t : Theory) (n : String) (a : HolType) (th : Thm t) :
     Except KernelError (Thm t) := do
@@ -93,13 +107,17 @@ def MK_COMB (t : Theory) (tf tx : Thm t) : Except KernelError (Thm t) := do
       else .error .typeMismatch
   | _ => .error .notFunction
 
-def DISCH (t : Theory) (p : RawTerm) (th : Thm t) : Except KernelError (Thm t) := do
-  let ⟨a, p', _⟩ ← check t.signature [] p
+def DISCH_CHECKED (t : Theory) (p : CheckedTerm t) (th : Thm t) :
+    Except KernelError (Thm t) := do
+  let ⟨a, p'⟩ := p
   if h : a = .bool then
     let q : Term t.signature [] .bool := h ▸ p'
     return ⟨th.assumptions.filter (fun p => decide (¬ p.Equivalent q)), .imp q th.conclusion,
       .disch q th.derivation, t.origin.join th.origin⟩
   else .error .notBoolean
+
+def DISCH (t : Theory) (p : RawTerm) (th : Thm t) : Except KernelError (Thm t) := do
+  DISCH_CHECKED t (← checkClosed t p) th
 
 def MP (t : Theory) (ti tp : Thm t) : Except KernelError (Thm t) := do
   let e ← implicationView ti.conclusion

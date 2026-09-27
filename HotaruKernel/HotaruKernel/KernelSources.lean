@@ -48,7 +48,12 @@ macro "source_check" h:ident : tactic =>
 theorem assume_origin (p : RawTerm) (out : Thm t) (h : ASSUME t p = .ok out) :
     out.origin = t.origin := by
   unfold ASSUME at h
-  source_check h
+  cases hc : checkClosed t p with
+  | error e => simp [hc, bind, Except.bind] at h
+  | ok checked =>
+    have h' : ASSUME_CHECKED t checked = .ok out := by simpa [hc] using h
+    unfold ASSUME_CHECKED at h'
+    source_check h'
 
 theorem refl_origin (p : RawTerm) (out : Thm t) (h : REFL t p = .ok out) :
     out.origin = t.origin := by
@@ -63,9 +68,10 @@ theorem betaChecked_origin (p : Closed t.signature a) (out : Thm t)
 theorem beta_origin (p : RawTerm) (out : Thm t) (h : BETA_CONV t p = .ok out) :
     out.origin = t.origin := by
   unfold BETA_CONV at h
-  cases hc : check t.signature [] p with
+  cases hc : checkClosed t p with
   | error e => simp [hc, bind, Except.bind] at h
-  | ok checked => exact betaChecked_origin checked.term out (by simpa [hc] using h)
+  | ok checked =>
+    exact betaChecked_origin checked.term out (by simpa [hc, BETA_CONV_CHECKED] using h)
 
 theorem instType_origin (i : TypeSubst) (th out : Thm t)
     (h : INST_TYPE t i th = .ok out) : out.origin = t.origin.join th.origin := by
@@ -85,7 +91,12 @@ theorem mkComb_origin (l r out : Thm t) (h : MK_COMB t l r = .ok out) :
 theorem disch_origin (p : RawTerm) (th out : Thm t) (h : DISCH t p th = .ok out) :
     out.origin = t.origin.join th.origin := by
   unfold DISCH at h
-  source_check h
+  cases hc : checkClosed t p with
+  | error e => simp [hc, bind, Except.bind] at h
+  | ok checked =>
+    have h' : DISCH_CHECKED t checked th = .ok out := by simpa [hc] using h
+    unfold DISCH_CHECKED at h'
+    source_check h'
 
 theorem mp_origin (l r out : Thm t) (h : MP t l r = .ok out) :
     out.origin = (t.origin.join l.origin).join r.origin := by
@@ -120,12 +131,12 @@ theorem subst_origin (rs : List (RawTerm × Thm t)) (p : RawTerm) (th out : Thm 
 
 theorem declareType_origin (name : QName) (arity : Nat) (e : TheoryExtension t)
     (h : DECLARE_TYPE t name arity = .ok e) : e.target.origin = t.origin := by
-  unfold DECLARE_TYPE at h
+  unfold DECLARE_TYPE DECLARE_TYPE_VALID at h
   source_check h
 
 theorem declareConstant_origin (name : QName) (ty : HolType) (e : TheoryExtension t)
     (h : DECLARE_CONSTANT t name ty = .ok e) : e.target.origin = t.origin := by
-  unfold DECLARE_CONSTANT at h
+  unfold DECLARE_CONSTANT DECLARE_CONSTANT_VALID at h
   source_check h
 
 theorem markTheory_origin (source : Source) (e : TheoryExtension t)

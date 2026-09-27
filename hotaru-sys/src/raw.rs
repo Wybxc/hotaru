@@ -27,14 +27,20 @@ unsafe extern "C" {
     pub fn hotaru_lean_term_imp(arg0: Obj, arg1: Obj) -> Obj;
 
     pub fn hotaru_lean_check(arg0: Obj, arg1: Obj) -> Obj;
+    pub fn hotaru_lean_check_term(arg0: Obj, arg1: Obj) -> Obj;
+    pub fn hotaru_lean_checked_type(arg0: Obj, arg1: Obj) -> Obj;
     pub fn hotaru_lean_foundation(arg0: Obj, arg1: u64) -> Obj;
 
     pub fn hotaru_lean_assume(arg0: Obj, arg1: Obj) -> Obj;
+    pub fn hotaru_lean_assume_checked(arg0: Obj, arg1: Obj) -> Obj;
     pub fn hotaru_lean_refl(arg0: Obj, arg1: Obj) -> Obj;
+    pub fn hotaru_lean_refl_checked(arg0: Obj, arg1: Obj) -> Obj;
     pub fn hotaru_lean_beta(arg0: Obj, arg1: Obj) -> Obj;
+    pub fn hotaru_lean_beta_checked(arg0: Obj, arg1: Obj) -> Obj;
     pub fn hotaru_lean_abs(arg0: Obj, arg1: Obj, arg2: Obj, arg3: Obj) -> Obj;
     pub fn hotaru_lean_mk_comb(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
     pub fn hotaru_lean_disch(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
+    pub fn hotaru_lean_disch_checked(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
     pub fn hotaru_lean_mp(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
     pub fn hotaru_lean_symm(arg0: Obj, arg1: Obj) -> Obj;
     pub fn hotaru_lean_trans(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;

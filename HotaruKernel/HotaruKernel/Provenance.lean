@@ -1,4 +1,4 @@
-import Mathlib.Data.List.Dedup
+import Mathlib.Data.List.Nodup
 import Aesop
 
 /-! Provenance describes construction dependencies, not authenticity of artifacts. -/
@@ -31,25 +31,64 @@ structure Origin where
   history : Trace
   sources : List Source
   exact : ∀ s, s ∈ sources ↔ Depends history s
+  nodup : sources.Nodup
 
-def Origin.local : Origin := ⟨.local, [], by
-  intro s
-  constructor
-  · simp
-  · intro h; cases h⟩
-
-def Origin.source (s : Source) : Origin := ⟨.source s, [s], by
-  intro x
-  constructor
-  · intro h
-    obtain rfl := List.mem_singleton.mp h
-    exact .source
-  · intro h; cases h; simp⟩
-
-def Origin.join (a b : Origin) : Origin :=
-  ⟨.join a.history b.history, (a.sources ++ b.sources).eraseDups, by
+def Origin.local : Origin where
+  history := .local
+  sources := []
+  exact := by
     intro s
-    simp only [List.mem_eraseDups, List.mem_append, a.exact, b.exact]
+    constructor
+    · simp
+    · intro h; cases h
+  nodup := by simp
+
+def Origin.source (s : Source) : Origin where
+  history := .source s
+  sources := [s]
+  exact := by
+    intro x
+    constructor
+    · intro h
+      obtain rfl := List.mem_singleton.mp h
+      exact .source
+    · intro h; cases h; simp
+  nodup := by simp
+
+private def unionSources (a b : List Source) : List Source :=
+  if a = [] then b
+  else if b = [] then a
+  else if a = b then a
+  else a ++ b.filter (fun s => decide (s ∉ a))
+
+private theorem mem_unionSources (a b : List Source) (s : Source) :
+    s ∈ unionSources a b ↔ s ∈ a ∨ s ∈ b := by
+  unfold unionSources
+  split_ifs with ha hb hab
+  · simp [ha]
+  · simp [hb]
+  · simp [hab]
+  · simp; tauto
+
+private theorem nodup_unionSources (a b : List Source)
+    (ha : a.Nodup) (hb : b.Nodup) : (unionSources a b).Nodup := by
+  unfold unionSources
+  split_ifs with h₁ h₂ h₃
+  · exact hb
+  · exact ha
+  · exact ha
+  · apply List.nodup_append.mpr
+    refine ⟨ha, hb.filter _, ?_⟩
+    intro x hx y hy hxy
+    have hy' : y ∉ a := by simpa using (List.mem_filter.mp hy).2
+    exact hy' (hxy ▸ hx)
+
+def Origin.join (a b : Origin) : Origin where
+  history := .join a.history b.history
+  sources := unionSources a.sources b.sources
+  exact := by
+    intro s
+    simp only [mem_unionSources, a.exact, b.exact]
     constructor
     · rintro (h | h)
       · exact .left h
@@ -57,7 +96,8 @@ def Origin.join (a b : Origin) : Origin :=
     · intro h
       cases h with
       | left h => exact Or.inl h
-      | right h => exact Or.inr h⟩
+      | right h => exact Or.inr h
+  nodup := nodup_unionSources a.sources b.sources a.nodup b.nodup
 
 theorem Origin.complete (o : Origin) : Depends o.history s → s ∈ o.sources :=
   (o.exact s).mpr
@@ -73,7 +113,7 @@ theorem Origin.kind_absent (o : Origin) (kind : Kind)
 
 @[simp] theorem Origin.mem_join (a b : Origin) :
     s ∈ (a.join b).sources ↔ s ∈ a.sources ∨ s ∈ b.sources := by
-  simp [Origin.join]
+  exact mem_unionSources a.sources b.sources s
 
 def Origin.collect (context : Origin) (premises : List Origin) : Origin :=
   premises.foldl Origin.join context

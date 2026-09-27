@@ -9,7 +9,8 @@ variable {src : Source}
 theorem checkStep_context_preserved (s : State) (c : Command) (step : CheckedStep s c)
     (h : checkStep s c = .ok step) (hs : src ∈ s.theory.origin.sources) :
     src ∈ step.state.theory.origin.sources := by
-  cases c <;> simp only [checkStep, Kernel.DECLARE_TYPE, Kernel.DECLARE_CONSTANT] at h
+  cases c <;> simp only [checkStep, Kernel.DECLARE_TYPE_VALID,
+    Kernel.DECLARE_CONSTANT_VALID] at h
   all_goals source_check h
   all_goals simp only [CheckedStep.state, ConstantDefinition.extension,
     ConstantDefinition.target, TypeDefinition.extension, TypeDefinition.target,

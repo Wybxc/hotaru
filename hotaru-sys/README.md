@@ -43,6 +43,14 @@ fn main() -> Result<()> {
 }
 ```
 
+Repeated inference on the same term can reuse one checked representation.
+`Theory::check_term(&term)` returns a `CheckedTerm` for that exact theory;
+`refl_checked`, `assume_checked`, `beta_checked`, and `disch_checked` accept it
+without checking the raw syntax again. A checked term retains its typed Lean
+tree, so release the raw term when it is no longer needed and drop the checked
+handle when reuse ends. A descendant or sibling theory must check the term in
+its own context.
+
 The inference methods correspond to the thirteen Lean kernel interfaces.
 They include assumption and reflexivity, beta conversion, equality and
 implication rules, and term and type substitution.
@@ -62,8 +70,8 @@ including structurally identical sibling extensions; use
 extension path.
 
 All handles manage their Lean references automatically on one runtime thread.
-`Type`, `Term`, `Theory`, and `Theorem` support `Clone` and release their
-references on drop, but they are neither `Send` nor `Sync`. The first thread
+`Type`, `Term`, `CheckedTerm`, `Theory`, and `Theorem` support `Clone` and
+release their references on drop, but they are neither `Send` nor `Sync`. The first thread
 to initialize Lean owns subsequent use, and initialization from another
 thread returns `Error::WrongThread`. A second, independently initialized
 Lean runtime in the same process is unsupported. The reference adapter is in

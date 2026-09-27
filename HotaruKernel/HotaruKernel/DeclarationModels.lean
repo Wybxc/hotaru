@@ -74,7 +74,8 @@ theorem Kernel.declareType_model {t : Theory} (n : QName) (arity : Nat)
       Models e.target q ∧ q.restrict e.extension.signature = p := by
   unfold DECLARE_TYPE at he
   split at he
-  · split at he
+  · unfold DECLARE_TYPE_VALID at he
+    split at he
     · rename_i fresh
       cases he
       exact ⟨p.addType n arity, t.addType_model p hp n arity fresh,
@@ -89,7 +90,8 @@ theorem Kernel.declareConstant_model {t : Theory} (n : QName) (scheme : HolType)
       Models e.target q ∧ q.restrict e.extension.signature = p := by
   unfold DECLARE_CONSTANT at he
   split at he
-  · split at he
+  · unfold DECLARE_CONSTANT_VALID at he
+    split at he
     · rename_i fresh
       split at he
       · cases he

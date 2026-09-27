@@ -130,6 +130,14 @@ fn run_case(
             let expected = Term::equal(&term, &term)?;
             measure(case, trials, warmup, &expected, 0, || theory.refl(&term))
         }
+        "refl_checked" => {
+            let term = build(f, p, case.parameter)?;
+            let expected = Term::equal(&term, &term)?;
+            let checked = theory.check_term(&term)?;
+            measure(case, trials, warmup, &expected, 0, || {
+                theory.refl_checked(&checked)
+            })
+        }
         "refl_build" => {
             let term = build(f, p, case.parameter)?;
             let expected = Term::equal(&term, &term)?;
