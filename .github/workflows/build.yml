@@ -1,4 +1,4 @@
-name: Build and test
+name: Build
 
 on:
   push:
@@ -41,28 +41,3 @@ jobs:
       - name: Build Rust targets
         if: runner.os != 'Windows'
         run: cargo build --workspace --all-targets --locked
-
-      - name: Test Lean kernel
-        if: runner.os == 'Linux'
-        working-directory: HotaruKernel
-        run: lake test
-      - name: Audit axioms
-        if: runner.os == 'Linux'
-        working-directory: HotaruKernel
-        run: lake build HotaruKernelAudit
-      - name: Check compiled declarations
-        if: runner.os == 'Linux'
-        working-directory: HotaruKernel
-        run: lake env leanchecker HotaruKernelAudit
-      - name: Check Rust formatting
-        if: runner.os == 'Linux'
-        run: cargo fmt --all --check
-      - name: Check Rust adapter
-        if: runner.os == 'Linux'
-        run: cargo clippy --workspace --all-targets --locked -- -D warnings
-      - name: Test Rust interface
-        if: runner.os == 'Linux'
-        run: cargo test --workspace --locked
-      - name: Run Rust example
-        if: runner.os == 'Linux'
-        run: cargo run -p hotaru-sys --example refl --locked

@@ -1,0 +1,43 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      LEAN_NUM_THREADS: 2
+    steps:
+      - uses: actions/checkout@v5
+      - name: Test Lean kernel
+        uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: HotaruKernel
+          build: "false"
+          test: "true"
+          lint: "false"
+          leanchecker: "false"
+      - name: Audit axioms
+        working-directory: HotaruKernel
+        run: lake build HotaruKernelAudit
+      - name: Check compiled declarations
+        working-directory: HotaruKernel
+        run: lake env leanchecker HotaruKernelAudit
+      - name: Check Rust formatting
+        run: cargo fmt --all --check
+      - name: Install bindgen prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang libclang-dev
+      - name: Check Rust adapter
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Test Rust interface
+        run: cargo test --workspace --locked
+      - name: Run Rust example
+        run: cargo run -p hotaru-sys --example refl --locked
