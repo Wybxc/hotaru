@@ -1,30 +1,33 @@
 # hotaru-sys
 
-Safe Rust handles for Hotaru's verified Lean kernel. Ownership, error conversion,
-and theory identity checks are implemented in Rust. Reference management calls
-Lean's own runtime functions through generated bindings.
-There is no public C API, C header, JSON protocol, or handwritten C shim.
-Logical operations still execute the verified Lean definitions through private
-native bindings.
+`hotaru-sys` gives Rust programs managed access to HotaruKernel's Lean
+implementation. Rust owns handle lifetimes, error conversion, and theory
+identity checks; Lean checks logical inputs and constructs the theorems. The
+native bridge is private, so the crate does not implement a second set of
+inference rules.
 
-## Build and use
+## Logical contract
 
-Run from the repository root with Cargo and Lake on PATH:
+Rust inference methods call the Lean operations covered by the kernel's
+soundness proof. A successful call returns a theorem whose Lean value carries
+its assumptions, conclusion, and derivation. In every model satisfying all
+axioms of the theorem's theory, its conclusion holds whenever its assumptions
+hold. The [kernel README](../HotaruKernel/README.md) explains this guarantee and
+the separate proof that conservative theory construction preserves a model.
 
-```sh
-cargo build -p hotaru-sys
-cargo test --workspace
-cargo run -p hotaru-sys --example refl
-```
+The logical guarantee depends on the theory in which a theorem was produced.
+An assumption-free conclusion is satisfiable when that theory has a model, but
+`add_axiom` may destroy model existence. Its returned theorem is sound relative
+to models satisfying the new axiom; the call does not establish consistency.
 
-The build script invokes `lake build hotaruLean` in the sibling Lean package.
-The pinned Lean 4.29.0 and its locked dependencies must be available.
-Building also requires libclang and a C compiler. On Debian/Ubuntu, install
-`clang libclang-dev`; on macOS, install Xcode Command Line Tools. Set
-`LIBCLANG_PATH` if libclang is installed outside its usual search locations.
-The adapter
-supports native 64-bit little-endian macOS and Linux builds; cross compilation
-and a separately initialized Lean runtime in the same process are unsupported.
+## Using the kernel
+
+The public handles keep Rust syntax construction separate from Lean validation.
+`Type` and `Term` constructors build raw syntax, while `Theory::check` and
+inference methods validate it in the current theory. `Theory::new()` starts
+from the logical foundation, and `Theory::foundation` retrieves its axiom
+theorems. Logical failures return `Error::Kernel` through `Result<T, Error>`;
+the public methods are defined in [src/lib.rs](src/lib.rs).
 
 ```rust
 use hotaru_sys::{Result, Term, Theory, Type};
@@ -34,104 +37,84 @@ fn main() -> Result<()> {
     let boolean = Type::bool()?;
     let p = Term::free("p", &boolean)?;
     let theorem = theory.refl(&p)?;
+
     assert_eq!(theorem.conclusion(), Term::equal(&p, &p)?);
     Ok(())
 }
 ```
 
-Type and term constructors construct raw syntax. `Theory::check` and inference
-operations validate it using the Lean kernel. Strings are Rust UTF-8 strings and
-preserve embedded NUL bytes. Names combine a theory scope and a local name.
+The inference methods correspond to the thirteen Lean kernel interfaces.
+They include assumption and reflexivity, beta conversion, equality and
+implication rules, and term and type substitution.
 
-## Ownership and theories
+The theory API provides checked declarations and definitions. `Theory`
+exposes type and constant declarations and definitions; type definitions
+require a theorem proving their defining predicate nonempty.
 
-`Type`, `Term`, `Theory`, and `Theorem` own their references, support `Clone`,
-and release them on drop. Their fields are private. They are neither `Send` nor
-`Sync`; all use belongs to the first thread that initializes the runtime.
-Attempts to initialize from another thread return `Error::WrongThread`.
-In native integration tests, keep kernel scenarios within one test thread.
+## Theories and ownership
 
-Theory extensions return a new immutable theory. Definitions also return a
-theorem owned by that new theory. A theorem retains its owner even if the original
-theory handle is dropped. Inference rejects theorems from other theory identities,
-including structurally identical siblings. `theorem.rebase(&descendant)` explicitly
-transports a theorem along verified extension steps. Type definitions require
-a nonemptiness theorem as a mandatory argument.
+Theory handles preserve the identity of an immutable theory. An extension
+returns a new handle, and a definition also returns a theorem owned by that
+new theory. A theorem keeps its theory alive even if another handle to that
+theory is dropped. Inference rejects theorems from other theory identities,
+including structurally identical sibling extensions; use
+`theorem.rebase(&descendant)` to transport a theorem along its checked
+extension path.
 
-The inference methods are `assume`, `refl`, `beta`, `abs`, `mk_comb`, `subst`,
-`inst_type`, `disch`, `mp`, `inst`, `trans`, `symm`, and `eq_mp`.
-Failures use `Result<T, Error>`, with logical errors in `Error::Kernel`.
-`add_axiom` gives conditional soundness relative to models satisfying the new
-axiom; it does not guarantee consistency.
+All handles manage their Lean references automatically on one runtime thread.
+`Type`, `Term`, `Theory`, and `Theorem` support `Clone` and release their
+references on drop, but they are neither `Send` nor `Sync`. The first thread
+to initialize Lean owns subsequent use, and initialization from another
+thread returns `Error::WrongThread`. A second, independently initialized
+Lean runtime in the same process is unsupported. The reference adapter is in
+[src/runtime.rs](src/runtime.rs).
 
 ## Provenance
 
-Lean's core `Theory` and `Thm` store sources directly. Every native inference and
-theory extension calls the core kernel, whose operations prove source propagation.
-Rust does not compute or merge sources itself.
+Lean records and propagates sources as part of each theory and theorem.
+`Theory::sources()` and `Theorem::sources()` expose the distinct sources
+inherited from the theory and inference premises; Rust does not merge them.
+`Source` identifies a claimed theory file or checkpoint by an artifact string.
+Treat returned sources as a set, because their order is not a persistent
+identifier.
 
-`Source` contains a `SourceKind::TheoryFile` or `SourceKind::Checkpoint` and an
-artifact string. `Theory::sources()` and `Theorem::sources()` return distinct
-sources, including inherited context dependencies. Treat these lists as sets;
-their ordering is not a persistent identifier.
+Source annotations add context without changing logical validity.
+`with_source(&source)` returns a new descendant when called on a theory and a
+new handle in the same theory when called on a theorem. Existing theorems
+must be rebased to an annotated descendant theory before use there. A source
+label does not load a file, authenticate an artifact, or replace a proof.
 
-`with_source(&source)` adds a claimed source without removing existing sources.
-On a theory it returns a new descendant; existing theorem handles must be rebased
-explicitly. On a theorem it returns a new handle in the same theory.
-These methods annotate already valid objects. They do not load files, bypass
-proofs, or establish artifact authenticity.
+## Build and deployment
 
-```rust
-use hotaru_sys::{Result, Source, SourceKind, Term, Theory, Type};
+The crate builds against the sibling Lean checkout and its pinned Lean 4.29.0
+toolchain. Cargo invokes `lake build hotaruLean` and requires a C compiler and
+libclang to generate bindings from the selected Lean runtime header. On
+Debian or Ubuntu, install `clang libclang-dev`; on macOS, install Xcode
+Command Line Tools. Set `LIBCLANG_PATH` when libclang is outside the usual
+search locations. The crate requires this sibling checkout and is not a
+standalone crates.io distribution.
 
-fn main() -> Result<()> {
-    let base = Theory::new()?;
-    let source = Source::new(SourceKind::TheoryFile, "arithmetic");
-    let theory = base.with_source(&source)?;
-    let p = Term::free("p", &Type::bool()?)?;
-    let theorem = theory.refl(&p)?;
+Native builds target 64-bit little-endian macOS and Linux. Cross compilation
+is unsupported because the Lean library and Rust target must match. Run the
+following commands from the repository root:
 
-    assert_eq!(theorem.sources()?, vec![source]);
-    Ok(())
-}
+```sh
+cargo build -p hotaru-sys
+cargo test --workspace
+cargo run -p hotaru-sys --example refl
 ```
 
-Even inference without theorem premises inherits the theory's sources.
-A type definition also passes its nonemptiness proof's sources into the new
-theory, so later proofs retain that dependency. All supplied SUBST equations
-contribute sources, including equations unused by the template. Failed calls
-leave existing handles unchanged.
+Downstream executables must be able to load the Lean shared libraries.
+Tests and examples receive build-tree runtime search paths, but applications
+must set their own paths or deploy the libraries in a loader-visible location.
+A downstream build script can use `DEP_HOTARU_LEAN_LIB_DIR` and
+`DEP_HOTARU_LEAN_RUNTIME_DIR` to configure those paths.
 
-Lean proves exact propagation against an independent source-reachability
-relation, and that absence of a source kind excludes dependencies of that kind.
-The tracked history is a shared provenance graph, not a stored HOL proof.
-These guarantees concern construction history, not whether an alternative proof
-could avoid the source, and do not establish that a source is trustworthy.
+## Trust boundary
 
-## Linking and trust
-
-At build time, bindgen reads `include/lean/lean.h` from the selected Lean
-toolchain and generates only the runtime bindings used by this crate.
-Its [static-function wrapper support](https://rust-lang.github.io/rust-bindgen/faq.html#why-isnt-bindgen-generating-bindings-to-inline-functions)
-generates C bridges for the header's inline reference counting, constructor,
-string, and boxing functions. The `cc` build dependency compiles those bridges.
-Both generated Rust and C files stay in Cargo's `OUT_DIR`.
-Rust does not duplicate object layouts, pointer tagging, or reference counting.
-The Lean-generated kernel exports and initialization entry points are absent
-from `lean.h`, so their private declarations remain in `src/raw.rs`.
-
-Cargo builds a Rust library and links the internal `libhotaru_lean` shared library
-and Lean runtime libraries. Its own tests and examples get build-tree rpaths.
-Downstream executables must supply their own runtime search paths or deploy these
-shared libraries in a loader-visible directory. A downstream build script can
-read `DEP_HOTARU_LEAN_LIB_DIR` and `DEP_HOTARU_LEAN_RUNTIME_DIR` to set rpaths.
-This package currently requires the sibling Lean source checkout; it is not a
-self-contained crates.io distribution.
-
-Lean proves the kernel's logical soundness and extension properties.
-Rust's unsafe runtime adapter, its identity bookkeeping, bindgen, the C compiler,
-Lean's native compiler, the Rust compiler, linker, and runtime are outside those
-proofs. Bindgen generates the layout assertions from the pinned header, and
-build-time checks enforce the supported toolchain and targets.
-Integration tests exercise every inference entry point, rejected side conditions,
-polymorphic substitution, theory ancestry, definitions, and object lifetimes.
+The Lean proof covers logical operations and conservative theory extensions
+as Lean definitions. Rust's unsafe adapter, native bindings, identity
+bookkeeping, compilers, linker, and runtime are outside those proofs. Bindings
+are generated from the pinned Lean header rather than relying on handwritten
+runtime object layouts. Integration tests exercise the public inference and
+theory workflows, but they do not extend the formal proof boundary.
