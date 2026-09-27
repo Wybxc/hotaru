@@ -110,6 +110,9 @@ must set their own paths or deploy the libraries in a loader-visible location.
 A downstream build script can use `DEP_HOTARU_LEAN_LIB_DIR` and
 `DEP_HOTARU_LEAN_RUNTIME_DIR` to configure those paths.
 
+The [kernel benchmark protocol](../benchmarks/README.md) compares this public
+interface with HOL Light and HOL4 under shared workloads.
+
 ## Trust boundary
 
 The Lean proof covers logical operations and conservative theory extensions
