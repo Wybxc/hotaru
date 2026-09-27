@@ -24,8 +24,9 @@ kernel calls, and the complete operation-sequence test. Proof examples use
 `decide +kernel`, not native proof evaluation. Additional handle-interface
 regression proofs use the same kernel-checked evaluation.
 The axiom audit is a separate build target.
-The root repository's `.github/workflows/lean.yml` explicitly runs the build,
-tests, axiom audit, and independent check of the compiled declarations.
+The root repository's `.github/workflows/build.yml` builds on Linux, macOS, and
+Windows. `.github/workflows/test.yml` runs the tests, axiom audit, and independent
+check of the compiled declarations on Linux.
 The template workflows nested inside this package are not active root workflows.
 
 ## Source layout
