@@ -44,6 +44,25 @@ def implicationView : (p : Formula s) → Except KernelError (ImplicationView p)
 
 namespace Kernel
 
+private def unionAssumptions {t : Theory} (a b : List (Formula t.signature)) :
+    List (Formula t.signature) :=
+  match a, b with
+  | [], bs => bs
+  | as, [] => as
+  | as, bs => (as ++ bs).eraseDups
+
+private theorem mem_unionAssumptions {t : Theory} {a b : List (Formula t.signature)}
+    {x : Formula t.signature} :
+    x ∈ a ∨ x ∈ b ↔ x ∈ unionAssumptions a b := by
+  cases a <;> cases b <;>
+    simp [unionAssumptions, List.mem_eraseDups, or_comm, or_assoc, or_left_comm]
+
+private theorem mem_unionAssumptions_swap {t : Theory} {a b : List (Formula t.signature)}
+    {x : Formula t.signature} :
+    x ∈ b ∨ x ∈ a ↔ x ∈ unionAssumptions a b := by
+  cases a <;> cases b <;>
+    simp [unionAssumptions, List.mem_eraseDups, or_comm, or_assoc, or_left_comm]
+
 def CONTRACT (t : Theory) (th : Thm t) : Thm t :=
   if th.assumptions.length ≤ 1 then th else
     ⟨th.assumptions.eraseDups, th.conclusion,
@@ -144,10 +163,11 @@ def DEDUCT_ANTISYM (t : Theory) (th1 th2 : Thm t) : Thm t := Id.run do
   let ax : Derivable t [] (impAntisym p q) := .booleanAxiom (.impAntisym p q)
   let both : Derivable t (ks ++ hs) (.equal p q) := by
     simpa only [List.nil_append] using Derivable.mp (Derivable.mp ax d2) d1
-  let assumptions := (hs ++ ks).eraseDups
+  let assumptions := unionAssumptions hs ks
   let derivation : Derivable t assumptions (.equal p q) :=
     .context (fun r => by
-      simp only [assumptions, List.mem_eraseDups, List.mem_append, or_comm]) both
+      simpa only [assumptions, List.mem_append] using
+        mem_unionAssumptions_swap (a := hs) (b := ks) (x := r)) both
   return ⟨assumptions, .equal p q, derivation,
     (t.origin.join th1.origin).join th2.origin⟩
 
@@ -186,10 +206,11 @@ def EQ_MP (t : Theory) (te tp : Thm t) : Except KernelError (Thm t) := do
         subst a
         rw [← he]; exact te.derivation
       have dp : Derivable t tp.assumptions antecedent := .conversion hp.symm tp.derivation
-      let assumptions := (te.assumptions ++ tp.assumptions).eraseDups
+      let assumptions := unionAssumptions te.assumptions tp.assumptions
       let derivation : Derivable t assumptions consequent :=
         .context (fun r => by
-          simp only [assumptions, List.mem_eraseDups, List.mem_append]) (.eqMp de dp)
+          simpa only [assumptions, List.mem_append] using
+            mem_unionAssumptions (a := te.assumptions) (b := tp.assumptions) (x := r)) (.eqMp de dp)
       return ⟨assumptions, consequent, derivation,
         (t.origin.join te.origin).join tp.origin⟩
     else .error .termMismatch

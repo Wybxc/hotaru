@@ -854,6 +854,8 @@ impl<'a> Machine<'a> {
                 let premise = self.proof()?;
                 let equality = self.proof()?;
                 let proof = if let (Some(premise), Some(equality)) = (premise, equality) {
+                    let equality_assumptions = equality.assumptions();
+                    let premise_assumptions = premise.assumptions();
                     let equation = equality
                         .equation(
                             &mut self.bridge_cache,
@@ -879,7 +881,13 @@ impl<'a> Machine<'a> {
                             describe(&premise.conclusion()).unwrap_or_default()
                         )
                     })?;
-                    let assumptions = result.assumption_count();
+                    let assumptions = if equality_assumptions == 0 {
+                        premise_assumptions
+                    } else if premise_assumptions == 0 {
+                        equality_assumptions
+                    } else {
+                        result.assumption_count()
+                    };
                     Some(Proof::raw(result, assumptions))
                 } else {
                     None

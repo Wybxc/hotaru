@@ -11,15 +11,17 @@ timing boundary are described in the [protocol](README.md).
 | Eager equality conversion, Sep 27 | 126.094 ms (119.443-136.569) | 13.643 ms (13.134-14.154) | 65.603 ms (62.010-79.366) |
 | On-demand equality conversion, Sep 28 | 68.362 ms (64.641-81.715) | 14.787 ms (13.555-17.609) | 66.779 ms (62.919-76.955) |
 | On-demand conversion with transparent public API, Sep 28 | 50.415 ms (45.833-62.300) | 13.080 ms (12.281-13.917) | 63.085 ms (57.936-82.894) |
-| Cached ordinary-rule bridge with HOL4-style `inst_ty_term` and semantic context contraction, current public API, Sep 28 | 30.239 ms (29.828-31.669) | 13.876 ms (13.140-14.914) | 65.207 ms (60.550-74.223) |
+| Cached ordinary-rule bridge with HOL4-style `inst_ty_term` and semantic context contraction, current public API, Sep 28 | 27.118 ms (26.820-29.127) | 13.148 ms (12.575-13.378) | 63.206 ms (58.058-67.342) |
 
 On-demand conversion reduces Hotaru's median import time by about 46% while
 leaving the checked article and kernel rules unchanged. A same-day rerun of
 the preserved eager binary measured 126.393 ms (125.306-127.008) over seven
 trials, confirming an approximately 1.85x speedup under the new run's machine
-conditions. Hotaru's new median is close to HOL4's on this import workload;
-HOL Light remains about 4.6 times faster. The original 9.2x gap to HOL Light
-was therefore substantially caused by eager conversions in Hotaru's importer.
+conditions. The current cached ordinary-rule bridge and semantic context
+normalization measure 27.118 ms per import in the combined run, while HOL
+Light measures 13.148 ms and HOL4 measures 63.206 ms. The original 9.2x gap
+to HOL Light was therefore substantially caused by eager conversions in
+Hotaru's importer.
 
 The current adapter converts an equality proof only when a later rule needs its
 other representation, while keeping that representation private to the
@@ -32,8 +34,11 @@ kernel-checked proof; no certificate rule or theorem check is skipped.
 `EQ_MP` and `DEDUCT_ANTISYM` return semantically equivalent assumption lists
 with duplicates removed inside their verified rules, so the adapter does not
 expose a housekeeping fusion rule or issue a second contraction for those
-results. The combined type/term instantiation path is exposed as the
-HOL4-style `inst_ty_term` rule.
+results. Their verified implementations pass through the nonempty list when
+the other input is empty and allocate a deduplicated union only when both
+inputs are nonempty; the adapter uses the same fact to avoid an FFI count
+lookup in the empty-context cases. The combined type/term instantiation path
+is exposed as the HOL4-style `inst_ty_term` rule.
 
 The adapter also records the representation produced by each certificate rule
 instead of inspecting every returned theorem conclusion through the FFI. This
@@ -67,9 +72,9 @@ rather than isolated proof-cache sizes.
 The remaining import-time difference does not isolate the Lean kernel.
 Certificate reading, term construction, Rust-to-Lean calls, conversion proofs,
 and explicit assumption compaction remain inside Hotaru's timed interval. The
-current source-synchronized rerun is about 2.2 times slower than HOL Light and
-about 2.2 times faster than HOL4 on this workload, so it does not establish a lead over both
-systems. The separate [public API results](../RESULTS.md) compare common
+current source-synchronized rerun is about 2.1 times slower than HOL Light and
+about 2.3 times faster than HOL4 on this workload, so it does not establish a
+lead over both systems. The separate [public API results](../RESULTS.md) compare common
 kernel-rule workloads and show where Hotaru is faster or slower through that
 interface.
 
