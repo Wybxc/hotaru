@@ -44,7 +44,7 @@ def implicationView : (p : Formula s) → Except KernelError (ImplicationView p)
 
 namespace Kernel
 
-def COMPACT_ASSUMPTIONS (t : Theory) (th : Thm t) : Thm t :=
+def CONTRACT (t : Theory) (th : Thm t) : Thm t :=
   if th.assumptions.length ≤ 1 then th else
     ⟨th.assumptions.eraseDups, th.conclusion,
       .context (fun _ => by simp) th.derivation, th.origin⟩
@@ -186,7 +186,11 @@ def EQ_MP (t : Theory) (te tp : Thm t) : Except KernelError (Thm t) := do
         subst a
         rw [← he]; exact te.derivation
       have dp : Derivable t tp.assumptions antecedent := .conversion hp.symm tp.derivation
-      return ⟨te.assumptions ++ tp.assumptions, consequent, .eqMp de dp,
+      let assumptions := (te.assumptions ++ tp.assumptions).eraseDups
+      let derivation : Derivable t assumptions consequent :=
+        .context (fun r => by
+          simp only [assumptions, List.mem_eraseDups, List.mem_append]) (.eqMp de dp)
+      return ⟨assumptions, consequent, derivation,
         (t.origin.join te.origin).join tp.origin⟩
     else .error .termMismatch
   else .error .notBoolean

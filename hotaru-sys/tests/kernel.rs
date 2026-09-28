@@ -75,15 +75,12 @@ fn kernel_handles() -> Result<()> {
     assert_eq!(antisym.conclusion(), Term::equal(&p, &q)?);
     assert_eq!(antisym.assumptions()?, vec![p.clone(), q.clone()]);
     let duplicate = base.eq_mp(&antisym, &ap)?;
-    assert_eq!(
-        duplicate.assumptions()?,
-        vec![p.clone(), q.clone(), p.clone()]
-    );
-    let compact = base.compact_assumptions(&duplicate)?;
+    assert_eq!(duplicate.assumptions()?, vec![p.clone(), q.clone()]);
+    let compact = base.contract(&duplicate)?;
     assert_eq!(compact.conclusion(), duplicate.conclusion());
     assert_eq!(compact.assumptions()?, vec![p.clone(), q.clone()]);
     assert_eq!(
-        base.compact_assumptions(&base.inst(&[(&q, &p)], &antisym)?)?
+        base.contract(&base.inst(&[(&q, &p)], &antisym)?)?
             .assumptions()?,
         vec![p.clone()]
     );
@@ -91,7 +88,7 @@ fn kernel_handles() -> Result<()> {
     let xb_eq = Term::equal(&xb, &xb)?;
     let typed = base.deduct_antisym(&base.assume(&xa_eq)?, &base.assume(&xb_eq)?)?;
     assert_eq!(
-        base.compact_assumptions(&base.inst_type(&[("a", &b)], &typed)?)?
+        base.contract(&base.inst_type(&[("a", &b)], &typed)?)?
             .assumptions()?,
         vec![xb_eq]
     );
@@ -104,10 +101,6 @@ fn kernel_handles() -> Result<()> {
     assert_eq!(base.trans(&rp, &sym)?.conclusion(), eqpp);
     assert_eq!(base.eq_mp(&rp, &ap)?.conclusion(), p);
     assert_eq!(
-        base.eq_mp_then_compact(&antisym, &ap)?.assumptions()?,
-        vec![p.clone(), q.clone()]
-    );
-    assert_eq!(
         base.inst(&[(&p, &q)], &rp)?.conclusion(),
         Term::equal(&q, &q)?
     );
@@ -116,7 +109,7 @@ fn kernel_handles() -> Result<()> {
         Term::equal(&xb, &xb)?
     );
     assert_eq!(
-        base.inst_type_then_inst(&[("a", &b)], &[(&p, &q)], &rp)?
+        base.inst_ty_term(&[("a", &b)], &[(&p, &q)], &rp)?
             .conclusion(),
         Term::equal(&q, &q)?
     );
@@ -214,7 +207,7 @@ fn kernel_handles() -> Result<()> {
     let foreign = other.refl(&p)?;
     rejects(base.trans(&rp, &foreign), Error::TheoryMismatch);
     rejects(base.deduct_antisym(&ap, &foreign), Error::TheoryMismatch);
-    rejects(base.compact_assumptions(&foreign), Error::TheoryMismatch);
+    rejects(base.contract(&foreign), Error::TheoryMismatch);
     rejects(other.refl_checked(&checked_p), Error::TheoryMismatch);
     rejects(other.disch_checked(&checked_p, &ap), Error::TheoryMismatch);
     rejects(foreign.rebase(&base), Error::TheoryMismatch);

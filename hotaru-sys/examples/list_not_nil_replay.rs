@@ -403,7 +403,7 @@ impl Proof {
             };
             if stored.assumptions > compact_threshold {
                 *compact_calls += 1;
-                let compacted = native(theory.compact_assumptions(&stored.theorem))?;
+                let compacted = native(theory.contract(&stored.theorem))?;
                 *stored = StoredTheorem::new(compacted);
             }
             Ok(())
@@ -853,9 +853,7 @@ impl<'a> Machine<'a> {
             "eqMp" => {
                 let premise = self.proof()?;
                 let equality = self.proof()?;
-                let mut compacted = false;
                 let proof = if let (Some(premise), Some(equality)) = (premise, equality) {
-                    let assumptions = equality.assumptions() + premise.assumptions();
                     let equation = equality
                         .equation(
                             &mut self.bridge_cache,
@@ -870,17 +868,7 @@ impl<'a> Machine<'a> {
                             &mut self.conversion_boundaries,
                         )
                         .map_err(|error| format!("premise input: {error}"))?;
-                    let compact = assumptions > self.compact_threshold;
-                    if compact {
-                        self.compact_calls += 1;
-                        compacted = true;
-                    }
-                    let result = if compact {
-                        self.theory.eq_mp_then_compact(&equation, &premise)
-                    } else {
-                        self.theory.eq_mp(&equation, &premise)
-                    }
-                    .map_err(|error| {
+                    let result = self.theory.eq_mp(&equation, &premise).map_err(|error| {
                         let expected = equation.conclusion().child(0).ok();
                         format!(
                             "{error:?}: equality-left={}, premise={}",
@@ -891,20 +879,12 @@ impl<'a> Machine<'a> {
                             describe(&premise.conclusion()).unwrap_or_default()
                         )
                     })?;
-                    let assumptions = if compact {
-                        result.assumption_count()
-                    } else {
-                        assumptions
-                    };
+                    let assumptions = result.assumption_count();
                     Some(Proof::raw(result, assumptions))
                 } else {
                     None
                 };
-                if compacted {
-                    self.prove_compacted(proof)?;
-                } else {
-                    self.prove(proof)?;
-                }
+                self.prove_compacted(proof)?;
             }
             "subst" => {
                 let proof = self.proof()?;
@@ -952,11 +932,8 @@ impl<'a> Machine<'a> {
                         .map(|(var, term)| (var, term))
                         .collect::<Vec<_>>();
                     if !type_pairs.is_empty() && !term_pairs.is_empty() {
-                        theorem = native(self.theory.inst_type_then_inst(
-                            &type_pairs,
-                            &term_pairs,
-                            &theorem,
-                        ))?;
+                        theorem =
+                            native(self.theory.inst_ty_term(&type_pairs, &term_pairs, &theorem))?;
                     } else if !type_pairs.is_empty() {
                         theorem = native(self.theory.inst_type(&type_pairs, &theorem))?;
                     } else if !term_pairs.is_empty() {

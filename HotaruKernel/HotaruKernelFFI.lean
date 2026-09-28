@@ -110,9 +110,9 @@ def mp (s : Execution.State) (a b : Thm s.theory) : Result (Thm s.theory) :=
 @[export hotaru_lean_deduct_antisym]
 def deductAntisym (s : Execution.State) (a b : Thm s.theory) : Thm s.theory :=
   Kernel.DEDUCT_ANTISYM s.theory a b
-@[export hotaru_lean_compact_assumptions]
-def compactAssumptions (s : Execution.State) (th : Thm s.theory) : Thm s.theory :=
-  Kernel.COMPACT_ASSUMPTIONS s.theory th
+@[export hotaru_lean_contract]
+def contract (s : Execution.State) (th : Thm s.theory) : Thm s.theory :=
+  Kernel.CONTRACT s.theory th
 @[export hotaru_lean_symm]
 def symm (s : Execution.State) (th : Thm s.theory) : Result (Thm s.theory) :=
   result (Kernel.SYM s.theory th)
@@ -122,19 +122,14 @@ def trans (s : Execution.State) (a b : Thm s.theory) : Result (Thm s.theory) :=
 @[export hotaru_lean_eq_mp]
 def eqMp (s : Execution.State) (a b : Thm s.theory) : Result (Thm s.theory) :=
   result (Kernel.EQ_MP s.theory a b)
-@[export hotaru_lean_eq_mp_then_compact]
-def eqMpThenCompact (s : Execution.State) (a b : Thm s.theory) : Result (Thm s.theory) :=
-  result (do
-    let result ← Kernel.EQ_MP s.theory a b
-    return Kernel.COMPACT_ASSUMPTIONS s.theory result)
 @[export hotaru_lean_inst]
 def inst (s : Execution.State) (rs : Array (RawTerm × RawTerm)) (th : Thm s.theory) :
     Result (Thm s.theory) := result (Kernel.INST s.theory rs.toList th)
 @[export hotaru_lean_inst_type]
 def instType (s : Execution.State) (rs : Array (String × HolType)) (th : Thm s.theory) :
     Result (Thm s.theory) := result (Kernel.INST_TYPE s.theory rs.toList th)
-@[export hotaru_lean_inst_type_then_inst]
-def instTypeThenInst (s : Execution.State) (typeRs : Array (String × HolType))
+@[export hotaru_lean_inst_ty_term]
+def instTyTerm (s : Execution.State) (typeRs : Array (String × HolType))
     (termRs : Array (RawTerm × RawTerm)) (th : Thm s.theory) : Result (Thm s.theory) :=
   result (do
     let typed ← Kernel.INST_TYPE s.theory typeRs.toList th

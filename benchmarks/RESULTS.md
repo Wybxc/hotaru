@@ -35,7 +35,7 @@ Lean kernel.
 Assumption handling changes the ranking as the context grows. Hotaru's
 `TRANS` appends assumption lists and takes 469 ns at 64 distinct assumptions
 per premise, while both ML systems take about 4.6-4.7 us. Hotaru defers
-duplicate removal until `COMPACT_ASSUMPTIONS`; that extra work is included
+duplicate removal until the `CONTRACT` structural rule; that extra work is included
 in the [LIST_NOT_NIL import](list_not_nil/RESULTS.md), so the `TRANS` result
 alone is not an end-to-end context-management comparison.
 

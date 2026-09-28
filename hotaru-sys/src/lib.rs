@@ -713,14 +713,12 @@ impl Theory {
         }))
     }
 
-    pub fn compact_assumptions(&self, th: &Theorem) -> Result<Theorem> {
+    /// Applies structural contraction to the theorem's assumption context.
+    pub fn contract(&self, th: &Theorem) -> Result<Theorem> {
         self.owns(th)?;
 
         Ok(self.theorem(unsafe {
-            Owned::from_raw(hotaru_lean_compact_assumptions(
-                self.arg(),
-                th.value.argument(),
-            ))
+            Owned::from_raw(hotaru_lean_contract(self.arg(), th.value.argument()))
         }))
     }
 
@@ -743,22 +741,6 @@ impl Theory {
 
         Ok(self.theorem(unsafe {
             checked(hotaru_lean_eq_mp(
-                self.arg(),
-                a.value.argument(),
-                b.value.argument(),
-            ))?
-        }))
-    }
-
-    /// Applies equality modus ponens and assumption compaction in one
-    /// verified kernel call. This is the same generic composition as calling
-    /// `eq_mp` and then `compact_assumptions`.
-    pub fn eq_mp_then_compact(&self, a: &Theorem, b: &Theorem) -> Result<Theorem> {
-        self.owns(a)?;
-        self.owns(b)?;
-
-        Ok(self.theorem(unsafe {
-            checked(hotaru_lean_eq_mp_then_compact(
                 self.arg(),
                 a.value.argument(),
                 b.value.argument(),
@@ -834,10 +816,9 @@ impl Theory {
         }))
     }
 
-    /// Applies a type substitution followed by a term substitution in one
-    /// verified kernel call. The combined entry point retains both ordinary
-    /// validation steps while removing one FFI round trip.
-    pub fn inst_type_then_inst(
+    /// Applies a HOL4-style combined type and term instantiation rule.
+    /// Both substitutions are validated by the kernel in one FFI call.
+    pub fn inst_ty_term(
         &self,
         type_replacements: &[(&str, &Type)],
         term_replacements: &[(&Term, &Term)],
@@ -846,7 +827,7 @@ impl Theory {
         self.owns(th)?;
 
         Ok(self.theorem(unsafe {
-            checked(hotaru_lean_inst_type_then_inst(
+            checked(hotaru_lean_inst_ty_term(
                 self.arg(),
                 bindings(type_replacements).into_raw(),
                 term_pairs(term_replacements).into_raw(),
