@@ -97,6 +97,16 @@ consume that term without repeating validation. The Boolean antisymmetry
 schema is proved valid in the model semantics rather than assumed as a Lean
 axiom.
 
+Every exported inference operation must have an independent logical meaning.
+An implementation may fuse validation, equality-encoding alignment, or
+assumption contraction when the resulting operation still denotes a recognizable
+HOL rule whose inputs, conclusion, and applicability conditions can be stated
+without referring to the certificate adapter. `INST_TYPE_TERM` is such a rule:
+it denotes simultaneous type and term instantiation. A name that describes an
+execution sequence, such as `eqMpThenCompact`, would expose implementation
+control flow rather than object-logic semantics and is therefore not a valid
+FFI operation.
+
 The theory API controls declarations, definitions, and theorem migration.
 Its operations add types and constants, define constants and nonempty types,
 and move theorems through checked extensions. Theories are immutable, and a
