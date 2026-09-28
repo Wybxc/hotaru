@@ -2,8 +2,8 @@
 
 The fixed-certificate comparison measures complete import of the same
 88,221-line HOL4 proof in all three systems. Historical rows combine standard
-runs with reversed system order, while the Sep 29 row records one
-source-synchronized seven-trial run. The article, external theorem inputs,
+runs with reversed system order, while the Sep 29 rows record
+source-synchronized seven-trial runs. The article, external theorem inputs,
 validation, and timing boundary are described in the [protocol](README.md).
 
 | Adapter and run date | Hotaru | HOL Light | HOL4 |
@@ -13,6 +13,7 @@ validation, and timing boundary are described in the [protocol](README.md).
 | On-demand conversion with transparent public API, Sep 28 | 50.415 ms (45.833-62.300) | 13.080 ms (12.281-13.917) | 63.085 ms (57.936-82.894) |
 | Kernel-resident bidirectional HOL equality normalization with HOL4-style `inst_ty_term`, current public API, Sep 28 | 17.274 ms (16.886-18.613) | 12.869 ms (12.361-13.407) | 61.936 ms (58.488-68.411) |
 | Representation-transparent FFI with one opaque theorem form, Sep 29 | 16.680 ms (16.386-17.588) | 12.992 ms (12.633-13.268) | 62.734 ms (58.972-67.998) |
+| Semantic FFI with reused certificate state and one-pass decoding, Sep 29 | 15.629 ms (15.459-15.930) | 12.953 ms (12.546-14.107) | 63.690 ms (61.617-69.790) |
 
 On-demand conversion reduces Hotaru's median import time by about 46% while
 leaving the checked article and kernel rules unchanged. A same-day rerun of
@@ -20,9 +21,10 @@ the preserved eager binary measured 126.393 ms (125.306-127.008) over seven
 trials, confirming an approximately 1.85x speedup under the new run's machine
 conditions. The current representation-transparent adapter measures 16.680 ms
 per import in the source-synchronized run, while HOL Light measures 12.992 ms
-and HOL4 measures 62.734 ms. This is about 1.28 times slower than HOL Light
-and about 3.8 times faster than HOL4 on this workload; it does not establish a
-lead over both systems.
+and HOL4 measures 62.734 ms. The current semantic-interface adapter measures
+15.629 ms, while HOL Light measures 12.953 ms and HOL4 measures 63.690 ms.
+This is about 1.21 times slower than HOL Light and about 4.1 times faster than
+HOL4 on this workload; it does not establish a lead over both systems.
 
 The current adapter crosses zero representation boundaries because equality
 alignment is part of the ordinary kernel rules. Its single-import trace has 9
@@ -98,4 +100,6 @@ separate tactic measurements. The current public-rule runs are [forward]
 (results/replay-public-ordinary-forward-20260928.json) and [reverse]
 (results/replay-public-ordinary-reverse-20260928.json). The current
 representation-transparent run is [standard]
-(results/replay-transparent-standard-20260929.json).
+(results/replay-transparent-standard-20260929.json). The current optimized
+semantic-interface run is [standard]
+(results/replay-semantic-ffi-optimized-standard-20260929.json).
