@@ -11,15 +11,15 @@ timing boundary are described in the [protocol](README.md).
 | Eager equality conversion, Sep 27 | 126.094 ms (119.443-136.569) | 13.643 ms (13.134-14.154) | 65.603 ms (62.010-79.366) |
 | On-demand equality conversion, Sep 28 | 68.362 ms (64.641-81.715) | 14.787 ms (13.555-17.609) | 66.779 ms (62.919-76.955) |
 | On-demand conversion with transparent public API, Sep 28 | 50.415 ms (45.833-62.300) | 13.080 ms (12.281-13.917) | 63.085 ms (57.936-82.894) |
-| Cached ordinary-rule bridge with HOL4-style `inst_ty_term` and semantic context contraction, current public API, Sep 28 | 27.118 ms (26.820-29.127) | 13.148 ms (12.575-13.378) | 63.206 ms (58.058-67.342) |
+| Cached ordinary-rule bridge with HOL4-style `inst_ty_term` and semantic context contraction, current public API, Sep 28 | 27.600 ms (24.729-30.348) | 13.169 ms (12.695-13.807) | 64.036 ms (58.520-68.639) |
 
 On-demand conversion reduces Hotaru's median import time by about 46% while
 leaving the checked article and kernel rules unchanged. A same-day rerun of
 the preserved eager binary measured 126.393 ms (125.306-127.008) over seven
 trials, confirming an approximately 1.85x speedup under the new run's machine
 conditions. The current cached ordinary-rule bridge and semantic context
-normalization measure 27.118 ms per import in the combined run, while HOL
-Light measures 13.148 ms and HOL4 measures 63.206 ms. The original 9.2x gap
+normalization measure 27.600 ms per import in the combined run, while HOL
+Light measures 13.169 ms and HOL4 measures 64.036 ms. The original 9.2x gap
 to HOL Light was therefore substantially caused by eager conversions in
 Hotaru's importer.
 

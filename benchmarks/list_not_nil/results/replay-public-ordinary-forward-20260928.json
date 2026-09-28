@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "mode": "certificate-import",
-  "created_at_utc": "2026-09-28T13:27:05.086049+00:00",
+  "created_at_utc": "2026-09-28T14:10:30.259544+00:00",
   "host": {
     "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
     "machine": "arm64"
@@ -29,35 +29,35 @@
     "benchmarks/list_not_nil/hol_light_replay.ml": "e08cf6f88c2230caa65f0eb83c11c76aab78df3403b36eaa4325220fac6f417c",
     "benchmarks/list_not_nil/hol4_replay.sml": "1ad8eb2ffac62ce875ef4b037f2d9cb081ba91b1b0cd52175a583753212a1dde",
     "benchmarks/list_not_nil/prepare_hol4_reader.py": "f8033e7a5968a8421a44f3886966642aed664a47c788463775de3b8af0f3c5c7",
-    "hotaru-sys/examples/list_not_nil_replay.rs": "eb11810b9f72846859f586ed0419ec72c110e910c8a7ebd3d4632ecebb0d624c",
+    "hotaru-sys/examples/list_not_nil_replay.rs": "b4aa2ffde5edd4a6c426d76fa6f10381ea9b2e797ad645d3e2f76d0dd16af351",
     "HotaruKernel/HotaruKernel/Equality.lean": "3011b6b7fd53c9a8a6cc46e8f0bf99ca6022d98fb9933c176b15a774c74bd68d",
-    "HotaruKernel/HotaruKernel/Kernel.lean": "de8f2346c02a2ce29acca750640dd4095e93973254a90ffdd3bc6a138b30b78e",
-    "HotaruKernel/HotaruKernelFFI.lean": "e73b8182e267c45e4e3325d580b20016bd06e1b91cd06ddde4caf842bc03d847",
-    "hotaru-sys/src/lib.rs": "1033596a713431a2599f7a4cd0d25abb0ac9c1e9613e65c2d4eedf4f8d180cf7",
-    "hotaru-sys/src/raw.rs": "52c3e2455f8156744f3fe10cf00d6879a584e67f7fa12a7dabf87f5d0674fcf9"
+    "HotaruKernel/HotaruKernel/Kernel.lean": "b03d1beaa8ac4969a4efea2b43aed20afede2f43cf4fe3278688fef3b76bbd8f",
+    "HotaruKernel/HotaruKernelFFI.lean": "7b3245978bb405b7f91458a82e8ac96f1b96dfcd3373fdc23215d4647fa25815",
+    "hotaru-sys/src/lib.rs": "62fac83b033f65fca9230df64df6595b89cd0ad39ec624c1dfc338cd9dd729d3",
+    "hotaru-sys/src/raw.rs": "bd4268dfb0797e13751aff3b453983b5b0127bef8379a09984977fd0fc10d762"
   },
   "results": [
     {
       "system": "hotaru",
       "implementation": {
-        "binary_sha256": "538200f233ce437aa7489824dfdc361031cda133cd24c8900f6e1e16347bac42",
-        "lean_library_sha256": "c3b3471a84f186570787faa1003d7aa44cba1fad3722364a1a42101734f8ec14",
-        "revision": "59ef88ab96fad0a4d509793c866b222eef83b785",
+        "binary_sha256": "9d87b296a9f89b1d0250f97517f7945917b83d9867dc79ba274d448c9333b13b",
+        "lean_library_sha256": "bd674bb812c3f95d6475b5c50ea6373b71287fd721a00bade9f0fc33b53ca82e",
+        "revision": "cb6058091c0d6efb72e34dd8e2a27999e4e447fd",
         "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
         "lean": "Lean (version 4.29.0, arm64-apple-darwin24.6.0, commit 98dc76e3c0a9b856c9b98726b713fb04fab16740, Release)"
       },
       "elapsed_ns": [
-        473606750,
-        479669292,
-        488721792,
-        472312292,
-        475078833,
-        514304083,
-        514826750
+        395663459,
+        405004625,
+        398748917,
+        402554042,
+        417797042,
+        482579959,
+        485568084
       ],
-      "median_ns_per_import": 29979330.75,
-      "min_ns_per_import": 29519518.25,
-      "max_ns_per_import": 32176671.875
+      "median_ns_per_import": 25312789.0625,
+      "min_ns_per_import": 24728966.1875,
+      "max_ns_per_import": 30348005.25
     },
     {
       "system": "hol-light",
@@ -67,17 +67,17 @@
         "library_sha256": "44540d2cbf4e3d8aa1bbb133cf2e85e8b6b17dcfa017fc1375b6fd7fb6251256"
       },
       "elapsed_ns": [
-        223621845,
-        216197967,
-        221176147,
-        210676908,
-        217777013,
-        212477922,
-        219498872
+        211160898,
+        208844900,
+        210912942,
+        203894853,
+        209705114,
+        203117847,
+        210503101
       ],
-      "median_ns_per_import": 13611063.3125,
-      "min_ns_per_import": 13167306.75,
-      "max_ns_per_import": 13976365.3125
+      "median_ns_per_import": 13106569.625,
+      "min_ns_per_import": 12694865.4375,
+      "max_ns_per_import": 13197556.125
     },
     {
       "system": "hol4",
@@ -91,17 +91,17 @@
         "reader_adapter_sha256": "ce51282f4c9c6255eb9f9ddf3835228634170ad66b8b74cf40c5c28779292f5b"
       },
       "elapsed_ns": [
-        1198398000,
-        1032601000,
-        1125683000,
-        1020793000,
-        1019205000,
-        1142314000,
-        1078786000
+        1077340000,
+        1027743000,
+        988746000,
+        1006752000,
+        1072232000,
+        936326000,
+        1005523000
       ],
-      "median_ns_per_import": 67424125.0,
-      "min_ns_per_import": 63700312.5,
-      "max_ns_per_import": 74899875.0
+      "median_ns_per_import": 62922000.0,
+      "min_ns_per_import": 58520375.0,
+      "max_ns_per_import": 67333750.0
     }
   ]
 }
