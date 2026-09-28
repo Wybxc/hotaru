@@ -144,9 +144,11 @@ def DEDUCT_ANTISYM (t : Theory) (th1 th2 : Thm t) : Thm t := Id.run do
   let ax : Derivable t [] (impAntisym p q) := .booleanAxiom (.impAntisym p q)
   let both : Derivable t (ks ++ hs) (.equal p q) := by
     simpa only [List.nil_append] using Derivable.mp (Derivable.mp ax d2) d1
-  let derivation : Derivable t (hs ++ ks) (.equal p q) :=
-    .context (fun _ => by simp only [List.mem_append, or_comm]) both
-  return ⟨hs ++ ks, .equal p q, derivation,
+  let assumptions := (hs ++ ks).eraseDups
+  let derivation : Derivable t assumptions (.equal p q) :=
+    .context (fun r => by
+      simp only [assumptions, List.mem_eraseDups, List.mem_append, or_comm]) both
+  return ⟨assumptions, .equal p q, derivation,
     (t.origin.join th1.origin).join th2.origin⟩
 
 def SYM (t : Theory) (th : Thm t) : Except KernelError (Thm t) := do

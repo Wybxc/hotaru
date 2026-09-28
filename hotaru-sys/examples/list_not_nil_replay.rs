@@ -776,6 +776,7 @@ impl<'a> Machine<'a> {
             "appThm" | "deductAntisym" | "trans" => {
                 let second = self.proof()?;
                 let first = self.proof()?;
+                let mut compacted = false;
                 let proof = if let (Some(first), Some(second)) = (&first, &second) {
                     let native_eq = match command {
                         "appThm" => native(self.theory.mk_comb(
@@ -790,18 +791,21 @@ impl<'a> Machine<'a> {
                                 &mut self.conversion_boundaries,
                             )?,
                         ))?,
-                        "deductAntisym" => native(self.theory.deduct_antisym(
-                            &first.article(
-                                &mut self.bridge_cache,
-                                self.theory,
-                                &mut self.conversion_boundaries,
-                            )?,
-                            &second.article(
-                                &mut self.bridge_cache,
-                                self.theory,
-                                &mut self.conversion_boundaries,
-                            )?,
-                        ))?,
+                        "deductAntisym" => {
+                            compacted = true;
+                            native(self.theory.deduct_antisym(
+                                &first.article(
+                                    &mut self.bridge_cache,
+                                    self.theory,
+                                    &mut self.conversion_boundaries,
+                                )?,
+                                &second.article(
+                                    &mut self.bridge_cache,
+                                    self.theory,
+                                    &mut self.conversion_boundaries,
+                                )?,
+                            ))?
+                        }
                         _ => native(self.theory.trans(
                             &first.equation(
                                 &mut self.bridge_cache,
@@ -826,7 +830,11 @@ impl<'a> Machine<'a> {
                 } else {
                     None
                 };
-                self.prove(proof)?;
+                if compacted {
+                    self.prove_compacted(proof)?;
+                } else {
+                    self.prove(proof)?;
+                }
             }
             "sym" => {
                 let theorem = self.proof()?;

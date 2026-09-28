@@ -11,7 +11,7 @@ timing boundary are described in the [protocol](README.md).
 | Eager equality conversion, Sep 27 | 126.094 ms (119.443-136.569) | 13.643 ms (13.134-14.154) | 65.603 ms (62.010-79.366) |
 | On-demand equality conversion, Sep 28 | 68.362 ms (64.641-81.715) | 14.787 ms (13.555-17.609) | 66.779 ms (62.919-76.955) |
 | On-demand conversion with transparent public API, Sep 28 | 50.415 ms (45.833-62.300) | 13.080 ms (12.281-13.917) | 63.085 ms (57.936-82.894) |
-| Cached ordinary-rule bridge with fused instantiation and `eqMp` compaction, current public API, Sep 28 | 29.785 ms (28.317-30.337) | 13.730 ms (13.302-13.926) | 64.516 ms (61.161-75.900) |
+| Cached ordinary-rule bridge with fused instantiation, `eqMp` compaction, and normalized `deductAntisym`, current public API, Sep 28 | 31.206 ms (28.855-33.188) | 13.790 ms (13.167-17.353) | 66.813 ms (62.579-76.882) |
 
 On-demand conversion reduces Hotaru's median import time by about 46% while
 leaving the checked article and kernel rules unchanged. A same-day rerun of
@@ -25,9 +25,14 @@ The current adapter converts an equality proof only when a later rule needs its
 other representation, while keeping that representation private to the
 certificate reader. It constructs the bridge from the existing checked kernel
 rules, so the public FFI exposes only native equality operations. The current
-single-import trace records 878 representation-boundary conversions and 1,945
-assumption-compaction calls, and each conversion still constructs a
+single-import trace records 878 representation-boundary conversions and 1,233
+remaining assumption-compaction calls, and each conversion still constructs a
 kernel-checked proof; no certificate rule or theorem check is skipped.
+
+`DEDUCT_ANTISYM` now returns its semantically equivalent assumption list with
+duplicates removed inside the verified rule, so the adapter does not issue a
+second compaction for those results. The current trace records 878
+representation-boundary conversions and 1,233 remaining compaction calls.
 
 The adapter also records the representation produced by each certificate rule
 instead of inspecting every returned theorem conclusion through the FFI. This
