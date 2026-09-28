@@ -47,6 +47,8 @@ unsafe extern "C" {
     pub fn hotaru_lean_symm(arg0: Obj, arg1: Obj) -> Obj;
     pub fn hotaru_lean_trans(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
     pub fn hotaru_lean_eq_mp(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
+    pub fn hotaru_lean_normalize_hol_equality(arg0: Obj, arg1: Obj) -> Obj;
+    pub fn hotaru_lean_expand_hol_equality(arg0: Obj, arg1: Obj) -> Obj;
     pub fn hotaru_lean_inst(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
     pub fn hotaru_lean_inst_type(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
     pub fn hotaru_lean_inst_ty_term(arg0: Obj, arg1: Obj, arg2: Obj, arg3: Obj) -> Obj;

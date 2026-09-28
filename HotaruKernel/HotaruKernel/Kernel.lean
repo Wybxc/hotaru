@@ -214,7 +214,74 @@ def EQ_MP (t : Theory) (te tp : Thm t) : Except KernelError (Thm t) := do
       return ⟨assumptions, consequent, derivation,
         (t.origin.join te.origin).join tp.origin⟩
     else .error .termMismatch
-  else .error .notBoolean
+    else .error .notBoolean
+
+private def holEqualityTerm {t : Theory} (a : HolType)
+    (ha : t.signature.validType a = true) (l r : Closed t.signature a) : Closed t.signature .bool :=
+  let body : Term t.signature [a] (.fn a .bool) :=
+    .lam ha (.equal (.bvar (.succ .zero)) (.bvar .zero))
+  let connective : Closed t.signature (.fn a (.fn a .bool)) := .lam ha body
+  .app (.app connective l) r
+
+private def holEqualityBridge {t : Theory} (a : HolType)
+    (ha : t.signature.validType a = true) (l r : Closed t.signature a) : Thm t :=
+  let body : Term t.signature [a] (.fn a .bool) :=
+    .lam ha (.equal (.bvar (.succ .zero)) (.bvar .zero))
+  let connective : Closed t.signature (.fn a (.fn a .bool)) := .lam ha body
+  let firstRedex : Closed t.signature (.fn a .bool) := .app connective l
+  let secondBody : Term t.signature [a] .bool :=
+    .equal l.weaken (.bvar .zero)
+  let secondLambda : Closed t.signature (.fn a .bool) := .lam ha secondBody
+  let first : Thm t :=
+    ⟨[], .equal firstRedex (body.open l), .beta ha body l, t.origin⟩
+  let rightRefl : Thm t := ⟨[], .equal r r, .refl r, t.origin⟩
+  let applied : Thm t :=
+    ⟨[], .equal (.app firstRedex r) (.app secondLambda r),
+      .mkComb first.derivation rightRefl.derivation,
+      (t.origin.join first.origin).join rightRefl.origin⟩
+  let secondRedex : Closed t.signature .bool := .app secondLambda r
+  let secondDerivation : Derivable t [] (.equal secondRedex (.equal l r)) := by
+    have beta : Derivable t [] (.equal secondRedex (secondBody.open r)) :=
+      .beta ha secondBody r
+    apply Derivable.conversion (p := .equal secondRedex (secondBody.open r))
+    · have hbody : secondBody.open r = .equal l r := by
+        change Term.equal ((l.weaken).open r) r = Term.equal l r
+        rw [Term.weaken_open]
+      exact congrArg
+        (fun x : Term t.signature [] .bool => (Term.equal secondRedex x).logical) hbody
+    · exact beta
+  let second : Thm t :=
+    ⟨[], .equal secondRedex (.equal l r), secondDerivation, t.origin⟩
+  ⟨[], .equal (.app firstRedex r) (.equal l r),
+    .trans applied.derivation second.derivation,
+    (t.origin.join applied.origin).join second.origin⟩
+
+def NORMALIZE_HOL_EQUALITY (t : Theory) (th : Thm t) : Except KernelError (Thm t) := do
+  match he : th.conclusion with
+  | .app (.app (.lam ha (.lam _ (.equal (.bvar (.succ .zero)) (.bvar .zero)))) l) r =>
+      let bridge := holEqualityBridge _ ha l r
+      have d : Derivable t th.assumptions _ := by
+        rw [← he]
+        exact th.derivation
+      return ⟨th.assumptions, .equal l r, .eqMp bridge.derivation d,
+        (t.origin.join bridge.origin).join th.origin⟩
+  | _ => .error .termMismatch
+
+def EXPAND_HOL_EQUALITY (t : Theory) (th : Thm t) : Except KernelError (Thm t) := do
+  match he : th.conclusion with
+  | .equal l r =>
+      let ha := l.validType (fun _ h => by cases h)
+      let bridge := holEqualityBridge _ ha l r
+      let article := holEqualityTerm _ ha l r
+      have d : Derivable t th.assumptions (.equal l r) := by
+        rw [← he]
+        exact th.derivation
+      have derivation : Derivable t th.assumptions article := by
+        simpa only [article, bridge, holEqualityTerm, holEqualityBridge, List.nil_append] using
+          .eqMp (.symm bridge.derivation) d
+      return ⟨th.assumptions, article, derivation,
+        (t.origin.join bridge.origin).join th.origin⟩
+  | _ => .error .notEquation
 
 def checkReplacement (s : Signature) (target value : RawTerm) :
     Except KernelError (Replacement s) := do

@@ -50,14 +50,6 @@ fn bool_lambda(connective: &str, ty: &Type) -> RunResult<Term> {
     native(Term::lambda(&domain, &inner))
 }
 
-fn equality_lambda(ty: &Type) -> RunResult<Term> {
-    let outer = native(Term::bound(1))?;
-    let inner = native(Term::bound(0))?;
-    let body = native(Term::equal(&outer, &inner))?;
-    let inner = native(Term::lambda(ty, &body))?;
-    native(Term::lambda(ty, &inner))
-}
-
 fn declare_signature() -> RunResult<Theory> {
     let mut theory = native(Theory::new())?;
     theory = native(theory.with_source(&Source::new(
@@ -184,149 +176,8 @@ fn describe(term: &Term) -> RunResult<String> {
     }
 }
 
-struct EqualityBridgeTemplate {
-    ty: Type,
-    left: Term,
-    right: Term,
-    theorem: Theorem,
-}
-
-#[derive(Default)]
-struct EqualityBridgeCache {
-    connectives: Vec<(Type, Term)>,
-    templates: Vec<EqualityBridgeTemplate>,
-}
-
-fn equality_connective(cache: &mut EqualityBridgeCache, ty: &Type) -> RunResult<Term> {
-    if let Some((_, connective)) = cache.connectives.iter().find(|(cached, _)| cached == ty) {
-        return Ok(connective.clone());
-    }
-    let connective = equality_lambda(ty)?;
-    cache.connectives.push((ty.clone(), connective.clone()));
-    Ok(connective)
-}
-
-fn equality_bridge_template(
-    cache: &mut EqualityBridgeCache,
-    theory: &Theory,
-    ty: &Type,
-) -> RunResult<EqualityBridgeTemplate> {
-    let left = native(Term::free("__hotaru_eq_left", ty))?;
-    let right = native(Term::free("__hotaru_eq_right", ty))?;
-    let connective = equality_connective(cache, ty)?;
-    let first_redex = native(Term::app(&connective, &left))?;
-    let first = native(theory.beta(&first_redex))?;
-    let right_refl = native(theory.refl(&right))?;
-    let applied = native(theory.mk_comb(&first, &right_refl))?;
-    let second_redex = native(applied.conclusion().child(1))?;
-    let second = native(theory.beta(&second_redex))?;
-    let theorem = native(theory.trans(&applied, &second))?;
-    Ok(EqualityBridgeTemplate {
-        ty: ty.clone(),
-        left,
-        right,
-        theorem,
-    })
-}
-
-fn equality_bridge(
-    cache: &mut EqualityBridgeCache,
-    theory: &Theory,
-    left: &Term,
-    right: &Term,
-) -> RunResult<Theorem> {
-    let ty = native(theory.check(left))?;
-    equality_bridge_typed(cache, theory, left, right, &ty)
-}
-
-fn equality_bridge_typed(
-    cache: &mut EqualityBridgeCache,
-    theory: &Theory,
-    left: &Term,
-    right: &Term,
-    ty: &Type,
-) -> RunResult<Theorem> {
-    let index = if let Some(index) = cache
-        .templates
-        .iter()
-        .position(|template| template.ty == *ty)
-    {
-        index
-    } else {
-        let template = equality_bridge_template(cache, theory, ty)?;
-        cache.templates.push(template);
-        cache.templates.len() - 1
-    };
-    let template = &cache.templates[index];
-    native(theory.inst(
-        &[(&template.left, left), (&template.right, right)],
-        &template.theorem,
-    ))
-}
-
-fn equality_bridge_eq_mp(
-    cache: &mut EqualityBridgeCache,
-    theory: &Theory,
-    left: &Term,
-    right: &Term,
-    ty: &Type,
-    premise: &Theorem,
-) -> RunResult<Theorem> {
-    let index = if let Some(index) = cache
-        .templates
-        .iter()
-        .position(|template| template.ty == *ty)
-    {
-        index
-    } else {
-        let template = equality_bridge_template(cache, theory, ty)?;
-        cache.templates.push(template);
-        cache.templates.len() - 1
-    };
-    let template = &cache.templates[index];
-    let bridge = native(theory.inst(
-        &[(&template.left, left), (&template.right, right)],
-        &template.theorem,
-    ))?;
-    native(theory.eq_mp(&bridge, premise))
-}
-
-fn article_equality_parts(
-    cache: &mut EqualityBridgeCache,
-    theory: &Theory,
-    proposition: &Term,
-) -> RunResult<(Term, Term, Type)> {
-    if proposition.kind() != TermKind::Application {
-        return invalid("certificate theorem is not an applied equality");
-    }
-    let partial = native(proposition.child(0))?;
-    if partial.kind() != TermKind::Application {
-        return invalid("certificate theorem is not an applied equality");
-    }
-    let connective = native(partial.child(0))?;
-    let left = native(partial.child(1))?;
-    let right = native(proposition.child(1))?;
-    let ty = native(theory.check(&left))?;
-    let expected = equality_connective(cache, &ty)?;
-    if connective != expected {
-        return invalid("certificate theorem is not an applied equality");
-    }
-    Ok((left, right, ty))
-}
-
-fn article_from_equation(
-    cache: &mut EqualityBridgeCache,
-    theory: &Theory,
-    theorem: &Theorem,
-) -> RunResult<Theorem> {
-    let conclusion = theorem.conclusion();
-    if conclusion.kind() != TermKind::Equality {
-        return invalid("kernel did not return an equality");
-    }
-    let left = native(conclusion.child(0))?;
-    let right = native(conclusion.child(1))?;
-    let bridge = equality_bridge(cache, theory, &left, &right)?;
-    native(theory.eq_mp(&native(theory.symm(&bridge))?, theorem))
+fn article_from_equation(theory: &Theory, theorem: &Theorem) -> RunResult<Theorem> {
+    native(theory.expand_hol_equality(theorem))
 }
 
 #[derive(Clone)]
@@ -413,12 +264,7 @@ impl Proof {
         Ok(())
     }
 
-    fn equation(
-        &self,
-        cache: &mut EqualityBridgeCache,
-        theory: &Theory,
-        conversion_boundaries: &mut usize,
-    ) -> RunResult<Theorem> {
+    fn equation(&self, theory: &Theory, conversion_boundaries: &mut usize) -> RunResult<Theorem> {
         if let Some(stored) = &self.forms.borrow().native_eq {
             return Ok(stored.theorem.clone());
         }
@@ -428,9 +274,7 @@ impl Proof {
             .article
             .clone()
             .ok_or_else(|| "proof has no theorem form".to_owned())?;
-        let (left, right, ty) =
-            article_equality_parts(cache, theory, &article.theorem.conclusion())?;
-        let theorem = equality_bridge_eq_mp(cache, theory, &left, &right, &ty, &article.theorem)?;
+        let theorem = native(theory.normalize_hol_equality(&article.theorem))?;
         *conversion_boundaries += 1;
         self.forms.borrow_mut().native_eq = Some(StoredTheorem::with_assumptions(
             theorem.clone(),
@@ -439,12 +283,7 @@ impl Proof {
         Ok(theorem)
     }
 
-    fn article(
-        &self,
-        cache: &mut EqualityBridgeCache,
-        theory: &Theory,
-        conversion_boundaries: &mut usize,
-    ) -> RunResult<Theorem> {
+    fn article(&self, theory: &Theory, conversion_boundaries: &mut usize) -> RunResult<Theorem> {
         if let Some(stored) = &self.forms.borrow().article {
             return Ok(stored.theorem.clone());
         }
@@ -454,7 +293,7 @@ impl Proof {
             .native_eq
             .clone()
             .ok_or_else(|| "proof has no theorem form".to_owned())?;
-        let article = article_from_equation(cache, theory, &stored.theorem)?;
+        let article = article_from_equation(theory, &stored.theorem)?;
         *conversion_boundaries += 1;
         self.forms.borrow_mut().article = Some(StoredTheorem::with_assumptions(
             article.clone(),
@@ -480,7 +319,6 @@ enum Value {
 struct Machine<'a> {
     theory: &'a Theory,
     imported: &'a [Theorem],
-    bridge_cache: EqualityBridgeCache,
     scan: bool,
     stack: Vec<Value>,
     dictionary: HashMap<usize, Value>,
@@ -496,7 +334,6 @@ impl<'a> Machine<'a> {
         Self {
             theory,
             imported,
-            bridge_cache: EqualityBridgeCache::default(),
             scan,
             stack: Vec::new(),
             dictionary: HashMap::new(),
@@ -761,11 +598,8 @@ impl<'a> Machine<'a> {
                 let theorem = self.proof()?;
                 let (name, ty) = self.var()?;
                 let proof = if let Some(theorem) = theorem {
-                    let native_eq = theorem.equation(
-                        &mut self.bridge_cache,
-                        self.theory,
-                        &mut self.conversion_boundaries,
-                    )?;
+                    let native_eq =
+                        theorem.equation(self.theory, &mut self.conversion_boundaries)?;
                     let result = native(self.theory.abs(&name, &ty, &native_eq))?;
                     Some(Proof::from_equation(result, theorem.assumptions()))
                 } else {
@@ -780,43 +614,19 @@ impl<'a> Machine<'a> {
                 let proof = if let (Some(first), Some(second)) = (&first, &second) {
                     let native_eq = match command {
                         "appThm" => native(self.theory.mk_comb(
-                            &first.equation(
-                                &mut self.bridge_cache,
-                                self.theory,
-                                &mut self.conversion_boundaries,
-                            )?,
-                            &second.equation(
-                                &mut self.bridge_cache,
-                                self.theory,
-                                &mut self.conversion_boundaries,
-                            )?,
+                            &first.equation(self.theory, &mut self.conversion_boundaries)?,
+                            &second.equation(self.theory, &mut self.conversion_boundaries)?,
                         ))?,
                         "deductAntisym" => {
                             compacted = true;
                             native(self.theory.deduct_antisym(
-                                &first.article(
-                                    &mut self.bridge_cache,
-                                    self.theory,
-                                    &mut self.conversion_boundaries,
-                                )?,
-                                &second.article(
-                                    &mut self.bridge_cache,
-                                    self.theory,
-                                    &mut self.conversion_boundaries,
-                                )?,
+                                &first.article(self.theory, &mut self.conversion_boundaries)?,
+                                &second.article(self.theory, &mut self.conversion_boundaries)?,
                             ))?
                         }
                         _ => native(self.theory.trans(
-                            &first.equation(
-                                &mut self.bridge_cache,
-                                self.theory,
-                                &mut self.conversion_boundaries,
-                            )?,
-                            &second.equation(
-                                &mut self.bridge_cache,
-                                self.theory,
-                                &mut self.conversion_boundaries,
-                            )?,
+                            &first.equation(self.theory, &mut self.conversion_boundaries)?,
+                            &second.equation(self.theory, &mut self.conversion_boundaries)?,
                         ))?,
                     };
                     let assumptions = if command == "deductAntisym" {
@@ -839,11 +649,10 @@ impl<'a> Machine<'a> {
             "sym" => {
                 let theorem = self.proof()?;
                 let proof = if let Some(theorem) = &theorem {
-                    let result = native(self.theory.symm(&theorem.equation(
-                        &mut self.bridge_cache,
-                        self.theory,
-                        &mut self.conversion_boundaries,
-                    )?))?;
+                    let result = native(
+                        self.theory
+                            .symm(&theorem.equation(self.theory, &mut self.conversion_boundaries)?),
+                    )?;
                     Some(Proof::from_equation(result, theorem.assumptions()))
                 } else {
                     None
@@ -857,18 +666,10 @@ impl<'a> Machine<'a> {
                     let equality_assumptions = equality.assumptions();
                     let premise_assumptions = premise.assumptions();
                     let equation = equality
-                        .equation(
-                            &mut self.bridge_cache,
-                            self.theory,
-                            &mut self.conversion_boundaries,
-                        )
+                        .equation(self.theory, &mut self.conversion_boundaries)
                         .map_err(|error| format!("equality input: {error}"))?;
                     let premise = premise
-                        .article(
-                            &mut self.bridge_cache,
-                            self.theory,
-                            &mut self.conversion_boundaries,
-                        )
+                        .article(self.theory, &mut self.conversion_boundaries)
                         .map_err(|error| format!("premise input: {error}"))?;
                     let result = self.theory.eq_mp(&equation, &premise).map_err(|error| {
                         let expected = equation.conclusion().child(0).ok();
@@ -926,11 +727,8 @@ impl<'a> Machine<'a> {
                     })
                     .collect::<RunResult<Vec<_>>>()?;
                 let proof = if let Some(proof) = proof {
-                    let mut theorem = proof.article(
-                        &mut self.bridge_cache,
-                        self.theory,
-                        &mut self.conversion_boundaries,
-                    )?;
+                    let mut theorem =
+                        proof.article(self.theory, &mut self.conversion_boundaries)?;
                     let type_pairs = ty_subst
                         .iter()
                         .map(|(name, ty)| (name.as_str(), ty))
@@ -961,11 +759,7 @@ impl<'a> Machine<'a> {
                     return invalid("LIST_NOT_NIL export has assumptions");
                 }
                 if let Some(proof) = theorem {
-                    let article = proof.article(
-                        &mut self.bridge_cache,
-                        self.theory,
-                        &mut self.conversion_boundaries,
-                    )?;
+                    let article = proof.article(self.theory, &mut self.conversion_boundaries)?;
                     if article.conclusion() != conclusion || article.assumption_count() != 0 {
                         return invalid("exported theorem differs from article statement");
                     }
@@ -1105,8 +899,7 @@ fn expected_conclusion(article_encoding: bool) -> RunResult<Term> {
 }
 
 fn verify(theory: &Theory, proof: &Proof) -> RunResult<()> {
-    let mut bridge_cache = EqualityBridgeCache::default();
-    let theorem = proof.article(&mut bridge_cache, theory, &mut 0)?;
+    let theorem = proof.article(theory, &mut 0)?;
     if theorem.assumption_count() != 0 {
         return invalid("LIST_NOT_NIL has assumptions");
     }

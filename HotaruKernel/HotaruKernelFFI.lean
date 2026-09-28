@@ -122,6 +122,12 @@ def trans (s : Execution.State) (a b : Thm s.theory) : Result (Thm s.theory) :=
 @[export hotaru_lean_eq_mp]
 def eqMp (s : Execution.State) (a b : Thm s.theory) : Result (Thm s.theory) :=
   result (Kernel.EQ_MP s.theory a b)
+@[export hotaru_lean_normalize_hol_equality]
+def normalizeHolEquality (s : Execution.State) (th : Thm s.theory) : Result (Thm s.theory) :=
+  result (Kernel.NORMALIZE_HOL_EQUALITY s.theory th)
+@[export hotaru_lean_expand_hol_equality]
+def expandHolEquality (s : Execution.State) (th : Thm s.theory) : Result (Thm s.theory) :=
+  result (Kernel.EXPAND_HOL_EQUALITY s.theory th)
 @[export hotaru_lean_inst]
 def inst (s : Execution.State) (rs : Array (RawTerm × RawTerm)) (th : Thm s.theory) :
     Result (Thm s.theory) := result (Kernel.INST s.theory rs.toList th)
