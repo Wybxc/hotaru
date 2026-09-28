@@ -1,5 +1,5 @@
 use hotaru_sys::{Name, Source, SourceKind, Term, TermKind, Theorem, Theory, Type};
-use std::{cell::RefCell, collections::HashMap, env, fs, hint::black_box, rc::Rc, time::Instant};
+use std::{collections::HashMap, env, fs, hint::black_box, time::Instant};
 
 const FIXTURE: &[u8] = include_bytes!("../../benchmarks/list_not_nil/list_not_nil.art");
 const AXIOM_COUNT: usize = 31;
@@ -176,130 +176,40 @@ fn describe(term: &Term) -> RunResult<String> {
     }
 }
 
-fn article_from_equation(theory: &Theory, theorem: &Theorem) -> RunResult<Theorem> {
-    native(theory.expand_hol_equality(theorem))
-}
-
 #[derive(Clone)]
 struct Proof {
-    forms: Rc<RefCell<ProofForms>>,
-}
-
-struct ProofForms {
-    article: Option<StoredTheorem>,
-    native_eq: Option<StoredTheorem>,
-}
-
-#[derive(Clone)]
-struct StoredTheorem {
     theorem: Theorem,
     assumptions: u64,
-}
-
-impl StoredTheorem {
-    fn new(theorem: Theorem) -> Self {
-        let assumptions = theorem.assumption_count();
-        Self::with_assumptions(theorem, assumptions)
-    }
-
-    fn with_assumptions(theorem: Theorem, assumptions: u64) -> Self {
-        Self {
-            theorem,
-            assumptions,
-        }
-    }
 }
 
 impl Proof {
     fn raw(theorem: Theorem, assumptions: u64) -> Self {
         Self {
-            forms: Rc::new(RefCell::new(ProofForms {
-                article: Some(StoredTheorem::with_assumptions(theorem, assumptions)),
-                native_eq: None,
-            })),
-        }
-    }
-
-    fn from_equation(theorem: Theorem, assumptions: u64) -> Self {
-        // These constructors are reached only from kernel rules whose result is an equality.
-        debug_assert_eq!(theorem.conclusion().kind(), TermKind::Equality);
-        Self {
-            forms: Rc::new(RefCell::new(ProofForms {
-                article: None,
-                native_eq: Some(StoredTheorem::with_assumptions(theorem, assumptions)),
-            })),
+            theorem,
+            assumptions,
         }
     }
 
     fn assumptions(&self) -> u64 {
-        let forms = self.forms.borrow();
-        forms
-            .article
-            .as_ref()
-            .or(forms.native_eq.as_ref())
-            .expect("proof has no theorem form")
-            .assumptions
+        self.assumptions
     }
 
     fn compact(
-        &self,
+        &mut self,
         theory: &Theory,
         compact_threshold: u64,
         compact_calls: &mut usize,
     ) -> RunResult<()> {
-        let mut forms = self.forms.borrow_mut();
-        let mut compact_one = |slot: &mut Option<StoredTheorem>| -> RunResult<()> {
-            let Some(stored) = slot else {
-                return Ok(());
-            };
-            if stored.assumptions > compact_threshold {
-                *compact_calls += 1;
-                let compacted = native(theory.contract(&stored.theorem))?;
-                *stored = StoredTheorem::new(compacted);
-            }
-            Ok(())
-        };
-        compact_one(&mut forms.article)?;
-        compact_one(&mut forms.native_eq)?;
+        if self.assumptions > compact_threshold {
+            *compact_calls += 1;
+            self.theorem = native(theory.contract(&self.theorem))?;
+            self.assumptions = self.theorem.assumption_count();
+        }
         Ok(())
     }
 
-    fn equation(&self, theory: &Theory, conversion_boundaries: &mut usize) -> RunResult<Theorem> {
-        if let Some(stored) = &self.forms.borrow().native_eq {
-            return Ok(stored.theorem.clone());
-        }
-        let article = self
-            .forms
-            .borrow()
-            .article
-            .clone()
-            .ok_or_else(|| "proof has no theorem form".to_owned())?;
-        let theorem = native(theory.normalize_hol_equality(&article.theorem))?;
-        *conversion_boundaries += 1;
-        self.forms.borrow_mut().native_eq = Some(StoredTheorem::with_assumptions(
-            theorem.clone(),
-            article.assumptions,
-        ));
-        Ok(theorem)
-    }
-
-    fn article(&self, theory: &Theory, conversion_boundaries: &mut usize) -> RunResult<Theorem> {
-        if let Some(stored) = &self.forms.borrow().article {
-            return Ok(stored.theorem.clone());
-        }
-        let stored = self
-            .forms
-            .borrow()
-            .native_eq
-            .clone()
-            .ok_or_else(|| "proof has no theorem form".to_owned())?;
-        let article = article_from_equation(theory, &stored.theorem)?;
-        *conversion_boundaries += 1;
-        self.forms.borrow_mut().article = Some(StoredTheorem::with_assumptions(
-            article.clone(),
-            stored.assumptions,
-        ));
-        Ok(article)
+    fn theorem(&self) -> &Theorem {
+        &self.theorem
     }
 }
 
@@ -424,7 +334,7 @@ impl<'a> Machine<'a> {
     }
 
     fn prove(&mut self, value: Option<Proof>) -> RunResult<()> {
-        if let Some(proof) = value {
+        if let Some(mut proof) = value {
             proof.compact(self.theory, self.compact_threshold, &mut self.compact_calls)?;
             self.stack.push(Value::Proof(Some(proof)));
         } else {
@@ -590,7 +500,7 @@ impl<'a> Machine<'a> {
                     } else {
                         native(self.theory.beta(&term))?
                     };
-                    Some(Proof::from_equation(theorem, 0))
+                    Some(Proof::raw(theorem, 0))
                 };
                 self.prove(proof)?;
             }
@@ -598,10 +508,8 @@ impl<'a> Machine<'a> {
                 let theorem = self.proof()?;
                 let (name, ty) = self.var()?;
                 let proof = if let Some(theorem) = theorem {
-                    let native_eq =
-                        theorem.equation(self.theory, &mut self.conversion_boundaries)?;
-                    let result = native(self.theory.abs(&name, &ty, &native_eq))?;
-                    Some(Proof::from_equation(result, theorem.assumptions()))
+                    let result = native(self.theory.abs(&name, &ty, theorem.theorem()))?;
+                    Some(Proof::raw(result, theorem.assumptions()))
                 } else {
                     None
                 };
@@ -613,21 +521,15 @@ impl<'a> Machine<'a> {
                 let mut compacted = false;
                 let proof = if let (Some(first), Some(second)) = (&first, &second) {
                     let native_eq = match command {
-                        "appThm" => native(self.theory.mk_comb(
-                            &first.equation(self.theory, &mut self.conversion_boundaries)?,
-                            &second.equation(self.theory, &mut self.conversion_boundaries)?,
-                        ))?,
+                        "appThm" => native(self.theory.mk_comb(first.theorem(), second.theorem()))?,
                         "deductAntisym" => {
                             compacted = true;
-                            native(self.theory.deduct_antisym(
-                                &first.article(self.theory, &mut self.conversion_boundaries)?,
-                                &second.article(self.theory, &mut self.conversion_boundaries)?,
-                            ))?
+                            native(
+                                self.theory
+                                    .deduct_antisym(first.theorem(), second.theorem()),
+                            )?
                         }
-                        _ => native(self.theory.trans(
-                            &first.equation(self.theory, &mut self.conversion_boundaries)?,
-                            &second.equation(self.theory, &mut self.conversion_boundaries)?,
-                        ))?,
+                        _ => native(self.theory.trans(first.theorem(), second.theorem()))?,
                     };
                     let assumptions = if command == "deductAntisym" {
                         // This rule removes assumptions equivalent to either conclusion;
@@ -636,7 +538,7 @@ impl<'a> Machine<'a> {
                     } else {
                         first.assumptions() + second.assumptions()
                     };
-                    Some(Proof::from_equation(native_eq, assumptions))
+                    Some(Proof::raw(native_eq, assumptions))
                 } else {
                     None
                 };
@@ -649,11 +551,8 @@ impl<'a> Machine<'a> {
             "sym" => {
                 let theorem = self.proof()?;
                 let proof = if let Some(theorem) = &theorem {
-                    let result = native(
-                        self.theory
-                            .symm(&theorem.equation(self.theory, &mut self.conversion_boundaries)?),
-                    )?;
-                    Some(Proof::from_equation(result, theorem.assumptions()))
+                    let result = native(self.theory.symm(theorem.theorem()))?;
+                    Some(Proof::raw(result, theorem.assumptions()))
                 } else {
                     None
                 };
@@ -665,23 +564,20 @@ impl<'a> Machine<'a> {
                 let proof = if let (Some(premise), Some(equality)) = (premise, equality) {
                     let equality_assumptions = equality.assumptions();
                     let premise_assumptions = premise.assumptions();
-                    let equation = equality
-                        .equation(self.theory, &mut self.conversion_boundaries)
-                        .map_err(|error| format!("equality input: {error}"))?;
-                    let premise = premise
-                        .article(self.theory, &mut self.conversion_boundaries)
-                        .map_err(|error| format!("premise input: {error}"))?;
-                    let result = self.theory.eq_mp(&equation, &premise).map_err(|error| {
-                        let expected = equation.conclusion().child(0).ok();
-                        format!(
-                            "{error:?}: equality-left={}, premise={}",
-                            expected
-                                .as_ref()
-                                .and_then(|term| describe(term).ok())
-                                .unwrap_or_default(),
-                            describe(&premise.conclusion()).unwrap_or_default()
-                        )
-                    })?;
+                    let result = self
+                        .theory
+                        .eq_mp(equality.theorem(), premise.theorem())
+                        .map_err(|error| {
+                            let expected = equality.theorem().conclusion().child(0).ok();
+                            format!(
+                                "{error:?}: equality-left={}, premise={}",
+                                expected
+                                    .as_ref()
+                                    .and_then(|term| describe(term).ok())
+                                    .unwrap_or_default(),
+                                describe(&premise.theorem().conclusion()).unwrap_or_default()
+                            )
+                        })?;
                     let assumptions = if equality_assumptions == 0 {
                         premise_assumptions
                     } else if premise_assumptions == 0 {
@@ -727,8 +623,7 @@ impl<'a> Machine<'a> {
                     })
                     .collect::<RunResult<Vec<_>>>()?;
                 let proof = if let Some(proof) = proof {
-                    let mut theorem =
-                        proof.article(self.theory, &mut self.conversion_boundaries)?;
+                    let mut theorem = proof.theorem().clone();
                     let type_pairs = ty_subst
                         .iter()
                         .map(|(name, ty)| (name.as_str(), ty))
@@ -759,8 +654,7 @@ impl<'a> Machine<'a> {
                     return invalid("LIST_NOT_NIL export has assumptions");
                 }
                 if let Some(proof) = theorem {
-                    let article = proof.article(self.theory, &mut self.conversion_boundaries)?;
-                    if article.conclusion() != conclusion || article.assumption_count() != 0 {
+                    if proof.theorem().conclusion() != conclusion || proof.assumptions() != 0 {
                         return invalid("exported theorem differs from article statement");
                     }
                     self.outputs.push(proof);
@@ -899,8 +793,8 @@ fn expected_conclusion(article_encoding: bool) -> RunResult<Term> {
 }
 
 fn verify(theory: &Theory, proof: &Proof) -> RunResult<()> {
-    let theorem = proof.article(theory, &mut 0)?;
-    if theorem.assumption_count() != 0 {
+    let theorem = proof.theorem();
+    if proof.assumptions() != 0 {
         return invalid("LIST_NOT_NIL has assumptions");
     }
     let conclusion = theorem.conclusion();

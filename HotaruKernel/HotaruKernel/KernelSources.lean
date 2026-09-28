@@ -116,6 +116,7 @@ theorem trans_origin (l r out : Thm t) (h : TRANS t l r = .ok out) :
 theorem eqMp_origin (l r out : Thm t) (h : EQ_MP t l r = .ok out) :
     out.origin = (t.origin.join l.origin).join r.origin := by
   unfold EQ_MP at h
+  unfold alignHolEqualityPremise at h
   source_check h
 
 theorem inst_origin (rs : List (RawTerm × RawTerm)) (th out : Thm t)

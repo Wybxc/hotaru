@@ -748,30 +748,6 @@ impl Theory {
         }))
     }
 
-    /// Eliminates the canonical HOL equality connective from a theorem.
-    pub fn normalize_hol_equality(&self, th: &Theorem) -> Result<Theorem> {
-        self.owns(th)?;
-
-        Ok(self.theorem(unsafe {
-            checked(hotaru_lean_normalize_hol_equality(
-                self.arg(),
-                th.value.argument(),
-            ))?
-        }))
-    }
-
-    /// Introduces the canonical HOL equality connective into a theorem.
-    pub fn expand_hol_equality(&self, th: &Theorem) -> Result<Theorem> {
-        self.owns(th)?;
-
-        Ok(self.theorem(unsafe {
-            checked(hotaru_lean_expand_hol_equality(
-                self.arg(),
-                th.value.argument(),
-            ))?
-        }))
-    }
-
     pub fn symm(&self, th: &Theorem) -> Result<Theorem> {
         self.owns(th)?;
 

@@ -140,7 +140,7 @@ private def holEqualityBridge {t : Theory} (a : HolType)
     .trans applied.derivation second.derivation,
     (t.origin.join applied.origin).join second.origin⟩
 
-private def normalizeHolEquality (t : Theory) (th : Thm t) : Except KernelError (Thm t) := do
+def normalizeHolEquality (t : Theory) (th : Thm t) : Except KernelError (Thm t) := do
   match he : th.conclusion with
   | .app (.app (.lam ha (.lam _ (.equal (.bvar (.succ .zero)) (.bvar .zero)))) l) r =>
       let bridge := holEqualityBridge _ ha l r
@@ -150,6 +150,40 @@ private def normalizeHolEquality (t : Theory) (th : Thm t) : Except KernelError 
       return ⟨th.assumptions, .equal l r, .eqMp bridge.derivation d,
         th.origin⟩
   | _ => .ok th
+
+def expandHolEquality (t : Theory) (th : Thm t) : Except KernelError (Thm t) := do
+  match he : th.conclusion with
+  | .equal l r =>
+      let ha := l.validType (fun _ h => by cases h)
+      let bridge := holEqualityBridge _ ha l r
+      let article := holEqualityTerm _ ha l r
+      have d : Derivable t th.assumptions (.equal l r) := by
+        rw [← he]
+        exact th.derivation
+      have derivation : Derivable t th.assumptions article := by
+        simpa only [article, bridge, holEqualityTerm, holEqualityBridge, List.nil_append] using
+          .eqMp (.symm bridge.derivation) d
+      return ⟨th.assumptions, article, derivation, th.origin⟩
+  | _ => .ok th
+
+def isNativeEquality {t : Theory} {a : HolType} (p : Term t.signature [] a) : Bool :=
+  match p with
+  | .equal _ _ => true
+  | _ => false
+
+def isHolEquality {t : Theory} {a : HolType} (p : Term t.signature [] a) : Bool :=
+  match p with
+  | .app (.app (.lam _ (.lam _ (.equal (.bvar (.succ .zero)) (.bvar .zero)))) _) _ => true
+  | _ => false
+
+def alignHolEqualityPremise (t : Theory) (antecedent : Term t.signature [] .bool) (th : Thm t) :
+    Except KernelError (Thm t) :=
+  if isNativeEquality antecedent then
+    normalizeHolEquality t th
+  else if isHolEquality antecedent then
+    expandHolEquality t th
+  else
+    .ok th
 
 def ABS (t : Theory) (n : String) (a : HolType) (th : Thm t) :
     Except KernelError (Thm t) := do
@@ -210,7 +244,14 @@ def MP (t : Theory) (ti tp : Thm t) : Except KernelError (Thm t) := do
       (t.origin.join ti.origin).join tp.origin⟩
   else .error .termMismatch
 
+def expandForDeduct (t : Theory) (th : Thm t) : Thm t :=
+  match expandHolEquality t th with
+  | .ok result => result
+  | .error _ => th
+
 def DEDUCT_ANTISYM (t : Theory) (th1 th2 : Thm t) : Thm t := Id.run do
+  let th1 := expandForDeduct t th1
+  let th2 := expandForDeduct t th2
   let p := th1.conclusion
   let q := th2.conclusion
   let hs := th1.assumptions.filter (fun h => decide (¬ h.Equivalent q))
@@ -263,11 +304,11 @@ def EQ_MP (t : Theory) (te tp : Thm t) : Except KernelError (Thm t) := do
   let teOrigin := te.origin
   let tpOrigin := tp.origin
   let te ← normalizeHolEquality t te
-  let tp ← normalizeHolEquality t tp
   let ⟨a, p, q, he⟩ ← equationView te.conclusion
   if ht : a = .bool then
     let antecedent : Term t.signature [] .bool := ht ▸ p
     let consequent : Term t.signature [] .bool := ht ▸ q
+    let tp ← alignHolEqualityPremise t antecedent tp
     if hp : antecedent.Equivalent tp.conclusion then
       have de : Derivable t te.assumptions (.equal antecedent consequent) := by
         subst a
@@ -282,27 +323,6 @@ def EQ_MP (t : Theory) (te tp : Thm t) : Except KernelError (Thm t) := do
         (t.origin.join teOrigin).join tpOrigin⟩
     else .error .termMismatch
     else .error .notBoolean
-
-def NORMALIZE_HOL_EQUALITY (t : Theory) (th : Thm t) : Except KernelError (Thm t) := do
-  match th.conclusion with
-  | .app (.app (.lam _ (.lam _ (.equal _ _))) _) _ => normalizeHolEquality t th
-  | _ => .error .termMismatch
-
-def EXPAND_HOL_EQUALITY (t : Theory) (th : Thm t) : Except KernelError (Thm t) := do
-  match he : th.conclusion with
-  | .equal l r =>
-      let ha := l.validType (fun _ h => by cases h)
-      let bridge := holEqualityBridge _ ha l r
-      let article := holEqualityTerm _ ha l r
-      have d : Derivable t th.assumptions (.equal l r) := by
-        rw [← he]
-        exact th.derivation
-      have derivation : Derivable t th.assumptions article := by
-        simpa only [article, bridge, holEqualityTerm, holEqualityBridge, List.nil_append] using
-          .eqMp (.symm bridge.derivation) d
-      return ⟨th.assumptions, article, derivation,
-        (t.origin.join bridge.origin).join th.origin⟩
-  | _ => .error .notEquation
 
 def checkReplacement (s : Signature) (target value : RawTerm) :
     Except KernelError (Replacement s) := do
