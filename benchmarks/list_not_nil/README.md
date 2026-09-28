@@ -39,6 +39,13 @@ semantics, such as `inst_ty_term`; assumption contraction is part of the
 ordinary `eq_mp` and `deduct_antisym` rules. The import time includes this
 kernel-side alignment and any remaining structural contraction.
 
+This workload applies the benchmark's public-interface naming rule to every
+fused path. Each exported call must state a recognizable logical operation and
+its theorem-level inputs and output, while certificate parsing, equality
+encoding alignment, and assumption storage remain internal. A name such as
+`eqMpThenCompact` would describe adapter control flow, so it is excluded even
+if the same sequence could be faster than composing the semantic rules.
+
 ## Run
 
 The smoke profile checks the three importers with one import and one timed

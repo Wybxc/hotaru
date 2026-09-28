@@ -6,6 +6,28 @@ Hotaru Rust-to-Lean path, native OCaml HOL Light, and Poly/ML HOL4. It does not
 measure proof search, tactics, library loading, Lean proof checking during the
 build, or the time needed to compile any of the three systems.
 
+## Public interface semantics
+
+Every FFI operation used in a performance comparison must denote a logical
+rule that can be explained independently of the certificate adapter. Its name
+and contract must identify the input theorems, the conclusion it constructs,
+and the rule's applicability conditions, so a client can understand the call
+without knowing how the implementation stores or schedules proof steps.
+
+A fused operation is allowed when it corresponds to a standard high-level HOL
+rule with that same semantic description. For example, `inst_ty_term` denotes
+simultaneous type and term instantiation, which is a meaningful substitution
+operation exposed by the public theory API. Internal equality alignment,
+assumption deduplication, and other kernel optimizations may implement such a
+rule, but they remain invisible in its contract.
+
+Names that describe adapter control flow or representation housekeeping are not
+valid public rules. An identifier such as `eqMpThenCompact` exposes an
+execution sequence rather than a logical inference and therefore cannot be
+used as a benchmark interface; the benchmark must call the ordinary semantic
+rules whose composition has that effect. The same public semantic interface
+must be used by real clients and by the benchmark harness.
+
 ## Workloads
 
 The benchmark varies one cost driver at a time and includes a small complete

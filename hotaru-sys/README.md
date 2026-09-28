@@ -55,6 +55,14 @@ The inference methods correspond to the thirteen Lean kernel interfaces.
 They include assumption and reflexivity, beta conversion, equality and
 implication rules, and term and type substitution.
 
+Public FFI names describe logical rules rather than certificate-adapter steps.
+An implementation may combine internal work when the exported operation has a
+clear theorem-level meaning, as `inst_ty_term` does for simultaneous type and
+term instantiation. Equality representation alignment, assumption
+deduplication, and storage decisions stay inside those semantic rules, while
+names that expose an execution sequence such as `eqMpThenCompact` are not part
+of the interface.
+
 The theory API provides checked declarations and definitions. `Theory`
 exposes type and constant declarations and definitions; type definitions
 require a theorem proving their defining predicate nonempty.
