@@ -696,6 +696,19 @@ fn decode_name(line: &str) -> RunResult<String> {
     Ok(decoded)
 }
 
+fn decode_number(line: &str) -> RunResult<usize> {
+    line.bytes().try_fold(0usize, |number, byte| {
+        let digit = byte
+            .is_ascii_digit()
+            .then_some((byte - b'0') as usize)
+            .ok_or_else(|| "invalid article number".to_owned())?;
+        number
+            .checked_mul(10)
+            .and_then(|number| number.checked_add(digit))
+            .ok_or_else(|| "article number out of range".to_owned())
+    })
+}
+
 fn run_article<'a>(path: &str, mut machine: Machine<'a>) -> RunResult<Machine<'a>> {
     let article = fs::read_to_string(path).map_err(|error| error.to_string())?;
     for (index, line) in article.lines().enumerate() {
@@ -706,11 +719,12 @@ fn run_article<'a>(path: &str, mut machine: Machine<'a>) -> RunResult<Machine<'a
         let result = if line.starts_with('"') {
             machine.stack.push(Value::Name(decode_name(line)?));
             Ok(())
-        } else if line.bytes().all(|ch| ch.is_ascii_digit()) {
-            machine.stack.push(Value::Number(
-                line.parse()
-                    .map_err(|_| "invalid article number".to_owned())?,
-            ));
+        } else if line
+            .as_bytes()
+            .first()
+            .is_some_and(|byte| byte.is_ascii_digit())
+        {
+            machine.stack.push(Value::Number(decode_number(line)?));
             Ok(())
         } else {
             machine.execute(line)
