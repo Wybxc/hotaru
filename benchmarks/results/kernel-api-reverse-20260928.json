@@ -1,0 +1,3595 @@
+{
+  "schema_version": 1,
+  "created_at_utc": "2026-09-27T17:06:20.390681+00:00",
+  "host": {
+    "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
+    "machine": "arm64",
+    "cpu_count": 18
+  },
+  "benchmark": {
+    "profile": "standard",
+    "batch_size": 256,
+    "warmup_iterations": 2048,
+    "trials": 7,
+    "cases": [
+      {
+        "kind": "refl_reuse",
+        "parameter": 0,
+        "iterations": 131072
+      },
+      {
+        "kind": "refl_reuse",
+        "parameter": 16,
+        "iterations": 131072
+      },
+      {
+        "kind": "refl_reuse",
+        "parameter": 64,
+        "iterations": 131072
+      },
+      {
+        "kind": "refl_reuse",
+        "parameter": 256,
+        "iterations": 131072
+      },
+      {
+        "kind": "refl_checked",
+        "parameter": 0,
+        "iterations": 131072
+      },
+      {
+        "kind": "refl_checked",
+        "parameter": 16,
+        "iterations": 131072
+      },
+      {
+        "kind": "refl_checked",
+        "parameter": 64,
+        "iterations": 131072
+      },
+      {
+        "kind": "refl_checked",
+        "parameter": 256,
+        "iterations": 131072
+      },
+      {
+        "kind": "refl_retain",
+        "parameter": 0,
+        "iterations": 131072
+      },
+      {
+        "kind": "refl_build",
+        "parameter": 16,
+        "iterations": 16384
+      },
+      {
+        "kind": "refl_build",
+        "parameter": 64,
+        "iterations": 16384
+      },
+      {
+        "kind": "refl_build",
+        "parameter": 256,
+        "iterations": 16384
+      },
+      {
+        "kind": "assume",
+        "parameter": 0,
+        "iterations": 524288
+      },
+      {
+        "kind": "eq_mp",
+        "parameter": 0,
+        "iterations": 524288
+      },
+      {
+        "kind": "trans_hyps",
+        "parameter": 0,
+        "iterations": 65536
+      },
+      {
+        "kind": "trans_hyps",
+        "parameter": 8,
+        "iterations": 65536
+      },
+      {
+        "kind": "trans_hyps",
+        "parameter": 64,
+        "iterations": 65536
+      },
+      {
+        "kind": "trace",
+        "parameter": 0,
+        "iterations": 131072
+      }
+    ]
+  },
+  "suite_sha256": {
+    "benchmarks/run.py": "5592d7e4df6cfbcfbd4c27d39ab25a3f01266f113330f87d876673582552f3af",
+    "benchmarks/hol_light.ml": "08b56b6d8a7d236cef6297ec8c0d715c2379f34cac993425e955f626a45352b1",
+    "benchmarks/hol4.sml": "effdd53db1d3039628c1fd53b25a99d51bff95f80e45fb0094d981bb16ea1b4c",
+    "hotaru-sys/examples/benchmark.rs": "6b3ac3d919957d5add4d20af98dbac04007c61f416838afc39899de9d02cd90d"
+  },
+  "implementations": {
+    "hol4": {
+      "revision": "61058e3f0d4c7ad6b4e5ea0211c2b635b1b22b80",
+      "polyml": "Poly/ML 5.9.2 Release    RTS version: Arm64-5.9.2",
+      "executable": "/Users/wybxc/HOL/bin/hol",
+      "launcher_sha256": "b63256ef79769dcc8bb8e57411e078c57e348e13dd69c763ff0025ab1ded9df2",
+      "heap_sha256": "fa298fa0101844c2026f1d72bf88c0ac60e2a0e89dade6375ea05c58b7bb55d6"
+    },
+    "hol-light": {
+      "package_version": "3.0.0+",
+      "package_directory": "/Users/wybxc/hol-light-wasm/_opam/lib/hol_light",
+      "ocaml": "5.2.0",
+      "library_sha256": "44540d2cbf4e3d8aa1bbb133cf2e85e8b6b17dcfa017fc1375b6fd7fb6251256",
+      "binary_sha256": "90bd2e63e4aa25025219a464e9c7617526190d1bc64fcbf9f253b5204885242b"
+    },
+    "hotaru": {
+      "revision": "69b5e083f3d2e228ebcc418bdef47d3bf344a89f",
+      "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+      "lean": "Lean (version 4.29.0, arm64-apple-darwin24.6.0, commit 98dc76e3c0a9b856c9b98726b713fb04fab16740, Release)",
+      "binary_sha256": "5605f0843b51d9975afbc84b566c969af11465de552b63a6b29f29621815a9dd"
+    }
+  },
+  "measurements": [
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 6499000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 5886000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 6103000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 5965000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 5945000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 5810000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 5851000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 6139000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 6461000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 6378000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 6430000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 6536000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 6530000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 7007000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 6844000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 6422000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 6585000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 6589000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 6486000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 6390000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 6431000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 6448000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 6131000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 6342000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 6468000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 6416000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 6692000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 6551000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 6174000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 6234000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 6451000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 6505000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 6336000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 6332000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 6279000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 6303000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 6583000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 6843000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 6842000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 6757000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 6319000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 6631000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 6389000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 6417000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 6189000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 6543000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 6780000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 6249000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 6465000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 6410000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 6766000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 6453000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 6281000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 6544000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 6455000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 6381000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 32905000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 41162000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 29847000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 29700000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 29770000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 29682000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 29282000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 0,
+      "iterations": 16384,
+      "elapsed_ns": 10725000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 1,
+      "iterations": 16384,
+      "elapsed_ns": 4304000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 2,
+      "iterations": 16384,
+      "elapsed_ns": 4316000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 3,
+      "iterations": 16384,
+      "elapsed_ns": 4338000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 4,
+      "iterations": 16384,
+      "elapsed_ns": 4466000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 5,
+      "iterations": 16384,
+      "elapsed_ns": 4291000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 6,
+      "iterations": 16384,
+      "elapsed_ns": 4377000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 0,
+      "iterations": 16384,
+      "elapsed_ns": 13741000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 1,
+      "iterations": 16384,
+      "elapsed_ns": 14279000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 2,
+      "iterations": 16384,
+      "elapsed_ns": 14780000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 3,
+      "iterations": 16384,
+      "elapsed_ns": 14556000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 4,
+      "iterations": 16384,
+      "elapsed_ns": 14213000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 5,
+      "iterations": 16384,
+      "elapsed_ns": 14142000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 6,
+      "iterations": 16384,
+      "elapsed_ns": 14382000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 0,
+      "iterations": 16384,
+      "elapsed_ns": 66598000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 1,
+      "iterations": 16384,
+      "elapsed_ns": 51354000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 2,
+      "iterations": 16384,
+      "elapsed_ns": 51448000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 3,
+      "iterations": 16384,
+      "elapsed_ns": 51270000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 4,
+      "iterations": 16384,
+      "elapsed_ns": 52994000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 5,
+      "iterations": 16384,
+      "elapsed_ns": 53282000
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 6,
+      "iterations": 16384,
+      "elapsed_ns": 53579000
+    },
+    {
+      "system": "hol4",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 524288,
+      "elapsed_ns": 1906000
+    },
+    {
+      "system": "hol4",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 524288,
+      "elapsed_ns": 2027000
+    },
+    {
+      "system": "hol4",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 524288,
+      "elapsed_ns": 1731000
+    },
+    {
+      "system": "hol4",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 524288,
+      "elapsed_ns": 2027000
+    },
+    {
+      "system": "hol4",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 524288,
+      "elapsed_ns": 1884000
+    },
+    {
+      "system": "hol4",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 524288,
+      "elapsed_ns": 1835000
+    },
+    {
+      "system": "hol4",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 524288,
+      "elapsed_ns": 1771000
+    },
+    {
+      "system": "hol4",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 524288,
+      "elapsed_ns": 9243000
+    },
+    {
+      "system": "hol4",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 524288,
+      "elapsed_ns": 9332000
+    },
+    {
+      "system": "hol4",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 524288,
+      "elapsed_ns": 9838000
+    },
+    {
+      "system": "hol4",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 524288,
+      "elapsed_ns": 9285000
+    },
+    {
+      "system": "hol4",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 524288,
+      "elapsed_ns": 9540000
+    },
+    {
+      "system": "hol4",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 524288,
+      "elapsed_ns": 9130000
+    },
+    {
+      "system": "hol4",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 524288,
+      "elapsed_ns": 9209000
+    },
+    {
+      "system": "hol4",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 65536,
+      "elapsed_ns": 4568000
+    },
+    {
+      "system": "hol4",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 65536,
+      "elapsed_ns": 4630000
+    },
+    {
+      "system": "hol4",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 65536,
+      "elapsed_ns": 4584000
+    },
+    {
+      "system": "hol4",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 65536,
+      "elapsed_ns": 4552000
+    },
+    {
+      "system": "hol4",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 65536,
+      "elapsed_ns": 4538000
+    },
+    {
+      "system": "hol4",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 65536,
+      "elapsed_ns": 4604000
+    },
+    {
+      "system": "hol4",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 65536,
+      "elapsed_ns": 4637000
+    },
+    {
+      "system": "hol4",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 0,
+      "iterations": 65536,
+      "elapsed_ns": 47069000
+    },
+    {
+      "system": "hol4",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 1,
+      "iterations": 65536,
+      "elapsed_ns": 43496000
+    },
+    {
+      "system": "hol4",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 2,
+      "iterations": 65536,
+      "elapsed_ns": 41410000
+    },
+    {
+      "system": "hol4",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 3,
+      "iterations": 65536,
+      "elapsed_ns": 43666000
+    },
+    {
+      "system": "hol4",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 4,
+      "iterations": 65536,
+      "elapsed_ns": 41763000
+    },
+    {
+      "system": "hol4",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 5,
+      "iterations": 65536,
+      "elapsed_ns": 43509000
+    },
+    {
+      "system": "hol4",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 6,
+      "iterations": 65536,
+      "elapsed_ns": 43711000
+    },
+    {
+      "system": "hol4",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 0,
+      "iterations": 65536,
+      "elapsed_ns": 288239000
+    },
+    {
+      "system": "hol4",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 1,
+      "iterations": 65536,
+      "elapsed_ns": 340582000
+    },
+    {
+      "system": "hol4",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 2,
+      "iterations": 65536,
+      "elapsed_ns": 289339000
+    },
+    {
+      "system": "hol4",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 3,
+      "iterations": 65536,
+      "elapsed_ns": 287306000
+    },
+    {
+      "system": "hol4",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 4,
+      "iterations": 65536,
+      "elapsed_ns": 289686000
+    },
+    {
+      "system": "hol4",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 5,
+      "iterations": 65536,
+      "elapsed_ns": 304554000
+    },
+    {
+      "system": "hol4",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 6,
+      "iterations": 65536,
+      "elapsed_ns": 315962000
+    },
+    {
+      "system": "hol4",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 41377000
+    },
+    {
+      "system": "hol4",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 40790000
+    },
+    {
+      "system": "hol4",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 40266000
+    },
+    {
+      "system": "hol4",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 40603000
+    },
+    {
+      "system": "hol4",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 41304000
+    },
+    {
+      "system": "hol4",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 41561000
+    },
+    {
+      "system": "hol4",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 40564000
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 1315116
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 1326084
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 1254081
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 1422166
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 1274824
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 1343011
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 1248836
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 1358032
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 1556873
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 1332044
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 1399993
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 1381874
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 1327991
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 1367092
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 1347064
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 1409053
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 1343011
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 1477956
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 1301050
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 1363992
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 1320123
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 1382112
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 1310825
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 1360177
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 1334905
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 1387119
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 1319169
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 1366853
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 1311063
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 1391887
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 1255989
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 1297950
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 1257181
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 1276016
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 1307964
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 1309156
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 1343965
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 1382827
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 1361131
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 1343965
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 1377820
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 1384019
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 1391172
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 1414060
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 1392841
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 1328945
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 1354932
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 1355886
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 1325845
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 1364946
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 1381874
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 1312971
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 1327037
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 1355171
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 1277923
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 1407146
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 10349988
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 10081052
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 10300874
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 10655879
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 10626077
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 10530948
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 10257959
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 0,
+      "iterations": 16384,
+      "elapsed_ns": 2119064
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 1,
+      "iterations": 16384,
+      "elapsed_ns": 2088069
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 2,
+      "iterations": 16384,
+      "elapsed_ns": 2124071
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 3,
+      "iterations": 16384,
+      "elapsed_ns": 2074003
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 4,
+      "iterations": 16384,
+      "elapsed_ns": 2058982
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 5,
+      "iterations": 16384,
+      "elapsed_ns": 2083063
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 6,
+      "iterations": 16384,
+      "elapsed_ns": 1991987
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 0,
+      "iterations": 16384,
+      "elapsed_ns": 8806943
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 1,
+      "iterations": 16384,
+      "elapsed_ns": 8625984
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 2,
+      "iterations": 16384,
+      "elapsed_ns": 8799076
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 3,
+      "iterations": 16384,
+      "elapsed_ns": 8846044
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 4,
+      "iterations": 16384,
+      "elapsed_ns": 8661985
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 5,
+      "iterations": 16384,
+      "elapsed_ns": 8743047
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 6,
+      "iterations": 16384,
+      "elapsed_ns": 8599996
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 0,
+      "iterations": 16384,
+      "elapsed_ns": 51054000
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 1,
+      "iterations": 16384,
+      "elapsed_ns": 49334049
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 2,
+      "iterations": 16384,
+      "elapsed_ns": 47757863
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 3,
+      "iterations": 16384,
+      "elapsed_ns": 49029111
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 4,
+      "iterations": 16384,
+      "elapsed_ns": 48079013
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 5,
+      "iterations": 16384,
+      "elapsed_ns": 48174142
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 6,
+      "iterations": 16384,
+      "elapsed_ns": 47827959
+    },
+    {
+      "system": "hol-light",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 524288,
+      "elapsed_ns": 3637075
+    },
+    {
+      "system": "hol-light",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 524288,
+      "elapsed_ns": 3610849
+    },
+    {
+      "system": "hol-light",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 524288,
+      "elapsed_ns": 3713130
+    },
+    {
+      "system": "hol-light",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 524288,
+      "elapsed_ns": 3737926
+    },
+    {
+      "system": "hol-light",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 524288,
+      "elapsed_ns": 3700971
+    },
+    {
+      "system": "hol-light",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 524288,
+      "elapsed_ns": 3668069
+    },
+    {
+      "system": "hol-light",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 524288,
+      "elapsed_ns": 3623008
+    },
+    {
+      "system": "hol-light",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 524288,
+      "elapsed_ns": 3166913
+    },
+    {
+      "system": "hol-light",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 524288,
+      "elapsed_ns": 3158807
+    },
+    {
+      "system": "hol-light",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 524288,
+      "elapsed_ns": 3093004
+    },
+    {
+      "system": "hol-light",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 524288,
+      "elapsed_ns": 3072977
+    },
+    {
+      "system": "hol-light",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 524288,
+      "elapsed_ns": 3170013
+    },
+    {
+      "system": "hol-light",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 524288,
+      "elapsed_ns": 3082036
+    },
+    {
+      "system": "hol-light",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 524288,
+      "elapsed_ns": 3073930
+    },
+    {
+      "system": "hol-light",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 65536,
+      "elapsed_ns": 482082
+    },
+    {
+      "system": "hol-light",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 65536,
+      "elapsed_ns": 481843
+    },
+    {
+      "system": "hol-light",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 65536,
+      "elapsed_ns": 477075
+    },
+    {
+      "system": "hol-light",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 65536,
+      "elapsed_ns": 508069
+    },
+    {
+      "system": "hol-light",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 65536,
+      "elapsed_ns": 474929
+    },
+    {
+      "system": "hol-light",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 65536,
+      "elapsed_ns": 473976
+    },
+    {
+      "system": "hol-light",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 65536,
+      "elapsed_ns": 551939
+    },
+    {
+      "system": "hol-light",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 0,
+      "iterations": 65536,
+      "elapsed_ns": 33771991
+    },
+    {
+      "system": "hol-light",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 1,
+      "iterations": 65536,
+      "elapsed_ns": 34498929
+    },
+    {
+      "system": "hol-light",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 2,
+      "iterations": 65536,
+      "elapsed_ns": 34024953
+    },
+    {
+      "system": "hol-light",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 3,
+      "iterations": 65536,
+      "elapsed_ns": 33721923
+    },
+    {
+      "system": "hol-light",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 4,
+      "iterations": 65536,
+      "elapsed_ns": 33951997
+    },
+    {
+      "system": "hol-light",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 5,
+      "iterations": 65536,
+      "elapsed_ns": 33855915
+    },
+    {
+      "system": "hol-light",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 6,
+      "iterations": 65536,
+      "elapsed_ns": 32949924
+    },
+    {
+      "system": "hol-light",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 0,
+      "iterations": 65536,
+      "elapsed_ns": 307675123
+    },
+    {
+      "system": "hol-light",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 1,
+      "iterations": 65536,
+      "elapsed_ns": 309303045
+    },
+    {
+      "system": "hol-light",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 2,
+      "iterations": 65536,
+      "elapsed_ns": 308177947
+    },
+    {
+      "system": "hol-light",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 3,
+      "iterations": 65536,
+      "elapsed_ns": 309525012
+    },
+    {
+      "system": "hol-light",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 4,
+      "iterations": 65536,
+      "elapsed_ns": 305011034
+    },
+    {
+      "system": "hol-light",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 5,
+      "iterations": 65536,
+      "elapsed_ns": 309212923
+    },
+    {
+      "system": "hol-light",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 6,
+      "iterations": 65536,
+      "elapsed_ns": 310956954
+    },
+    {
+      "system": "hol-light",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 6263971
+    },
+    {
+      "system": "hol-light",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 6135940
+    },
+    {
+      "system": "hol-light",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 6148815
+    },
+    {
+      "system": "hol-light",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 6214857
+    },
+    {
+      "system": "hol-light",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 6217002
+    },
+    {
+      "system": "hol-light",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 6367921
+    },
+    {
+      "system": "hol-light",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 6245851
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 4893959
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 4519583
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 4796750
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 4754583
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 4816750
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 4645875
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 4669166
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 69976166
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 68898250
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 69609875
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 68686709
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 68704417
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 68955041
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 69170250
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 289104167
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 287877458
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 292452917
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 291081333
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 289577417
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 289217834
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 289115542
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 1179695334
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 1184743291
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 1204218541
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 1243513458
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 1201995792
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 1170197083
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 1194335458
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 1927458
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 2001125
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 1945375
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 1932667
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 1991958
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 1996292
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 1906542
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 1952000
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 1980125
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 1975375
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 1989291
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 1942000
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 1948625
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 1972917
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 2003958
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 1761958
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 1779833
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 1806167
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 1770834
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 1754875
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 1882917
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 1912500
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 1960791
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 1782750
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 1799916
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 1774000
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 1830208
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 1852167
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 4588667
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 3880792
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 3900458
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 3877000
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 4058375
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 3940667
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 4031458
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 0,
+      "iterations": 16384,
+      "elapsed_ns": 10650708
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 1,
+      "iterations": 16384,
+      "elapsed_ns": 10562125
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 2,
+      "iterations": 16384,
+      "elapsed_ns": 10295167
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 3,
+      "iterations": 16384,
+      "elapsed_ns": 10348291
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 4,
+      "iterations": 16384,
+      "elapsed_ns": 10443167
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 5,
+      "iterations": 16384,
+      "elapsed_ns": 10574541
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 6,
+      "iterations": 16384,
+      "elapsed_ns": 10728875
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 0,
+      "iterations": 16384,
+      "elapsed_ns": 43130792
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 1,
+      "iterations": 16384,
+      "elapsed_ns": 44126125
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 2,
+      "iterations": 16384,
+      "elapsed_ns": 43260584
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 3,
+      "iterations": 16384,
+      "elapsed_ns": 43903166
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 4,
+      "iterations": 16384,
+      "elapsed_ns": 43263625
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 5,
+      "iterations": 16384,
+      "elapsed_ns": 43505000
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 6,
+      "iterations": 16384,
+      "elapsed_ns": 44021583
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 0,
+      "iterations": 16384,
+      "elapsed_ns": 177078667
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 1,
+      "iterations": 16384,
+      "elapsed_ns": 177282333
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 2,
+      "iterations": 16384,
+      "elapsed_ns": 177714125
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 3,
+      "iterations": 16384,
+      "elapsed_ns": 176110458
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 4,
+      "iterations": 16384,
+      "elapsed_ns": 174978625
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 5,
+      "iterations": 16384,
+      "elapsed_ns": 177699542
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 6,
+      "iterations": 16384,
+      "elapsed_ns": 176002292
+    },
+    {
+      "system": "hotaru",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 524288,
+      "elapsed_ns": 18814125
+    },
+    {
+      "system": "hotaru",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 524288,
+      "elapsed_ns": 18767000
+    },
+    {
+      "system": "hotaru",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 524288,
+      "elapsed_ns": 18888917
+    },
+    {
+      "system": "hotaru",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 524288,
+      "elapsed_ns": 18692542
+    },
+    {
+      "system": "hotaru",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 524288,
+      "elapsed_ns": 18607416
+    },
+    {
+      "system": "hotaru",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 524288,
+      "elapsed_ns": 18864042
+    },
+    {
+      "system": "hotaru",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 524288,
+      "elapsed_ns": 18585834
+    },
+    {
+      "system": "hotaru",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 524288,
+      "elapsed_ns": 27319792
+    },
+    {
+      "system": "hotaru",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 524288,
+      "elapsed_ns": 27014083
+    },
+    {
+      "system": "hotaru",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 524288,
+      "elapsed_ns": 27428375
+    },
+    {
+      "system": "hotaru",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 524288,
+      "elapsed_ns": 26805416
+    },
+    {
+      "system": "hotaru",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 524288,
+      "elapsed_ns": 26939791
+    },
+    {
+      "system": "hotaru",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 524288,
+      "elapsed_ns": 27127250
+    },
+    {
+      "system": "hotaru",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 524288,
+      "elapsed_ns": 27182750
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 65536,
+      "elapsed_ns": 4648625
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 65536,
+      "elapsed_ns": 4561041
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 65536,
+      "elapsed_ns": 4648292
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 65536,
+      "elapsed_ns": 4602333
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 65536,
+      "elapsed_ns": 4628500
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 65536,
+      "elapsed_ns": 4581542
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 65536,
+      "elapsed_ns": 4601542
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 0,
+      "iterations": 65536,
+      "elapsed_ns": 7846500
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 1,
+      "iterations": 65536,
+      "elapsed_ns": 8077833
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 2,
+      "iterations": 65536,
+      "elapsed_ns": 7962458
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 3,
+      "iterations": 65536,
+      "elapsed_ns": 7757209
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 4,
+      "iterations": 65536,
+      "elapsed_ns": 7531375
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 5,
+      "iterations": 65536,
+      "elapsed_ns": 7386458
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 6,
+      "iterations": 65536,
+      "elapsed_ns": 7427875
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 0,
+      "iterations": 65536,
+      "elapsed_ns": 29925083
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 1,
+      "iterations": 65536,
+      "elapsed_ns": 29333458
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 2,
+      "iterations": 65536,
+      "elapsed_ns": 30069042
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 3,
+      "iterations": 65536,
+      "elapsed_ns": 29757167
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 4,
+      "iterations": 65536,
+      "elapsed_ns": 29626666
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 5,
+      "iterations": 65536,
+      "elapsed_ns": 29431334
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 6,
+      "iterations": 65536,
+      "elapsed_ns": 29432375
+    },
+    {
+      "system": "hotaru",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 52470417
+    },
+    {
+      "system": "hotaru",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 52784708
+    },
+    {
+      "system": "hotaru",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 52408584
+    },
+    {
+      "system": "hotaru",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 52635917
+    },
+    {
+      "system": "hotaru",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 51777167
+    },
+    {
+      "system": "hotaru",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 52649125
+    },
+    {
+      "system": "hotaru",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 51942708
+    }
+  ],
+  "summary": [
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "median_ns_per_iteration": 45.35675048828125,
+      "min_ns_per_iteration": 44.3267822265625,
+      "max_ns_per_iteration": 49.58343505859375
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "median_ns_per_iteration": 10.033538818359375,
+      "min_ns_per_iteration": 9.527862548828125,
+      "max_ns_per_iteration": 10.850265502929688
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "median_ns_per_iteration": 36.27458953857422,
+      "min_ns_per_iteration": 34.48168182373047,
+      "max_ns_per_iteration": 37.33794403076172
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "median_ns_per_iteration": 49.29351806640625,
+      "min_ns_per_iteration": 46.83685302734375,
+      "max_ns_per_iteration": 53.45916748046875
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "median_ns_per_iteration": 10.430084228515625,
+      "min_ns_per_iteration": 10.131767272949219,
+      "max_ns_per_iteration": 11.877998352050781
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "median_ns_per_iteration": 526.0852127075195,
+      "min_ns_per_iteration": 524.0380020141602,
+      "max_ns_per_iteration": 533.8757781982422
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "median_ns_per_iteration": 49.4842529296875,
+      "min_ns_per_iteration": 48.7518310546875,
+      "max_ns_per_iteration": 52.215576171875
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "median_ns_per_iteration": 10.27728271484375,
+      "min_ns_per_iteration": 9.926223754882812,
+      "max_ns_per_iteration": 11.275909423828125
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "median_ns_per_iteration": 2206.5569610595703,
+      "min_ns_per_iteration": 2196.3307037353516,
+      "max_ns_per_iteration": 2231.23868560791
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "median_ns_per_iteration": 49.1943359375,
+      "min_ns_per_iteration": 46.77581787109375,
+      "max_ns_per_iteration": 51.055908203125
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "median_ns_per_iteration": 10.377326965332031,
+      "min_ns_per_iteration": 10.000801086425781,
+      "max_ns_per_iteration": 10.582878112792969
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "median_ns_per_iteration": 9112.056411743164,
+      "min_ns_per_iteration": 8927.895225524902,
+      "max_ns_per_iteration": 9487.254776000977
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "median_ns_per_iteration": 48.309326171875,
+      "min_ns_per_iteration": 47.1038818359375,
+      "max_ns_per_iteration": 49.62921142578125
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "median_ns_per_iteration": 9.902572631835938,
+      "min_ns_per_iteration": 9.582435607910156,
+      "max_ns_per_iteration": 10.619255065917969
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "median_ns_per_iteration": 14.842033386230469,
+      "min_ns_per_iteration": 14.545761108398438,
+      "max_ns_per_iteration": 15.267372131347656
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "median_ns_per_iteration": 50.59051513671875,
+      "min_ns_per_iteration": 48.08807373046875,
+      "max_ns_per_iteration": 52.20794677734375
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "median_ns_per_iteration": 10.384605407714844,
+      "min_ns_per_iteration": 9.988067626953125,
+      "max_ns_per_iteration": 10.559226989746094
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "median_ns_per_iteration": 15.052162170410156,
+      "min_ns_per_iteration": 14.8162841796875,
+      "max_ns_per_iteration": 15.177085876464844
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "median_ns_per_iteration": 48.95782470703125,
+      "min_ns_per_iteration": 47.21832275390625,
+      "max_ns_per_iteration": 51.727294921875
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "median_ns_per_iteration": 10.344589233398438,
+      "min_ns_per_iteration": 10.115394592285156,
+      "max_ns_per_iteration": 10.788421630859375
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "median_ns_per_iteration": 13.579048156738281,
+      "min_ns_per_iteration": 13.388633728027344,
+      "max_ns_per_iteration": 15.288986206054688
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "median_ns_per_iteration": 49.23248291015625,
+      "min_ns_per_iteration": 47.92022705078125,
+      "max_ns_per_iteration": 51.6204833984375
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "median_ns_per_iteration": 10.339134216308594,
+      "min_ns_per_iteration": 9.749778747558594,
+      "max_ns_per_iteration": 10.735671997070312
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "median_ns_per_iteration": 13.96337890625,
+      "min_ns_per_iteration": 13.5345458984375,
+      "max_ns_per_iteration": 14.959648132324219
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "median_ns_per_iteration": 227.1270751953125,
+      "min_ns_per_iteration": 223.4039306640625,
+      "max_ns_per_iteration": 314.0411376953125
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "median_ns_per_iteration": 78.96414184570312,
+      "min_ns_per_iteration": 76.91232299804688,
+      "max_ns_per_iteration": 81.29790496826172
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "median_ns_per_iteration": 30.064903259277344,
+      "min_ns_per_iteration": 29.57916259765625,
+      "max_ns_per_iteration": 35.008750915527344
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_build",
+      "parameter": 16,
+      "median_ns_per_iteration": 264.7705078125,
+      "min_ns_per_iteration": 261.90185546875,
+      "max_ns_per_iteration": 654.60205078125
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_build",
+      "parameter": 16,
+      "median_ns_per_iteration": 127.14007568359375,
+      "min_ns_per_iteration": 121.58123779296875,
+      "max_ns_per_iteration": 129.64300537109375
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 16,
+      "median_ns_per_iteration": 644.6609497070312,
+      "min_ns_per_iteration": 628.3671264648438,
+      "max_ns_per_iteration": 654.8385620117188
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_build",
+      "parameter": 64,
+      "median_ns_per_iteration": 871.52099609375,
+      "min_ns_per_iteration": 838.68408203125,
+      "max_ns_per_iteration": 902.099609375
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_build",
+      "parameter": 64,
+      "median_ns_per_iteration": 533.6332397460938,
+      "min_ns_per_iteration": 524.902099609375,
+      "max_ns_per_iteration": 539.919677734375
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 64,
+      "median_ns_per_iteration": 2655.33447265625,
+      "min_ns_per_iteration": 2632.49462890625,
+      "max_ns_per_iteration": 2693.2449340820312
+    },
+    {
+      "system": "hol4",
+      "kind": "refl_build",
+      "parameter": 256,
+      "median_ns_per_iteration": 3234.4970703125,
+      "min_ns_per_iteration": 3129.2724609375,
+      "max_ns_per_iteration": 4064.8193359375
+    },
+    {
+      "system": "hol-light",
+      "kind": "refl_build",
+      "parameter": 256,
+      "median_ns_per_iteration": 2940.3162841796875,
+      "min_ns_per_iteration": 2914.9086303710938,
+      "max_ns_per_iteration": 3116.0888671875
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 256,
+      "median_ns_per_iteration": 10808.024108886719,
+      "min_ns_per_iteration": 10679.847717285156,
+      "max_ns_per_iteration": 10846.809387207031
+    },
+    {
+      "system": "hol4",
+      "kind": "assume",
+      "parameter": 0,
+      "median_ns_per_iteration": 3.59344482421875,
+      "min_ns_per_iteration": 3.3016204833984375,
+      "max_ns_per_iteration": 3.8661956787109375
+    },
+    {
+      "system": "hol-light",
+      "kind": "assume",
+      "parameter": 0,
+      "median_ns_per_iteration": 6.996286392211914,
+      "min_ns_per_iteration": 6.887147903442383,
+      "max_ns_per_iteration": 7.129528045654297
+    },
+    {
+      "system": "hotaru",
+      "kind": "assume",
+      "parameter": 0,
+      "median_ns_per_iteration": 35.79521179199219,
+      "min_ns_per_iteration": 35.44966506958008,
+      "max_ns_per_iteration": 36.02775001525879
+    },
+    {
+      "system": "hol4",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "median_ns_per_iteration": 17.709732055664062,
+      "min_ns_per_iteration": 17.414093017578125,
+      "max_ns_per_iteration": 18.764495849609375
+    },
+    {
+      "system": "hol-light",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "median_ns_per_iteration": 5.899436950683594,
+      "min_ns_per_iteration": 5.861238479614258,
+      "max_ns_per_iteration": 6.046319961547852
+    },
+    {
+      "system": "hotaru",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "median_ns_per_iteration": 51.74112319946289,
+      "min_ns_per_iteration": 51.12727355957031,
+      "max_ns_per_iteration": 52.315473556518555
+    },
+    {
+      "system": "hol4",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "median_ns_per_iteration": 69.9462890625,
+      "min_ns_per_iteration": 69.244384765625,
+      "max_ns_per_iteration": 70.7550048828125
+    },
+    {
+      "system": "hol-light",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "median_ns_per_iteration": 7.3523406982421875,
+      "min_ns_per_iteration": 7.2322998046875,
+      "max_ns_per_iteration": 8.421920776367188
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "median_ns_per_iteration": 70.22602844238281,
+      "min_ns_per_iteration": 69.59596252441406,
+      "max_ns_per_iteration": 70.93238830566406
+    },
+    {
+      "system": "hol4",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "median_ns_per_iteration": 663.8946533203125,
+      "min_ns_per_iteration": 631.866455078125,
+      "max_ns_per_iteration": 718.2159423828125
+    },
+    {
+      "system": "hol-light",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "median_ns_per_iteration": 516.6002655029297,
+      "min_ns_per_iteration": 502.77593994140625,
+      "max_ns_per_iteration": 526.4118804931641
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "median_ns_per_iteration": 118.36561584472656,
+      "min_ns_per_iteration": 112.70840454101562,
+      "max_ns_per_iteration": 123.25794982910156
+    },
+    {
+      "system": "hol4",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "median_ns_per_iteration": 4420.257568359375,
+      "min_ns_per_iteration": 4383.941650390625,
+      "max_ns_per_iteration": 5196.868896484375
+    },
+    {
+      "system": "hol-light",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "median_ns_per_iteration": 4718.214767456055,
+      "min_ns_per_iteration": 4654.099029541016,
+      "max_ns_per_iteration": 4744.826568603516
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "median_ns_per_iteration": 452.0670471191406,
+      "min_ns_per_iteration": 447.5930480957031,
+      "max_ns_per_iteration": 458.8171691894531
+    },
+    {
+      "system": "hol4",
+      "kind": "trace",
+      "parameter": 0,
+      "median_ns_per_iteration": 311.2030029296875,
+      "min_ns_per_iteration": 307.2052001953125,
+      "max_ns_per_iteration": 317.08526611328125
+    },
+    {
+      "system": "hol-light",
+      "kind": "trace",
+      "parameter": 0,
+      "median_ns_per_iteration": 47.43196105957031,
+      "min_ns_per_iteration": 46.813507080078125,
+      "max_ns_per_iteration": 48.58338165283203
+    },
+    {
+      "system": "hotaru",
+      "kind": "trace",
+      "parameter": 0,
+      "median_ns_per_iteration": 400.31751251220703,
+      "min_ns_per_iteration": 395.02843475341797,
+      "max_ns_per_iteration": 402.7153625488281
+    }
+  ]
+}

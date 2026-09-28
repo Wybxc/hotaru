@@ -3,6 +3,7 @@ import HotaruKernelTests.FFI
 import HotaruKernelTests.Provenance
 import HotaruKernelTests.Examples
 import HotaruKernelTests.Basic
+import HotaruKernelTests.Equality
 import HotaruKernelTests.Propositional
 import HotaruKernelTests.TypeInstantiation
 import HotaruKernelTests.Polymorphic

@@ -133,6 +133,17 @@ fn bindings(items: &[(&str, &Type)]) -> Owned {
     })
 }
 
+fn term_pairs(items: &[(&Term, &Term)]) -> Owned {
+    items.iter().fold(Owned::array(), |a, (x, y)| {
+        a.push(unsafe {
+            Owned::from_raw(hotaru_lean_term_pair(
+                x.value.argument(),
+                y.value.argument(),
+            ))
+        })
+    })
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Name {
     pub scope: String,
@@ -689,6 +700,30 @@ impl Theory {
         }))
     }
 
+    pub fn deduct_antisym(&self, a: &Theorem, b: &Theorem) -> Result<Theorem> {
+        self.owns(a)?;
+        self.owns(b)?;
+
+        Ok(self.theorem(unsafe {
+            Owned::from_raw(hotaru_lean_deduct_antisym(
+                self.arg(),
+                a.value.argument(),
+                b.value.argument(),
+            ))
+        }))
+    }
+
+    pub fn compact_assumptions(&self, th: &Theorem) -> Result<Theorem> {
+        self.owns(th)?;
+
+        Ok(self.theorem(unsafe {
+            Owned::from_raw(hotaru_lean_compact_assumptions(
+                self.arg(),
+                th.value.argument(),
+            ))
+        }))
+    }
+
     pub fn trans(&self, a: &Theorem, b: &Theorem) -> Result<Theorem> {
         self.owns(a)?;
         self.owns(b)?;
@@ -762,19 +797,10 @@ impl Theory {
     pub fn inst(&self, replacements: &[(&Term, &Term)], th: &Theorem) -> Result<Theorem> {
         self.owns(th)?;
 
-        let pairs = replacements.iter().fold(Owned::array(), |a, (x, y)| {
-            a.push(unsafe {
-                Owned::from_raw(hotaru_lean_term_pair(
-                    x.value.argument(),
-                    y.value.argument(),
-                ))
-            })
-        });
-
         Ok(self.theorem(unsafe {
             checked(hotaru_lean_inst(
                 self.arg(),
-                pairs.into_raw(),
+                term_pairs(replacements).into_raw(),
                 th.value.argument(),
             ))?
         }))
@@ -787,6 +813,27 @@ impl Theory {
             checked(hotaru_lean_inst_type(
                 self.arg(),
                 bindings(replacements).into_raw(),
+                th.value.argument(),
+            ))?
+        }))
+    }
+
+    /// Applies a type substitution followed by a term substitution in one
+    /// verified kernel call. The combined entry point retains both ordinary
+    /// validation steps while removing one FFI round trip.
+    pub fn inst_type_then_inst(
+        &self,
+        type_replacements: &[(&str, &Type)],
+        term_replacements: &[(&Term, &Term)],
+        th: &Theorem,
+    ) -> Result<Theorem> {
+        self.owns(th)?;
+
+        Ok(self.theorem(unsafe {
+            checked(hotaru_lean_inst_type_then_inst(
+                self.arg(),
+                bindings(type_replacements).into_raw(),
+                term_pairs(term_replacements).into_raw(),
                 th.value.argument(),
             ))?
         }))

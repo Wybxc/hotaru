@@ -18,6 +18,9 @@ require aesop from git "https://github.com/leanprover-community/aesop" @ "v4.29.
 lean_lib HotaruKernelAudit
 lean_lib HotaruKernelFFI
 
+lean_exe kernelNativeBench where
+  root := `KernelNativeBench
+
 -- Link precisely the export module's imports, rather than all of mathlib.
 target hotaruLean pkg : Dynlib := do
   if Platform.isWindows then error "hotaruLean currently supports macOS and Linux"

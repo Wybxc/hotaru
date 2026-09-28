@@ -112,6 +112,13 @@ are separate dimensions. The present runner does not report those metrics;
 they should be measured and labeled separately instead of being folded into
 kernel throughput.
 
+The [`LIST_NOT_NIL` suite](list_not_nil/README.md) adds a recorded HOL4 proof
+workload. It reports native proof construction separately from import of one
+fixed proof certificate, so those timings have explicit and distinct
+boundaries. [Measured API results](RESULTS.md) and the
+[`LIST_NOT_NIL` comparison](list_not_nil/RESULTS.md) report the current
+three-system measurements.
+
 ## Extending the suite
 
 A new standard case must define its logical inputs, expected conclusion and

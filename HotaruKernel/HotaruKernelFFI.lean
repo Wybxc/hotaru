@@ -88,9 +88,11 @@ def beta (s : Execution.State) (p : RawTerm) : Result (Thm s.theory) :=
 @[export hotaru_lean_beta_checked]
 def betaCheckedTerm (s : Execution.State) (p : CheckedTerm s.theory) : Result (Thm s.theory) :=
   result (Kernel.BETA_CONV_CHECKED s.theory p)
+
 @[export hotaru_lean_abs]
 def abs (s : Execution.State) (name : String) (a : HolType) (th : Thm s.theory) :
-    Result (Thm s.theory) := result (Kernel.ABS s.theory name a th)
+    Result (Thm s.theory) :=
+  result (Kernel.ABS s.theory name a th)
 @[export hotaru_lean_mk_comb]
 def mkComb (s : Execution.State) (a b : Thm s.theory) : Result (Thm s.theory) :=
   result (Kernel.MK_COMB s.theory a b)
@@ -105,6 +107,12 @@ def dischChecked (s : Execution.State) (p : CheckedTerm s.theory) (th : Thm s.th
 @[export hotaru_lean_mp]
 def mp (s : Execution.State) (a b : Thm s.theory) : Result (Thm s.theory) :=
   result (Kernel.MP s.theory a b)
+@[export hotaru_lean_deduct_antisym]
+def deductAntisym (s : Execution.State) (a b : Thm s.theory) : Thm s.theory :=
+  Kernel.DEDUCT_ANTISYM s.theory a b
+@[export hotaru_lean_compact_assumptions]
+def compactAssumptions (s : Execution.State) (th : Thm s.theory) : Thm s.theory :=
+  Kernel.COMPACT_ASSUMPTIONS s.theory th
 @[export hotaru_lean_symm]
 def symm (s : Execution.State) (th : Thm s.theory) : Result (Thm s.theory) :=
   result (Kernel.SYM s.theory th)
@@ -120,6 +128,12 @@ def inst (s : Execution.State) (rs : Array (RawTerm × RawTerm)) (th : Thm s.the
 @[export hotaru_lean_inst_type]
 def instType (s : Execution.State) (rs : Array (String × HolType)) (th : Thm s.theory) :
     Result (Thm s.theory) := result (Kernel.INST_TYPE s.theory rs.toList th)
+@[export hotaru_lean_inst_type_then_inst]
+def instTypeThenInst (s : Execution.State) (typeRs : Array (String × HolType))
+    (termRs : Array (RawTerm × RawTerm)) (th : Thm s.theory) : Result (Thm s.theory) :=
+  result (do
+    let typed ← Kernel.INST_TYPE s.theory typeRs.toList th
+    Kernel.INST s.theory termRs.toList typed)
 @[export hotaru_lean_subst]
 def subst (s : Execution.State) (rs : Array (RawTerm × Thm s.theory)) (p : RawTerm)
     (th : Thm s.theory) : Result (Thm s.theory) :=

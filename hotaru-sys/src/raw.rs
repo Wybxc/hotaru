@@ -42,11 +42,14 @@ unsafe extern "C" {
     pub fn hotaru_lean_disch(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
     pub fn hotaru_lean_disch_checked(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
     pub fn hotaru_lean_mp(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
+    pub fn hotaru_lean_deduct_antisym(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
+    pub fn hotaru_lean_compact_assumptions(arg0: Obj, arg1: Obj) -> Obj;
     pub fn hotaru_lean_symm(arg0: Obj, arg1: Obj) -> Obj;
     pub fn hotaru_lean_trans(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
     pub fn hotaru_lean_eq_mp(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
     pub fn hotaru_lean_inst(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
     pub fn hotaru_lean_inst_type(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
+    pub fn hotaru_lean_inst_type_then_inst(arg0: Obj, arg1: Obj, arg2: Obj, arg3: Obj) -> Obj;
     pub fn hotaru_lean_subst(arg0: Obj, arg1: Obj, arg2: Obj, arg3: Obj) -> Obj;
 
     pub fn hotaru_lean_extension_state(arg0: Obj, arg1: Obj) -> Obj;

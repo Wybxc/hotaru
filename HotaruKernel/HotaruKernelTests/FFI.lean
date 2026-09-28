@@ -23,6 +23,15 @@ example : observe composed = .ok ([], .equal (.app identity p) (.app identity p)
 example : observe (assume state p) = .ok ([p], p) := by decide +kernel
 example : observe (beta state (.app identity p)) = .ok ([], .equal (.app identity p) p) := by
   decide +kernel
+example : observe (do
+    let equality ← assume state (.equal p q)
+    let premise ← assume state p
+    eqMp state equality premise) = .ok ([.equal p q, p], q) := by
+  decide +kernel
+example : observe (do
+    let equality ← assume state (.equal p q)
+    symm state equality) = .ok ([.equal p q], .equal q p) := by
+  decide +kernel
 example : observe (assume state identity) = .error 105 := by decide +kernel
 example : checkTerm state (.bvar 0) = .error 101 := by decide +kernel
 example : checkTerm state (.app p q) = .error 103 := by decide +kernel

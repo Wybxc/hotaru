@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "mode": "native-proof",
+  "created_at_utc": "2026-09-27T15:55:31.864834+00:00",
+  "host": {
+    "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
+    "machine": "arm64"
+  },
+  "profile": "standard",
+  "trials": 7,
+  "iterations_per_trial": 256,
+  "warmup_iterations": 4,
+  "source_sha256": {
+    "benchmarks/list_not_nil/run_native.py": "678e9954140494e54f97aa936fa0e31f9ff93c41bd8ceb245f11c367082f99f2",
+    "benchmarks/list_not_nil/hol_light.ml": "e2f5840cf408f7ab74fa9ac7e5d859ecbca8b75801d558cf404c6365764d6077",
+    "benchmarks/list_not_nil/hol4.sml": "281b9f9e7f3cd00cc4ce946abfd8deed8148924659ad0616fd49cf7cb9610866"
+  },
+  "results": [
+    {
+      "system": "hol4",
+      "implementation": {
+        "executable": "/Users/wybxc/HOL/bin/hol",
+        "launcher_sha256": "b63256ef79769dcc8bb8e57411e078c57e348e13dd69c763ff0025ab1ded9df2",
+        "revision": "61058e3f0d4c7ad6b4e5ea0211c2b635b1b22b80",
+        "polyml": "Poly/ML 5.9.2 Release    RTS version: Arm64-5.9.2",
+        "heap_sha256": "fa298fa0101844c2026f1d72bf88c0ac60e2a0e89dade6375ea05c58b7bb55d6",
+        "inferences_per_proof": 3413
+      },
+      "elapsed_ns": [
+        665149000,
+        589136000,
+        582349000,
+        608574000,
+        632788000,
+        606268000,
+        624377000
+      ],
+      "median_ns_per_proof": 2377242.1875,
+      "min_ns_per_proof": 2274800.78125,
+      "max_ns_per_proof": 2598238.28125
+    },
+    {
+      "system": "hol-light",
+      "implementation": {
+        "package_directory": "/Users/wybxc/hol-light-wasm/_opam/lib/hol_light",
+        "package_version": "3.0.0+",
+        "ocaml": "5.2.0",
+        "library_sha256": "44540d2cbf4e3d8aa1bbb133cf2e85e8b6b17dcfa017fc1375b6fd7fb6251256",
+        "binary_sha256": "662e488775e0521f7701c9cf2a786705ed26cb88407fb688cd4022cdd2d8db54"
+      },
+      "elapsed_ns": [
+        20122051,
+        19683122,
+        19809007,
+        20074129,
+        19972801,
+        19690036,
+        20234823
+      ],
+      "median_ns_per_proof": 78018.75390625,
+      "min_ns_per_proof": 76887.1953125,
+      "max_ns_per_proof": 79042.27734375
+    }
+  ]
+}

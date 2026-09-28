@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "mode": "certificate-import-eager-control",
+  "date_local": "2026-09-28",
+  "host": {
+    "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
+    "machine": "arm64"
+  },
+  "profile": "standard",
+  "trials": 7,
+  "iterations_per_trial": 16,
+  "warmup_iterations": 1,
+  "article_sha256": "0b187bac4d8d3d41fcd1f485efc63fcd018e30c56311be029e4f36cef42431bd",
+  "hotaru_source_sha256": "9af19802369242f6aa7f93ab22b45ae24fbfaed1e6578ec0356c4016c0c8a133",
+  "binary_sha256": "fa8fdfde5efeb8225efe53150e1fad8b726351db1f92e4b6d4ed30f54ffaf88d",
+  "elapsed_ns": [
+    2021647625,
+    2022295417,
+    2024238000,
+    2019070834,
+    2032125083,
+    2004889584,
+    2025734333
+  ],
+  "bridge_calls_per_import": 24266,
+  "compact_calls_per_import": 10952,
+  "peak_rss_bytes": 122257408
+}

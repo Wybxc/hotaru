@@ -35,7 +35,8 @@ def Term.logicalEq {ctx dst : List HolType} {a b : HolType}
       | _ => false
   | .const n scheme i _ _ =>
       match u with
-      | .const m other j _ _ => n == m && scheme.inst i == other.inst j
+      | .const m other j _ _ =>
+          n == m && (i == j || scheme.inst i == other.inst j)
       | _ => false
   | .app f x =>
       match u with
@@ -60,11 +61,16 @@ theorem Term.logicalEq_correct {ctx dst : List HolType} {a b : HolType}
   induction t generalizing dst b with
   | fvar n a _ => cases u <;> simp [logicalEq, logical]
   | bvar v => cases u <;> simp [logicalEq, logical]
-  | const n scheme i _ _ => cases u <;> simp [logicalEq, logical]
+  | const n scheme i _ _ =>
+      cases u <;> simp [logicalEq, logical] <;> aesop
   | app f x ihf ihx => cases u <;> simp [logicalEq, logical, ihf, ihx]
   | lam _ body ih => cases u <;> simp [logicalEq, logical, ih]
   | equal l r ihl ihr => cases u <;> simp [logicalEq, logical, ihl, ihr]
   | imp p q ihp ihq => cases u <;> simp [logicalEq, logical, ihp, ihq]
+
+theorem Term.rawEq_logical {ctx : List HolType} {a : HolType}
+    (t u : Term s ctx a) (h : t.rawEq u = true) : t.logical = u.logical := by
+  exact congrArg Term.logical (eq_of_heq (t.raw_heq u ((t.rawEq_correct u).mp h)).2)
 
 def LogicalTerm.freeVars : LogicalTerm → List FVar
   | .fvar n a => [(n, a)]

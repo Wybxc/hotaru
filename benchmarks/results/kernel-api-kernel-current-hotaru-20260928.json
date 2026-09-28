@@ -1,0 +1,1278 @@
+{
+  "schema_version": 1,
+  "created_at_utc": "2026-09-28T03:04:51.987909+00:00",
+  "host": {
+    "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
+    "machine": "arm64",
+    "cpu_count": 18
+  },
+  "benchmark": {
+    "profile": "standard",
+    "batch_size": 256,
+    "warmup_iterations": 2048,
+    "trials": 7,
+    "cases": [
+      {
+        "kind": "refl_reuse",
+        "parameter": 0,
+        "iterations": 131072
+      },
+      {
+        "kind": "refl_reuse",
+        "parameter": 16,
+        "iterations": 131072
+      },
+      {
+        "kind": "refl_reuse",
+        "parameter": 64,
+        "iterations": 131072
+      },
+      {
+        "kind": "refl_reuse",
+        "parameter": 256,
+        "iterations": 131072
+      },
+      {
+        "kind": "refl_checked",
+        "parameter": 0,
+        "iterations": 131072
+      },
+      {
+        "kind": "refl_checked",
+        "parameter": 16,
+        "iterations": 131072
+      },
+      {
+        "kind": "refl_checked",
+        "parameter": 64,
+        "iterations": 131072
+      },
+      {
+        "kind": "refl_checked",
+        "parameter": 256,
+        "iterations": 131072
+      },
+      {
+        "kind": "refl_retain",
+        "parameter": 0,
+        "iterations": 131072
+      },
+      {
+        "kind": "refl_build",
+        "parameter": 16,
+        "iterations": 16384
+      },
+      {
+        "kind": "refl_build",
+        "parameter": 64,
+        "iterations": 16384
+      },
+      {
+        "kind": "refl_build",
+        "parameter": 256,
+        "iterations": 16384
+      },
+      {
+        "kind": "assume",
+        "parameter": 0,
+        "iterations": 524288
+      },
+      {
+        "kind": "eq_mp",
+        "parameter": 0,
+        "iterations": 524288
+      },
+      {
+        "kind": "trans_hyps",
+        "parameter": 0,
+        "iterations": 65536
+      },
+      {
+        "kind": "trans_hyps",
+        "parameter": 8,
+        "iterations": 65536
+      },
+      {
+        "kind": "trans_hyps",
+        "parameter": 64,
+        "iterations": 65536
+      },
+      {
+        "kind": "trace",
+        "parameter": 0,
+        "iterations": 131072
+      }
+    ]
+  },
+  "suite_sha256": {
+    "benchmarks/run.py": "a6228c04ca57dbb5812f51f1768c2e820580f3c8c433d43ed68034752532e73e",
+    "benchmarks/hol_light.ml": "08b56b6d8a7d236cef6297ec8c0d715c2379f34cac993425e955f626a45352b1",
+    "benchmarks/hol4.sml": "effdd53db1d3039628c1fd53b25a99d51bff95f80e45fb0094d981bb16ea1b4c",
+    "hotaru-sys/examples/benchmark.rs": "6b3ac3d919957d5add4d20af98dbac04007c61f416838afc39899de9d02cd90d"
+  },
+  "implementations": {
+    "hotaru": {
+      "revision": "69b5e083f3d2e228ebcc418bdef47d3bf344a89f",
+      "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+      "lean": "Lean (version 4.29.0, arm64-apple-darwin24.6.0, commit 98dc76e3c0a9b856c9b98726b713fb04fab16740, Release)",
+      "binary_sha256": "5605f0843b51d9975afbc84b566c969af11465de552b63a6b29f29621815a9dd",
+      "lean_library_sha256": "cdf41effc0573b99867fe176a48cd82d51462f85afa3d4928cd40383b0d8ab9f"
+    }
+  },
+  "measurements": [
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 4830083
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 4868250
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 4861167
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 4678000
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 4682083
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 4639125
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 4834917
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 68291500
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 68799875
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 69422750
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 68462583
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 69156375
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 71336291
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 70922542
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 292107333
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 289978291
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 289660208
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 289416708
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 287958208
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 287681875
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 288257625
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 1198457500
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 1210842209
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 1203693791
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 1202547583
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 1198723875
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 1209411708
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 1183355000
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 1947500
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 1929625
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 1766792
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 1798792
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 1855333
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 1859583
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 1863042
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 1931916
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 1969500
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 1947167
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 1953084
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 1937625
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 1834375
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 1849333
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 1756000
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 1773833
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 1824709
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 1827708
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 1773500
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 1765917
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 1765375
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 1790209
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 1781209
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 1905083
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 1794334
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 1781666
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 1845500
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 1802084
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 4628834
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 3780750
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 3893834
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 3810042
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 3877042
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 3799333
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 3845291
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 0,
+      "iterations": 16384,
+      "elapsed_ns": 10633333
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 1,
+      "iterations": 16384,
+      "elapsed_ns": 10269791
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 2,
+      "iterations": 16384,
+      "elapsed_ns": 9986792
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 3,
+      "iterations": 16384,
+      "elapsed_ns": 10464666
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 4,
+      "iterations": 16384,
+      "elapsed_ns": 10885625
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 5,
+      "iterations": 16384,
+      "elapsed_ns": 10209500
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 16,
+      "trial": 6,
+      "iterations": 16384,
+      "elapsed_ns": 10859834
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 0,
+      "iterations": 16384,
+      "elapsed_ns": 44881667
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 1,
+      "iterations": 16384,
+      "elapsed_ns": 44726000
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 2,
+      "iterations": 16384,
+      "elapsed_ns": 44559875
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 3,
+      "iterations": 16384,
+      "elapsed_ns": 43963916
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 4,
+      "iterations": 16384,
+      "elapsed_ns": 44365208
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 5,
+      "iterations": 16384,
+      "elapsed_ns": 44043917
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 64,
+      "trial": 6,
+      "iterations": 16384,
+      "elapsed_ns": 45185334
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 0,
+      "iterations": 16384,
+      "elapsed_ns": 179688417
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 1,
+      "iterations": 16384,
+      "elapsed_ns": 183948042
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 2,
+      "iterations": 16384,
+      "elapsed_ns": 183578917
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 3,
+      "iterations": 16384,
+      "elapsed_ns": 181823125
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 4,
+      "iterations": 16384,
+      "elapsed_ns": 179936834
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 5,
+      "iterations": 16384,
+      "elapsed_ns": 184162166
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 256,
+      "trial": 6,
+      "iterations": 16384,
+      "elapsed_ns": 182825625
+    },
+    {
+      "system": "hotaru",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 524288,
+      "elapsed_ns": 19062916
+    },
+    {
+      "system": "hotaru",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 524288,
+      "elapsed_ns": 19301875
+    },
+    {
+      "system": "hotaru",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 524288,
+      "elapsed_ns": 19053375
+    },
+    {
+      "system": "hotaru",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 524288,
+      "elapsed_ns": 18986417
+    },
+    {
+      "system": "hotaru",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 524288,
+      "elapsed_ns": 19515291
+    },
+    {
+      "system": "hotaru",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 524288,
+      "elapsed_ns": 18934125
+    },
+    {
+      "system": "hotaru",
+      "kind": "assume",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 524288,
+      "elapsed_ns": 18848083
+    },
+    {
+      "system": "hotaru",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 524288,
+      "elapsed_ns": 33443667
+    },
+    {
+      "system": "hotaru",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 524288,
+      "elapsed_ns": 34132917
+    },
+    {
+      "system": "hotaru",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 524288,
+      "elapsed_ns": 32789583
+    },
+    {
+      "system": "hotaru",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 524288,
+      "elapsed_ns": 33514334
+    },
+    {
+      "system": "hotaru",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 524288,
+      "elapsed_ns": 32553666
+    },
+    {
+      "system": "hotaru",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 524288,
+      "elapsed_ns": 33074000
+    },
+    {
+      "system": "hotaru",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 524288,
+      "elapsed_ns": 33228416
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 65536,
+      "elapsed_ns": 6887500
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 65536,
+      "elapsed_ns": 7058500
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 65536,
+      "elapsed_ns": 6743041
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 65536,
+      "elapsed_ns": 6726167
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 65536,
+      "elapsed_ns": 6834833
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 65536,
+      "elapsed_ns": 6918583
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 65536,
+      "elapsed_ns": 6849792
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 0,
+      "iterations": 65536,
+      "elapsed_ns": 10040917
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 1,
+      "iterations": 65536,
+      "elapsed_ns": 9935417
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 2,
+      "iterations": 65536,
+      "elapsed_ns": 9972667
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 3,
+      "iterations": 65536,
+      "elapsed_ns": 10104458
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 4,
+      "iterations": 65536,
+      "elapsed_ns": 10194333
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 5,
+      "iterations": 65536,
+      "elapsed_ns": 9874000
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "trial": 6,
+      "iterations": 65536,
+      "elapsed_ns": 10138500
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 0,
+      "iterations": 65536,
+      "elapsed_ns": 32761917
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 1,
+      "iterations": 65536,
+      "elapsed_ns": 33675375
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 2,
+      "iterations": 65536,
+      "elapsed_ns": 32120916
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 3,
+      "iterations": 65536,
+      "elapsed_ns": 32856625
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 4,
+      "iterations": 65536,
+      "elapsed_ns": 33150667
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 5,
+      "iterations": 65536,
+      "elapsed_ns": 33033000
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "trial": 6,
+      "iterations": 65536,
+      "elapsed_ns": 32597042
+    },
+    {
+      "system": "hotaru",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 0,
+      "iterations": 131072,
+      "elapsed_ns": 65698417
+    },
+    {
+      "system": "hotaru",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 1,
+      "iterations": 131072,
+      "elapsed_ns": 65025125
+    },
+    {
+      "system": "hotaru",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 2,
+      "iterations": 131072,
+      "elapsed_ns": 65063834
+    },
+    {
+      "system": "hotaru",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 3,
+      "iterations": 131072,
+      "elapsed_ns": 65036750
+    },
+    {
+      "system": "hotaru",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 4,
+      "iterations": 131072,
+      "elapsed_ns": 64394875
+    },
+    {
+      "system": "hotaru",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 5,
+      "iterations": 131072,
+      "elapsed_ns": 64660709
+    },
+    {
+      "system": "hotaru",
+      "kind": "trace",
+      "parameter": 0,
+      "trial": 6,
+      "iterations": 131072,
+      "elapsed_ns": 64550666
+    }
+  ],
+  "summary": [
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 0,
+      "median_ns_per_iteration": 36.850608825683594,
+      "min_ns_per_iteration": 35.393714904785156,
+      "max_ns_per_iteration": 37.14179992675781
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 16,
+      "median_ns_per_iteration": 527.6212692260742,
+      "min_ns_per_iteration": 521.0227966308594,
+      "max_ns_per_iteration": 544.2527084350586
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 64,
+      "median_ns_per_iteration": 2208.074249267578,
+      "min_ns_per_iteration": 2194.838523864746,
+      "max_ns_per_iteration": 2228.6020889282227
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_reuse",
+      "parameter": 256,
+      "median_ns_per_iteration": 9174.709953308105,
+      "min_ns_per_iteration": 9028.282165527344,
+      "max_ns_per_iteration": 9237.99292755127
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 0,
+      "median_ns_per_iteration": 14.187492370605469,
+      "min_ns_per_iteration": 13.47955322265625,
+      "max_ns_per_iteration": 14.858245849609375
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 16,
+      "median_ns_per_iteration": 14.782905578613281,
+      "min_ns_per_iteration": 13.995170593261719,
+      "max_ns_per_iteration": 15.026092529296875
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 64,
+      "median_ns_per_iteration": 13.530731201171875,
+      "min_ns_per_iteration": 13.397216796875,
+      "max_ns_per_iteration": 13.944305419921875
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_checked",
+      "parameter": 256,
+      "median_ns_per_iteration": 13.689682006835938,
+      "min_ns_per_iteration": 13.589546203613281,
+      "max_ns_per_iteration": 14.534629821777344
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_retain",
+      "parameter": 0,
+      "median_ns_per_iteration": 29.337242126464844,
+      "min_ns_per_iteration": 28.844833374023438,
+      "max_ns_per_iteration": 35.31520080566406
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 16,
+      "median_ns_per_iteration": 638.7125244140625,
+      "min_ns_per_iteration": 609.54541015625,
+      "max_ns_per_iteration": 664.4058227539062
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 64,
+      "median_ns_per_iteration": 2719.7189331054688,
+      "min_ns_per_iteration": 2683.344482421875,
+      "max_ns_per_iteration": 2757.8939208984375
+    },
+    {
+      "system": "hotaru",
+      "kind": "refl_build",
+      "parameter": 256,
+      "median_ns_per_iteration": 11158.790588378906,
+      "min_ns_per_iteration": 10967.310607910156,
+      "max_ns_per_iteration": 11240.366577148438
+    },
+    {
+      "system": "hotaru",
+      "kind": "assume",
+      "parameter": 0,
+      "median_ns_per_iteration": 36.34142875671387,
+      "min_ns_per_iteration": 35.94986534118652,
+      "max_ns_per_iteration": 37.222463607788086
+    },
+    {
+      "system": "hotaru",
+      "kind": "eq_mp",
+      "parameter": 0,
+      "median_ns_per_iteration": 63.378173828125,
+      "min_ns_per_iteration": 62.091190338134766,
+      "max_ns_per_iteration": 65.10337257385254
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 0,
+      "median_ns_per_iteration": 104.51953125,
+      "min_ns_per_iteration": 102.63316345214844,
+      "max_ns_per_iteration": 107.70416259765625
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 8,
+      "median_ns_per_iteration": 153.2122344970703,
+      "min_ns_per_iteration": 150.665283203125,
+      "max_ns_per_iteration": 155.5531768798828
+    },
+    {
+      "system": "hotaru",
+      "kind": "trans_hyps",
+      "parameter": 64,
+      "median_ns_per_iteration": 501.35231018066406,
+      "min_ns_per_iteration": 490.12628173828125,
+      "max_ns_per_iteration": 513.8454437255859
+    },
+    {
+      "system": "hotaru",
+      "kind": "trace",
+      "parameter": 0,
+      "median_ns_per_iteration": 496.10233306884766,
+      "min_ns_per_iteration": 491.29390716552734,
+      "max_ns_per_iteration": 501.23914337158203
+    }
+  ]
+}

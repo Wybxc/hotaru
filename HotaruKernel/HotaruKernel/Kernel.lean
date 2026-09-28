@@ -44,6 +44,11 @@ def implicationView : (p : Formula s) → Except KernelError (ImplicationView p)
 
 namespace Kernel
 
+def COMPACT_ASSUMPTIONS (t : Theory) (th : Thm t) : Thm t :=
+  if th.assumptions.length ≤ 1 then th else
+    ⟨th.assumptions.eraseDups, th.conclusion,
+      .context (fun _ => by simp) th.derivation, th.origin⟩
+
 def INST_TYPE (t : Theory) (i : TypeSubst) (th : Thm t) : Except KernelError (Thm t) :=
   if hi : i.Valid t.signature then
     .ok ⟨th.assumptions.map (Term.instType i hi), th.conclusion.instType i hi,
@@ -128,6 +133,21 @@ def MP (t : Theory) (ti tp : Thm t) : Except KernelError (Thm t) := do
     return ⟨ti.assumptions ++ tp.assumptions, e.consequent, .mp di dp,
       (t.origin.join ti.origin).join tp.origin⟩
   else .error .termMismatch
+
+def DEDUCT_ANTISYM (t : Theory) (th1 th2 : Thm t) : Thm t := Id.run do
+  let p := th1.conclusion
+  let q := th2.conclusion
+  let hs := th1.assumptions.filter (fun h => decide (¬ h.Equivalent q))
+  let ks := th2.assumptions.filter (fun h => decide (¬ h.Equivalent p))
+  let d1 : Derivable t hs (.imp q p) := .disch q th1.derivation
+  let d2 : Derivable t ks (.imp p q) := .disch p th2.derivation
+  let ax : Derivable t [] (impAntisym p q) := .booleanAxiom (.impAntisym p q)
+  let both : Derivable t (ks ++ hs) (.equal p q) := by
+    simpa only [List.nil_append] using Derivable.mp (Derivable.mp ax d2) d1
+  let derivation : Derivable t (hs ++ ks) (.equal p q) :=
+    .context (fun _ => by simp only [List.mem_append, or_comm]) both
+  return ⟨hs ++ ks, .equal p q, derivation,
+    (t.origin.join th1.origin).join th2.origin⟩
 
 def SYM (t : Theory) (th : Thm t) : Except KernelError (Thm t) := do
   let e ← equationView th.conclusion

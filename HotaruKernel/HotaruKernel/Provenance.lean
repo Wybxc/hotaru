@@ -14,17 +14,21 @@ structure Source where
   artifact : String
   deriving DecidableEq, Repr
 
-inductive Trace where
-  | local
-  | source (source : Source)
-  | join (left right : Trace)
-  deriving Repr
+private def unionSources (a b : List Source) : List Source :=
+  if a = [] then b
+  else if b = [] then a
+  else if a = b then a
+  else a ++ b.filter (fun s => decide (s ∉ a))
 
-/-- Independent specification of reachability in a construction's source history. -/
-inductive Depends : Trace → Source → Prop where
-  | source : Depends (.source s) s
-  | left : Depends l s → Depends (.join l r) s
-  | right : Depends r s → Depends (.join l r) s
+/-! A source-set history keeps the observable dependency set without retaining
+    the full derivation tree at runtime. -/
+abbrev Trace := List Source
+
+def Trace.local : Trace := []
+def Trace.source (s : Source) : Trace := [s]
+def Trace.join (a b : Trace) : Trace := unionSources a b
+
+def Depends (history : Trace) (source : Source) : Prop := source ∈ history
 
 /-- The cached source list exactly describes reachability in the history. -/
 structure Origin where
@@ -36,30 +40,14 @@ structure Origin where
 def Origin.local : Origin where
   history := .local
   sources := []
-  exact := by
-    intro s
-    constructor
-    · simp
-    · intro h; cases h
+  exact := by simp [Depends, Trace.local]
   nodup := by simp
 
 def Origin.source (s : Source) : Origin where
   history := .source s
   sources := [s]
-  exact := by
-    intro x
-    constructor
-    · intro h
-      obtain rfl := List.mem_singleton.mp h
-      exact .source
-    · intro h; cases h; simp
+  exact := by simp [Depends, Trace.source]
   nodup := by simp
-
-private def unionSources (a b : List Source) : List Source :=
-  if a = [] then b
-  else if b = [] then a
-  else if a = b then a
-  else a ++ b.filter (fun s => decide (s ∉ a))
 
 private theorem mem_unionSources (a b : List Source) (s : Source) :
     s ∈ unionSources a b ↔ s ∈ a ∨ s ∈ b := by
@@ -83,21 +71,12 @@ private theorem nodup_unionSources (a b : List Source)
     have hy' : y ∉ a := by simpa using (List.mem_filter.mp hy).2
     exact hy' (hxy ▸ hx)
 
-def Origin.join (a b : Origin) : Origin where
-  history := .join a.history b.history
-  sources := unionSources a.sources b.sources
-  exact := by
-    intro s
-    simp only [mem_unionSources, a.exact, b.exact]
-    constructor
-    · rintro (h | h)
-      · exact .left h
-      · exact .right h
-    · intro h
-      cases h with
-      | left h => exact Or.inl h
-      | right h => exact Or.inr h
-  nodup := nodup_unionSources a.sources b.sources a.nodup b.nodup
+def Origin.join (a b : Origin) : Origin :=
+  let sources := unionSources a.sources b.sources
+  { sources := sources
+    history := sources
+    exact := by simp [Depends]
+    nodup := nodup_unionSources a.sources b.sources a.nodup b.nodup }
 
 theorem Origin.complete (o : Origin) : Depends o.history s → s ∈ o.sources :=
   (o.exact s).mpr

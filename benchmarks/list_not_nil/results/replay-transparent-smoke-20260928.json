@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "mode": "certificate-import",
+  "created_at_utc": "2026-09-28T00:28:07.888332+00:00",
+  "host": {
+    "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
+    "machine": "arm64"
+  },
+  "profile": "smoke",
+  "trials": 1,
+  "iterations_per_trial": 1,
+  "warmup_iterations": 1,
+  "article_inference_counts": {
+    "axiom": 31,
+    "absThm": 38,
+    "appThm": 109,
+    "assume": 488,
+    "betaConv": 177,
+    "deductAntisym": 2525,
+    "eqMp": 2803,
+    "refl": 72,
+    "subst": 1662,
+    "sym": 43,
+    "trans": 20
+  },
+  "source_sha256": {
+    "benchmarks/list_not_nil/run_replay.py": "3cc1497a7727e60eb2d15f378bc1d40307c501f2ad3498ec6637f5bcc84dc49d",
+    "benchmarks/list_not_nil/list_not_nil.art": "0b187bac4d8d3d41fcd1f485efc63fcd018e30c56311be029e4f36cef42431bd",
+    "benchmarks/list_not_nil/hol_light_replay.ml": "e08cf6f88c2230caa65f0eb83c11c76aab78df3403b36eaa4325220fac6f417c",
+    "benchmarks/list_not_nil/hol4_replay.sml": "1ad8eb2ffac62ce875ef4b037f2d9cb081ba91b1b0cd52175a583753212a1dde",
+    "benchmarks/list_not_nil/prepare_hol4_reader.py": "f8033e7a5968a8421a44f3886966642aed664a47c788463775de3b8af0f3c5c7",
+    "hotaru-sys/examples/list_not_nil_replay.rs": "f077e3b0c512f3c7ac43ffcd7e93136f553f3440dee7427788d0b3dde82cffd9",
+    "HotaruKernel/HotaruKernel/Equality.lean": "3011b6b7fd53c9a8a6cc46e8f0bf99ca6022d98fb9933c176b15a774c74bd68d",
+    "HotaruKernel/HotaruKernel/Kernel.lean": "5b01856ddd7b2c24c4ab092a139bed7e0650b37cbd0781f562266b4132e67174",
+    "HotaruKernel/HotaruKernelFFI.lean": "cf755d7b050f6ab46a5860273064788ce8de81f042b9edde1c9d074382c993d3",
+    "hotaru-sys/src/lib.rs": "b96c30d2b757bbdab00fd9403cb552f6ab389879e0b2dc08d6a2d503381ad4a4",
+    "hotaru-sys/src/raw.rs": "d34054c34a1e19d74bd3778723586e98dedc87499ccc53b3bbe698451cb112b9"
+  },
+  "results": [
+    {
+      "system": "hotaru",
+      "implementation": {
+        "binary_sha256": "dce312c78bad31476f8e741c8bc377cbc46080a5956204e157ad849e6e66e4a5",
+        "lean_library_sha256": "8cd55b06737ce41d7c69cac5914040137ec7289bbd56c884582d9a2821b7524c",
+        "revision": "69b5e083f3d2e228ebcc418bdef47d3bf344a89f",
+        "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+        "lean": "Lean (version 4.29.0, arm64-apple-darwin24.6.0, commit 98dc76e3c0a9b856c9b98726b713fb04fab16740, Release)"
+      },
+      "elapsed_ns": [
+        61577542
+      ],
+      "median_ns_per_import": 61577542.0,
+      "min_ns_per_import": 61577542.0,
+      "max_ns_per_import": 61577542.0
+    },
+    {
+      "system": "hol-light",
+      "implementation": {
+        "binary_sha256": "5ed218e80457cce767ff63633aa8bc953491f561919362b81d20ea98cbdfb564",
+        "package_version": "3.0.0+",
+        "library_sha256": "44540d2cbf4e3d8aa1bbb133cf2e85e8b6b17dcfa017fc1375b6fd7fb6251256"
+      },
+      "elapsed_ns": [
+        10915994
+      ],
+      "median_ns_per_import": 10915994.0,
+      "min_ns_per_import": 10915994.0,
+      "max_ns_per_import": 10915994.0
+    },
+    {
+      "system": "hol4",
+      "implementation": {
+        "executable": "/Users/wybxc/HOL/bin/hol",
+        "launcher_sha256": "b63256ef79769dcc8bb8e57411e078c57e348e13dd69c763ff0025ab1ded9df2",
+        "revision": "61058e3f0d4c7ad6b4e5ea0211c2b635b1b22b80",
+        "polyml": "Poly/ML 5.9.2 Release    RTS version: Arm64-5.9.2",
+        "heap_sha256": "fa298fa0101844c2026f1d72bf88c0ac60e2a0e89dade6375ea05c58b7bb55d6",
+        "reader_source_sha256": "57719f80c939e93628390864d92620f4b6b799682888149bb3a6cfe9433892a0",
+        "reader_adapter_sha256": "ce51282f4c9c6255eb9f9ddf3835228634170ad66b8b74cf40c5c28779292f5b"
+      },
+      "elapsed_ns": [
+        66085000
+      ],
+      "median_ns_per_import": 66085000.0,
+      "min_ns_per_import": 66085000.0,
+      "max_ns_per_import": 66085000.0
+    }
+  ]
+}

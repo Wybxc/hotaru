@@ -277,11 +277,15 @@ def main() -> int:
                 timeout=args.timeout,
             )
             binary = ROOT / "target" / "release" / "examples" / "benchmark"
+            lean_library = (ROOT / "HotaruKernel" / ".lake" / "build" / "lib"
+                            / ("libhotaru_lean.dylib" if sys.platform == "darwin"
+                               else "libhotaru_lean.so"))
             metadata[system] = {
                 "revision": git_revision(ROOT),
                 "rustc": version(["rustc", "--version"]),
                 "lean": version(["lean", "--version"], cwd=ROOT / "HotaruKernel"),
                 "binary_sha256": sha256_file(binary),
+                "lean_library_sha256": sha256_file(lean_library),
             }
             output = command_output([str(binary)], env=environment, timeout=args.timeout)
         elif system == "hol-light":
