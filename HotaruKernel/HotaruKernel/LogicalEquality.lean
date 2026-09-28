@@ -180,4 +180,19 @@ theorem Term.Equivalent.freeVars {ctx : List HolType} {t u : Term s ctx a}
     (h : t.Equivalent u) : t.freeVars = u.freeVars :=
   t.logical_freeVars.symm.trans ((congrArg LogicalTerm.freeVars h).trans u.logical_freeVars)
 
+def Term.holEquality {s : Signature} (a : HolType)
+    (ha : s.validType a = true) (l r : Closed s a) : Formula s :=
+  let body : Term s [a] (.fn a .bool) :=
+    .lam ha (.equal (.bvar (.succ .zero)) (.bvar .zero))
+  let connective : Closed s (.fn a (.fn a .bool)) := .lam ha body
+  .app (.app connective l) r
+
+theorem Term.eval_holEquality {s : Signature} (a : HolType)
+    (ha : s.validType a = true) (l r : Closed s a)
+    (m : Model s) (f : FreeEnv m) :
+    (Term.holEquality a ha l r).eval m f BoundEnv.nil =
+      (Term.equal l r).eval m f BoundEnv.nil := by
+  simp only [Term.holEquality, Term.eval]
+  rfl
+
 end HotaruKernel

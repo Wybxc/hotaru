@@ -35,6 +35,9 @@ inductive Derivable (t : Theory) : List (Formula t.signature) → Formula t.sign
   | beta (valid : t.signature.validType a = true)
       (b : Term t.signature [a] c) (x : Closed t.signature a) :
       Derivable t [] (.equal (.app (.lam valid b) x) (b.open x))
+  | holEquality (a : HolType) (valid : t.signature.validType a = true)
+      (l r : Closed t.signature a) :
+      Derivable t [] (.equal (Term.holEquality a valid l r) (.equal l r))
   | abs {hs : List (Formula t.signature)} {l r : Closed t.signature b}
       (n : String) (a : HolType) (valid : t.signature.validType a = true)
       (fresh : ∀ p ∈ hs, (n, a) ∉ p.freeVars) :
@@ -192,6 +195,11 @@ theorem Derivable.sound {t : Theory} {hs : List (Formula t.signature)}
     let m := poly.atTypes types htypes
     apply (eval_equal_true _ _ _ _ _).mpr
     exact (b.eval_open x m f BoundEnv.nil).symm
+  | holEquality a valid l r =>
+    intro types htypes f _
+    let m := poly.atTypes types htypes
+    apply (eval_equal_true _ _ _ _ _).mpr
+    exact Term.eval_holEquality a valid l r m f
   | @abs b hs l r n a valid fresh d ih =>
     intro types htypes f h
     let m := poly.atTypes types htypes

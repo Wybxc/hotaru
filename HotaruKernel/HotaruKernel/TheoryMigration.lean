@@ -30,6 +30,10 @@ theorem Derivable.rebase {t u : Theory} (h : t.Extends u)
     have db := Derivable.beta (t := u) (h.signature.validType _ hv)
       (b.rebase h.signature) (x.rebase h.signature)
     simpa only [Term.rebase, Term.rebase_open] using db
+  | holEquality a hv l r =>
+    have dh := Derivable.holEquality (t := u) a (h.signature.validType _ hv)
+      (l.rebase h.signature) (r.rebase h.signature)
+    simpa only [Term.rebase, Term.holEquality] using dh
   | @abs b hs l r n a hv fresh d ih =>
     have df : ∀ p ∈ hs.map (Term.rebase h.signature), (n, a) ∉ p.freeVars := by
       intro p hp
