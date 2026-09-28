@@ -220,7 +220,7 @@ enum Value {
     TypeOp(String),
     Ty(Type),
     Constant(String),
-    Var(String, Type),
+    Var { name: String, ty: Type, term: Term },
     Term(Term),
     Proof(Option<Proof>),
     Values(Vec<Value>),
@@ -292,9 +292,9 @@ impl<'a> Machine<'a> {
         }
     }
 
-    fn var(&mut self) -> RunResult<(String, Type)> {
+    fn var(&mut self) -> RunResult<(String, Type, Term)> {
         match self.pop()? {
-            Value::Var(name, ty) => Ok((name, ty)),
+            Value::Var { name, ty, term } => Ok((name, ty, term)),
             _ => invalid("expected article variable"),
         }
     }
@@ -441,16 +441,16 @@ impl<'a> Machine<'a> {
             "var" => {
                 let ty = self.ty()?;
                 let name = self.name()?;
-                self.stack.push(Value::Var(name, ty));
+                let term = native(Term::free(&name, &ty))?;
+                self.stack.push(Value::Var { name, ty, term });
             }
             "varTerm" => {
-                let (name, ty) = self.var()?;
-                self.stack
-                    .push(Value::Term(native(Term::free(&name, &ty))?));
+                let (_, _, term) = self.var()?;
+                self.stack.push(Value::Term(term));
             }
             "absTerm" => {
                 let body = self.term()?;
-                let (name, ty) = self.var()?;
+                let (name, ty, _) = self.var()?;
                 self.stack.push(Value::Term(native(Term::lambda(
                     &ty,
                     &close(&name, &ty, &body, 0)?,
@@ -506,7 +506,7 @@ impl<'a> Machine<'a> {
             }
             "absThm" => {
                 let theorem = self.proof()?;
-                let (name, ty) = self.var()?;
+                let (name, ty, _) = self.var()?;
                 let proof = if let Some(theorem) = theorem {
                     let result = native(self.theory.abs(&name, &ty, theorem.theorem()))?;
                     Some(Proof::raw(result, theorem.assumptions()))
@@ -614,8 +614,8 @@ impl<'a> Machine<'a> {
                     .into_iter()
                     .map(|pair| match pair {
                         Value::Values(items) => match <[Value; 2]>::try_from(items) {
-                            Ok([Value::Var(name, ty), Value::Term(term)]) => {
-                                Ok((native(Term::free(&name, &ty))?, term))
+                            Ok([Value::Var { term, .. }, Value::Term(replacement)]) => {
+                                Ok((term, replacement))
                             }
                             _ => invalid("invalid term substitution pair"),
                         },
