@@ -14,6 +14,7 @@ validation, and timing boundary are described in the [protocol](README.md).
 | Kernel-resident bidirectional HOL equality normalization with HOL4-style `inst_ty_term`, current public API, Sep 28 | 17.274 ms (16.886-18.613) | 12.869 ms (12.361-13.407) | 61.936 ms (58.488-68.411) |
 | Representation-transparent FFI with one opaque theorem form, Sep 29 | 16.680 ms (16.386-17.588) | 12.992 ms (12.633-13.268) | 62.734 ms (58.972-67.998) |
 | Semantic FFI with reused certificate state and one-pass decoding, Sep 29 | 15.629 ms (15.459-15.930) | 12.953 ms (12.546-14.107) | 63.690 ms (61.617-69.790) |
+| Semantic FFI with verified single-pass type/term instantiation, Sep 29 | 15.446 ms (15.324-15.589) | 12.861 ms (12.452-13.019) | 62.967 ms (59.417-67.767) |
 
 On-demand conversion reduces Hotaru's median import time by about 46% while
 leaving the checked article and kernel rules unchanged. A same-day rerun of
@@ -22,8 +23,8 @@ trials, confirming an approximately 1.85x speedup under the new run's machine
 conditions. The current representation-transparent adapter measures 16.680 ms
 per import in the source-synchronized run, while HOL Light measures 12.992 ms
 and HOL4 measures 62.734 ms. The current semantic-interface adapter measures
-15.629 ms, while HOL Light measures 12.953 ms and HOL4 measures 63.690 ms.
-This is about 1.21 times slower than HOL Light and about 4.1 times faster than
+15.446 ms, while HOL Light measures 12.861 ms and HOL4 measures 62.967 ms.
+This is about 1.20 times slower than HOL Light and about 4.1 times faster than
 HOL4 on this workload; it does not establish a lead over both systems.
 
 The current adapter crosses zero representation boundaries because equality
@@ -39,6 +40,13 @@ the other input is empty and allocate a deduplicated union only when both
 inputs are nonempty; the adapter uses the same fact to avoid an FFI count
 lookup in the empty-context cases. The combined type/term instantiation path
 is exposed as the HOL4-style `inst_ty_term` rule.
+
+The current `inst_ty_term` implementation performs type instantiation and free
+variable substitution in one verified term traversal. Its Lean theorem proves
+equality with the former two-rule composition, so the FFI contract and checked
+theorem are unchanged; the 15.446 ms run is lower than the preceding 15.629 ms
+run, while the overlapping ranges do not establish a stable improvement by
+themselves.
 
 The adapter keeps one theorem object per proof instead of maintaining separate
 article and native equality caches. This removes redundant conversion and
@@ -102,4 +110,6 @@ separate tactic measurements. The current public-rule runs are [forward]
 representation-transparent run is [standard]
 (results/replay-transparent-standard-20260929.json). The current optimized
 semantic-interface run is [standard]
-(results/replay-semantic-ffi-optimized-standard-20260929.json).
+(results/replay-semantic-ffi-optimized-standard-20260929.json). The verified
+single-pass kernel run is [standard]
+(results/replay-single-pass-kernel-standard-20260929.json).
