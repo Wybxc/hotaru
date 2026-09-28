@@ -1,5 +1,5 @@
 use hotaru_sys::{Name, Source, SourceKind, Term, TermKind, Theorem, Theory, Type};
-use std::{collections::HashMap, env, fs, hint::black_box, time::Instant};
+use std::{env, fs, hint::black_box, time::Instant};
 
 const FIXTURE: &[u8] = include_bytes!("../../benchmarks/list_not_nil/list_not_nil.art");
 const AXIOM_COUNT: usize = 31;
@@ -231,7 +231,7 @@ struct Machine<'a> {
     imported: &'a [Theorem],
     scan: bool,
     stack: Vec<Value>,
-    dictionary: HashMap<usize, Value>,
+    dictionary: Vec<Option<Value>>,
     axioms: Vec<Term>,
     outputs: Vec<Proof>,
     conversion_boundaries: usize,
@@ -246,7 +246,7 @@ impl<'a> Machine<'a> {
             imported,
             scan,
             stack: Vec::new(),
-            dictionary: HashMap::new(),
+            dictionary: Vec::new(),
             axioms: Vec::new(),
             outputs: Vec::new(),
             conversion_boundaries: 0,
@@ -364,16 +364,21 @@ impl<'a> Machine<'a> {
             "def" => {
                 let key = self.number()?;
                 let value = self.pop()?;
-                if self.dictionary.insert(key, value.clone()).is_some() {
+                if key >= self.dictionary.len() {
+                    self.dictionary.resize_with(key + 1, || None);
+                }
+                if self.dictionary[key].is_some() {
                     return invalid("duplicate article dictionary key");
                 }
+                self.dictionary[key] = Some(value.clone());
                 self.stack.push(value);
             }
             "ref" => {
                 let key = self.number()?;
                 self.stack.push(
                     self.dictionary
-                        .get(&key)
+                        .get(key)
+                        .and_then(Option::as_ref)
                         .ok_or_else(|| "unknown article dictionary key".to_owned())?
                         .clone(),
                 );
@@ -382,7 +387,8 @@ impl<'a> Machine<'a> {
                 let key = self.number()?;
                 self.stack.push(
                     self.dictionary
-                        .remove(&key)
+                        .get_mut(key)
+                        .and_then(Option::take)
                         .ok_or_else(|| "unknown article dictionary key".to_owned())?,
                 );
             }
