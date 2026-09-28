@@ -104,6 +104,10 @@ fn kernel_handles() -> Result<()> {
     assert_eq!(base.trans(&rp, &sym)?.conclusion(), eqpp);
     assert_eq!(base.eq_mp(&rp, &ap)?.conclusion(), p);
     assert_eq!(
+        base.eq_mp_then_compact(&antisym, &ap)?.assumptions()?,
+        vec![p.clone(), q.clone()]
+    );
+    assert_eq!(
         base.inst(&[(&p, &q)], &rp)?.conclusion(),
         Term::equal(&q, &q)?
     );

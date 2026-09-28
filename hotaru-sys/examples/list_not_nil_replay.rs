@@ -596,6 +596,11 @@ impl<'a> Machine<'a> {
         Ok(())
     }
 
+    fn prove_compacted(&mut self, value: Option<Proof>) -> RunResult<()> {
+        self.stack.push(Value::Proof(value));
+        Ok(())
+    }
+
     fn execute(&mut self, command: &str) -> RunResult<()> {
         match command {
             "version" => {
@@ -840,6 +845,7 @@ impl<'a> Machine<'a> {
             "eqMp" => {
                 let premise = self.proof()?;
                 let equality = self.proof()?;
+                let mut compacted = false;
                 let proof = if let (Some(premise), Some(equality)) = (premise, equality) {
                     let assumptions = equality.assumptions() + premise.assumptions();
                     let equation = equality
@@ -856,7 +862,17 @@ impl<'a> Machine<'a> {
                             &mut self.conversion_boundaries,
                         )
                         .map_err(|error| format!("premise input: {error}"))?;
-                    let result = self.theory.eq_mp(&equation, &premise).map_err(|error| {
+                    let compact = assumptions > self.compact_threshold;
+                    if compact {
+                        self.compact_calls += 1;
+                        compacted = true;
+                    }
+                    let result = if compact {
+                        self.theory.eq_mp_then_compact(&equation, &premise)
+                    } else {
+                        self.theory.eq_mp(&equation, &premise)
+                    }
+                    .map_err(|error| {
                         let expected = equation.conclusion().child(0).ok();
                         format!(
                             "{error:?}: equality-left={}, premise={}",
@@ -867,11 +883,20 @@ impl<'a> Machine<'a> {
                             describe(&premise.conclusion()).unwrap_or_default()
                         )
                     })?;
+                    let assumptions = if compact {
+                        result.assumption_count()
+                    } else {
+                        assumptions
+                    };
                     Some(Proof::raw(result, assumptions))
                 } else {
                     None
                 };
-                self.prove(proof)?;
+                if compacted {
+                    self.prove_compacted(proof)?;
+                } else {
+                    self.prove(proof)?;
+                }
             }
             "subst" => {
                 let proof = self.proof()?;

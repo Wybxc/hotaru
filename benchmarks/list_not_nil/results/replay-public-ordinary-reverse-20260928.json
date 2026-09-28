@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "mode": "certificate-import",
-  "created_at_utc": "2026-09-28T12:50:13.983099+00:00",
+  "created_at_utc": "2026-09-28T13:04:58.807916+00:00",
   "host": {
     "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
     "machine": "arm64"
@@ -29,12 +29,12 @@
     "benchmarks/list_not_nil/hol_light_replay.ml": "e08cf6f88c2230caa65f0eb83c11c76aab78df3403b36eaa4325220fac6f417c",
     "benchmarks/list_not_nil/hol4_replay.sml": "1ad8eb2ffac62ce875ef4b037f2d9cb081ba91b1b0cd52175a583753212a1dde",
     "benchmarks/list_not_nil/prepare_hol4_reader.py": "f8033e7a5968a8421a44f3886966642aed664a47c788463775de3b8af0f3c5c7",
-    "hotaru-sys/examples/list_not_nil_replay.rs": "ac7c251b729eb3984cd616bc6a615e6b96ee8292eb789e4b45f630c268b8fa3a",
+    "hotaru-sys/examples/list_not_nil_replay.rs": "7e2651ec90be98fa5386153d8ea89115952cb53f555f6839e082b1a686de25d1",
     "HotaruKernel/HotaruKernel/Equality.lean": "3011b6b7fd53c9a8a6cc46e8f0bf99ca6022d98fb9933c176b15a774c74bd68d",
     "HotaruKernel/HotaruKernel/Kernel.lean": "b12c29373c01dd3d380e3c9b137a58ef8d1ea5f890925fd8689a4392cae33c55",
-    "HotaruKernel/HotaruKernelFFI.lean": "13cdf4aad13b81aa36ee91e8303cdd61a3f26fbb4dd74c52442ddd7767530b20",
-    "hotaru-sys/src/lib.rs": "b8af922ed39f42314177684e715269e92c87878db1f6ec110a64b8602040727c",
-    "hotaru-sys/src/raw.rs": "1db8575c2411ae10c0612f1c0528e09ae183985930a8a33724cb9deac3cc117f"
+    "HotaruKernel/HotaruKernelFFI.lean": "e73b8182e267c45e4e3325d580b20016bd06e1b91cd06ddde4caf842bc03d847",
+    "hotaru-sys/src/lib.rs": "1033596a713431a2599f7a4cd0d25abb0ac9c1e9613e65c2d4eedf4f8d180cf7",
+    "hotaru-sys/src/raw.rs": "52c3e2455f8156744f3fe10cf00d6879a584e67f7fa12a7dabf87f5d0674fcf9"
   },
   "results": [
     {
@@ -45,17 +45,17 @@
         "library_sha256": "44540d2cbf4e3d8aa1bbb133cf2e85e8b6b17dcfa017fc1375b6fd7fb6251256"
       },
       "elapsed_ns": [
-        226302146,
-        217744112,
-        222465038,
-        215116024,
-        226256132,
-        214755058,
-        219511985
+        222362995,
+        215945005,
+        222450017,
+        212990045,
+        220163822,
+        215172052,
+        220901012
       ],
-      "median_ns_per_import": 13719499.0625,
-      "min_ns_per_import": 13422191.125,
-      "max_ns_per_import": 14143884.125
+      "median_ns_per_import": 13760238.875,
+      "min_ns_per_import": 13311877.8125,
+      "max_ns_per_import": 13903126.0625
     },
     {
       "system": "hol4",
@@ -69,39 +69,39 @@
         "reader_adapter_sha256": "ce51282f4c9c6255eb9f9ddf3835228634170ad66b8b74cf40c5c28779292f5b"
       },
       "elapsed_ns": [
-        1190699000,
-        1056110000,
-        1084439000,
-        1000464000,
-        1039691000,
-        1051631000,
-        1022383000
+        1168498000,
+        1024138000,
+        1057881000,
+        1016948000,
+        1058253000,
+        1012518000,
+        1010370000
       ],
-      "median_ns_per_import": 65726937.5,
-      "min_ns_per_import": 62529000.0,
-      "max_ns_per_import": 74418687.5
+      "median_ns_per_import": 64008625.0,
+      "min_ns_per_import": 63148125.0,
+      "max_ns_per_import": 73031125.0
     },
     {
       "system": "hotaru",
       "implementation": {
-        "binary_sha256": "53b20de8c38b228ef0ad3e174e295f22d88a85a7977318e4ad0b1ea0fb1b99c3",
-        "lean_library_sha256": "59906b67e9947be71cfac9a7e84646f1a514d71c1b272ee143ba5db2f476a3e9",
-        "revision": "69b5e083f3d2e228ebcc418bdef47d3bf344a89f",
+        "binary_sha256": "71c9bf862799a819222ae18db795bc495017755f8933c982d93b049303bc1df5",
+        "lean_library_sha256": "2a55baf16c32ee873de1e09011527e7824084d6e53514f6266670ef578544004",
+        "revision": "b5904a401055c6d9c00873b44c78645b92f9bb56",
         "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
         "lean": "Lean (version 4.29.0, arm64-apple-darwin24.6.0, commit 98dc76e3c0a9b856c9b98726b713fb04fab16740, Release)"
       },
       "elapsed_ns": [
-        483035583,
-        480194750,
-        487098375,
-        482059375,
-        481812625,
-        482335292,
-        482443833
+        484474791,
+        483749334,
+        482598958,
+        485385875,
+        482921125,
+        481675000,
+        476358083
       ],
-      "median_ns_per_import": 30145955.75,
-      "min_ns_per_import": 30012171.875,
-      "max_ns_per_import": 30443648.4375
+      "median_ns_per_import": 30182570.3125,
+      "min_ns_per_import": 29772380.1875,
+      "max_ns_per_import": 30336617.1875
     }
   ]
 }

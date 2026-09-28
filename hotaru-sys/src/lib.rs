@@ -750,6 +750,22 @@ impl Theory {
         }))
     }
 
+    /// Applies equality modus ponens and assumption compaction in one
+    /// verified kernel call. This is the same generic composition as calling
+    /// `eq_mp` and then `compact_assumptions`.
+    pub fn eq_mp_then_compact(&self, a: &Theorem, b: &Theorem) -> Result<Theorem> {
+        self.owns(a)?;
+        self.owns(b)?;
+
+        Ok(self.theorem(unsafe {
+            checked(hotaru_lean_eq_mp_then_compact(
+                self.arg(),
+                a.value.argument(),
+                b.value.argument(),
+            ))?
+        }))
+    }
+
     pub fn symm(&self, th: &Theorem) -> Result<Theorem> {
         self.owns(th)?;
 

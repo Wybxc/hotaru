@@ -122,6 +122,11 @@ def trans (s : Execution.State) (a b : Thm s.theory) : Result (Thm s.theory) :=
 @[export hotaru_lean_eq_mp]
 def eqMp (s : Execution.State) (a b : Thm s.theory) : Result (Thm s.theory) :=
   result (Kernel.EQ_MP s.theory a b)
+@[export hotaru_lean_eq_mp_then_compact]
+def eqMpThenCompact (s : Execution.State) (a b : Thm s.theory) : Result (Thm s.theory) :=
+  result (do
+    let result ← Kernel.EQ_MP s.theory a b
+    return Kernel.COMPACT_ASSUMPTIONS s.theory result)
 @[export hotaru_lean_inst]
 def inst (s : Execution.State) (rs : Array (RawTerm × RawTerm)) (th : Thm s.theory) :
     Result (Thm s.theory) := result (Kernel.INST s.theory rs.toList th)
