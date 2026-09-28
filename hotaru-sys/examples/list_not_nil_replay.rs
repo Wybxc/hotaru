@@ -194,14 +194,8 @@ impl Proof {
         self.assumptions
     }
 
-    fn compact(
-        &mut self,
-        theory: &Theory,
-        compact_threshold: u64,
-        compact_calls: &mut usize,
-    ) -> RunResult<()> {
+    fn compact(&mut self, theory: &Theory, compact_threshold: u64) -> RunResult<()> {
         if self.assumptions > compact_threshold {
-            *compact_calls += 1;
             self.theorem = native(theory.contract(&self.theorem))?;
             self.assumptions = self.theorem.assumption_count();
         }
@@ -234,8 +228,6 @@ struct Machine<'a> {
     dictionary: Vec<Option<Value>>,
     axioms: Vec<Term>,
     outputs: Vec<Proof>,
-    conversion_boundaries: usize,
-    compact_calls: usize,
     compact_threshold: u64,
 }
 
@@ -249,8 +241,6 @@ impl<'a> Machine<'a> {
             dictionary: Vec::new(),
             axioms: Vec::new(),
             outputs: Vec::new(),
-            conversion_boundaries: 0,
-            compact_calls: 0,
             compact_threshold: env::var("LIST_NOT_NIL_COMPACT_THRESHOLD")
                 .ok()
                 .and_then(|value| value.parse().ok())
@@ -335,7 +325,7 @@ impl<'a> Machine<'a> {
 
     fn prove(&mut self, value: Option<Proof>) -> RunResult<()> {
         if let Some(mut proof) = value {
-            proof.compact(self.theory, self.compact_threshold, &mut self.compact_calls)?;
+            proof.compact(self.theory, self.compact_threshold)?;
             self.stack.push(Value::Proof(Some(proof)));
         } else {
             self.stack.push(Value::Proof(None));
@@ -833,15 +823,11 @@ fn sample(
     theory: &Theory,
     axioms: &[Theorem],
     iterations: usize,
-) -> RunResult<(u128, Proof, usize, usize)> {
+) -> RunResult<(u128, Proof)> {
     let start = Instant::now();
     let mut last = None;
-    let mut conversion_boundaries = 0;
-    let mut compact_calls = 0;
     for _ in 0..iterations {
         let mut replay = run_article(path, Machine::new(theory, axioms, false))?;
-        conversion_boundaries += replay.conversion_boundaries;
-        compact_calls += replay.compact_calls;
         let proof = replay
             .outputs
             .pop()
@@ -850,12 +836,7 @@ fn sample(
     }
     black_box(&last);
     let elapsed = start.elapsed().as_nanos();
-    Ok((
-        elapsed,
-        last.ok_or_else(|| "empty sample".to_owned())?,
-        conversion_boundaries,
-        compact_calls,
-    ))
+    Ok((elapsed, last.ok_or_else(|| "empty sample".to_owned())?))
 }
 
 fn main() {
@@ -866,16 +847,13 @@ fn main() {
     let trials = setting("LIST_NOT_NIL_TRIALS");
     let warmup = setting("LIST_NOT_NIL_WARMUP");
     let (theory, axioms) = setup(&path).unwrap_or_else(|error| panic!("setup: {error}"));
-    let (_, warm, _, _) =
+    let (_, warm) =
         sample(&path, &theory, &axioms, warmup).unwrap_or_else(|error| panic!("warmup: {error}"));
     verify(&theory, &warm).unwrap_or_else(|error| panic!("warmup check: {error}"));
     for trial in 0..trials {
-        let (elapsed_ns, theorem, conversion_boundaries, compact_calls) =
-            sample(&path, &theory, &axioms, iterations)
-                .unwrap_or_else(|error| panic!("trial {trial}: {error}"));
+        let (elapsed_ns, theorem) = sample(&path, &theory, &axioms, iterations)
+            .unwrap_or_else(|error| panic!("trial {trial}: {error}"));
         verify(&theory, &theorem).unwrap_or_else(|error| panic!("trial check: {error}"));
-        eprintln!("LIST_NOT_NIL_CONVERSION_BOUNDARIES\t{trial}\t{conversion_boundaries}");
-        eprintln!("LIST_NOT_NIL_COMPACT_CALLS\t{trial}\t{compact_calls}");
         println!("LIST_NOT_NIL_REPLAY\thotaru\t{trial}\t{iterations}\t{elapsed_ns}");
     }
 }
