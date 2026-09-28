@@ -30,14 +30,14 @@ HOL4 and HOL Light match those inputs against their existing library theorems;
 Hotaru loads the fixed input statements as theory axioms before timing. Each
 importer rejects an article whose inputs or final theorem fail its checks.
 The certificate adapter keeps the article's equality encoding private and
-converts it only when a native kernel rule requires an equality theorem. It
-caches both forms across article dictionary references and invokes the
-semantic `normalize_hol_equality` and `expand_hol_equality` rules, whose
-bridges are constructed inside the verified kernel. Fused paths use logical
-rules with established semantics, such as `inst_ty_term`; assumption
-contraction is part of the ordinary `eq_mp` and `deduct_antisym` rules. The
-import time includes these checked conversions and any remaining structural
-contraction.
+stores each proof as one opaque theorem. It calls only logical rules such as
+`abs`, `mk_comb`, `symm`, `trans`, `eq_mp`, and `deduct_antisym`; the verified
+kernel recognizes the canonical HOL equality encoding internally whenever one
+of those rules needs to align representations. No FFI entry point exposes an
+equality conversion operation. Fused paths use logical rules with established
+semantics, such as `inst_ty_term`; assumption contraction is part of the
+ordinary `eq_mp` and `deduct_antisym` rules. The import time includes this
+kernel-side alignment and any remaining structural contraction.
 
 ## Run
 

@@ -140,7 +140,7 @@ private def holEqualityBridge {t : Theory} (a : HolType)
     .trans applied.derivation second.derivation,
     (t.origin.join applied.origin).join second.origin⟩
 
-def normalizeHolEquality (t : Theory) (th : Thm t) : Except KernelError (Thm t) := do
+private def normalizeHolEquality (t : Theory) (th : Thm t) : Except KernelError (Thm t) := do
   match he : th.conclusion with
   | .app (.app (.lam ha (.lam _ (.equal (.bvar (.succ .zero)) (.bvar .zero)))) l) r =>
       let bridge := holEqualityBridge _ ha l r
@@ -151,7 +151,7 @@ def normalizeHolEquality (t : Theory) (th : Thm t) : Except KernelError (Thm t) 
         th.origin⟩
   | _ => .ok th
 
-def expandHolEquality (t : Theory) (th : Thm t) : Except KernelError (Thm t) := do
+private def expandHolEquality (t : Theory) (th : Thm t) : Except KernelError (Thm t) := do
   match he : th.conclusion with
   | .equal l r =>
       let ha := l.validType (fun _ h => by cases h)

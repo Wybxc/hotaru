@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "mode": "certificate-import",
+  "created_at_utc": "2026-09-28T17:31:48.292228+00:00",
+  "host": {
+    "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
+    "machine": "arm64"
+  },
+  "profile": "standard",
+  "trials": 7,
+  "iterations_per_trial": 16,
+  "warmup_iterations": 1,
+  "article_inference_counts": {
+    "axiom": 31,
+    "absThm": 38,
+    "appThm": 109,
+    "assume": 488,
+    "betaConv": 177,
+    "deductAntisym": 2525,
+    "eqMp": 2803,
+    "refl": 72,
+    "subst": 1662,
+    "sym": 43,
+    "trans": 20
+  },
+  "source_sha256": {
+    "benchmarks/list_not_nil/run_replay.py": "3cc1497a7727e60eb2d15f378bc1d40307c501f2ad3498ec6637f5bcc84dc49d",
+    "benchmarks/list_not_nil/list_not_nil.art": "0b187bac4d8d3d41fcd1f485efc63fcd018e30c56311be029e4f36cef42431bd",
+    "benchmarks/list_not_nil/hol_light_replay.ml": "e08cf6f88c2230caa65f0eb83c11c76aab78df3403b36eaa4325220fac6f417c",
+    "benchmarks/list_not_nil/hol4_replay.sml": "1ad8eb2ffac62ce875ef4b037f2d9cb081ba91b1b0cd52175a583753212a1dde",
+    "benchmarks/list_not_nil/prepare_hol4_reader.py": "f8033e7a5968a8421a44f3886966642aed664a47c788463775de3b8af0f3c5c7",
+    "hotaru-sys/examples/list_not_nil_replay.rs": "d46ce543cfe122d7e8e605c9deb747af42b3f244db1d96888df1e3c6e263384a",
+    "HotaruKernel/HotaruKernel/Equality.lean": "3011b6b7fd53c9a8a6cc46e8f0bf99ca6022d98fb9933c176b15a774c74bd68d",
+    "HotaruKernel/HotaruKernel/Kernel.lean": "c7327b4b32bb29b7afd87ef6a3137a9fd0886a3202fe2ac0f94138cf0432ab1a",
+    "HotaruKernel/HotaruKernelFFI.lean": "7b3245978bb405b7f91458a82e8ac96f1b96dfcd3373fdc23215d4647fa25815",
+    "hotaru-sys/src/lib.rs": "62fac83b033f65fca9230df64df6595b89cd0ad39ec624c1dfc338cd9dd729d3",
+    "hotaru-sys/src/raw.rs": "bd4268dfb0797e13751aff3b453983b5b0127bef8379a09984977fd0fc10d762"
+  },
+  "results": [
+    {
+      "system": "hotaru",
+      "implementation": {
+        "binary_sha256": "12ef0353c4562851245608f84db00af040e867e36798b81e54a52d07d891b0d7",
+        "lean_library_sha256": "9f74a377814fdf11d66ee716e30564df7f7e16db56ffbeaeaf08a846b136dd33",
+        "revision": "2b25f13fc19f2a90dc1e9bd2aca9800f904c34c6",
+        "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+        "lean": "Lean (version 4.29.0, arm64-apple-darwin24.6.0, commit 98dc76e3c0a9b856c9b98726b713fb04fab16740, Release)"
+      },
+      "elapsed_ns": [
+        271992167,
+        271078708,
+        279887000,
+        290660291,
+        285151500,
+        279491834,
+        274078834
+      ],
+      "median_ns_per_import": 17468239.625,
+      "min_ns_per_import": 16942419.25,
+      "max_ns_per_import": 18166268.1875
+    }
+  ]
+}

@@ -1,10 +1,10 @@
-# LIST_NOT_NIL results (2026-09-28)
+# LIST_NOT_NIL results (2026-09-29)
 
 The fixed-certificate comparison measures complete import of the same
-88,221-line HOL4 proof in all three systems. Each standard run has seven
-trials of 16 imports, and each reported median combines two runs with the
-system order reversed. The article, external theorem inputs, validation, and
-timing boundary are described in the [protocol](README.md).
+88,221-line HOL4 proof in all three systems. Historical rows combine standard
+runs with reversed system order, while the Sep 29 row records one
+source-synchronized seven-trial run. The article, external theorem inputs,
+validation, and timing boundary are described in the [protocol](README.md).
 
 | Adapter and run date | Hotaru | HOL Light | HOL4 |
 | --- | ---: | ---: | ---: |
@@ -12,26 +12,22 @@ timing boundary are described in the [protocol](README.md).
 | On-demand equality conversion, Sep 28 | 68.362 ms (64.641-81.715) | 14.787 ms (13.555-17.609) | 66.779 ms (62.919-76.955) |
 | On-demand conversion with transparent public API, Sep 28 | 50.415 ms (45.833-62.300) | 13.080 ms (12.281-13.917) | 63.085 ms (57.936-82.894) |
 | Kernel-resident bidirectional HOL equality normalization with HOL4-style `inst_ty_term`, current public API, Sep 28 | 17.274 ms (16.886-18.613) | 12.869 ms (12.361-13.407) | 61.936 ms (58.488-68.411) |
+| Representation-transparent FFI with one opaque theorem form, Sep 29 | 17.055 ms (16.736-17.421) | 12.910 ms (12.519-13.177) | 62.764 ms (59.649-66.341) |
 
 On-demand conversion reduces Hotaru's median import time by about 46% while
 leaving the checked article and kernel rules unchanged. A same-day rerun of
 the preserved eager binary measured 126.393 ms (125.306-127.008) over seven
 trials, confirming an approximately 1.85x speedup under the new run's machine
-conditions. The current cached ordinary-rule bridge and semantic context
-normalization measure 17.274 ms per import in the combined run, while HOL
-Light measures 12.869 ms and HOL4 measures 61.936 ms. Moving the equality
-normalization into verified kernel rules removes most of the remaining
-adapter overhead; the original 9.2x gap to HOL Light was substantially caused
-by eager conversions in Hotaru's importer.
+conditions. The current representation-transparent adapter measures 17.055 ms
+per import in the source-synchronized run, while HOL Light measures 12.910 ms
+and HOL4 measures 62.764 ms. This is about 1.32 times slower than HOL Light
+and about 3.7 times faster than HOL4 on this workload; it does not establish a
+lead over both systems.
 
-The current adapter converts an equality proof only when a later rule needs its
-other representation, while keeping that representation private to the
-certificate reader. The public FFI exposes semantic `normalize_hol_equality`
-and `expand_hol_equality` rules, whose implementations construct the bridge
-inside the verified kernel. The current single-import trace records 878
-representation-boundary conversions and 9 explicit `contract` calls, and each
-conversion still constructs a kernel-checked proof; no certificate rule or
-theorem check is skipped.
+The current adapter crosses zero representation boundaries because equality
+alignment is part of the ordinary kernel rules. Its single-import trace has 9
+explicit `contract` calls, and every certificate rule and final theorem check
+remains in the timed and validated path.
 
 `EQ_MP` and `DEDUCT_ANTISYM` return semantically equivalent assumption lists
 with duplicates removed inside their verified rules, so the adapter does not
@@ -42,10 +38,10 @@ inputs are nonempty; the adapter uses the same fact to avoid an FFI count
 lookup in the empty-context cases. The combined type/term instantiation path
 is exposed as the HOL4-style `inst_ty_term` rule.
 
-The adapter also records the representation produced by each certificate rule
-instead of inspecting every returned theorem conclusion through the FFI. This
-removes redundant metadata calls while leaving the same rule inputs, kernel
-checks, and final theorem validation in place.
+The adapter keeps one theorem object per proof instead of maintaining separate
+article and native equality caches. This removes redundant conversion and
+metadata work while leaving the same rule inputs, kernel checks, and final
+theorem validation in place.
 
 The three provers validate the same mathematical conclusion but retain
 different proof representations. Hotaru checks the OpenTheory article and
@@ -72,13 +68,11 @@ are whole-process peaks, including the Lean runtime and importer setup,
 rather than isolated proof-cache sizes.
 
 The remaining import-time difference does not isolate the Lean kernel.
-Certificate reading, term construction, Rust-to-Lean calls, conversion proofs,
-and explicit assumption compaction remain inside Hotaru's timed interval. The
-current source-synchronized rerun is about 1.3 times slower than HOL Light and
-about 3.6 times faster than HOL4 on this workload, so it does not establish a
-lead over both systems. The separate [public API results](../RESULTS.md) compare common
-kernel-rule workloads and show where Hotaru is faster or slower through that
-interface.
+Certificate reading, term construction, Rust-to-Lean calls, kernel-side
+equality alignment, and explicit assumption compaction remain inside Hotaru's
+timed interval. The separate [public API results](../RESULTS.md) compare
+common kernel-rule workloads and show where Hotaru is faster or slower through
+that interface.
 
 The native-proof results measure a different task from certificate import.
 HOL4 runs the source `metis_tac` proof and HOL Light performs a list case
@@ -102,4 +96,8 @@ peak-RSS runs. The [native forward](results/native-forward-20260927.json)
 and [native reverse](results/native-reverse-20260927.json) files preserve the
 separate tactic measurements. The current public-rule runs are [forward]
 (results/replay-public-ordinary-forward-20260928.json) and [reverse]
-(results/replay-public-ordinary-reverse-20260928.json).
+(results/replay-public-ordinary-reverse-20260928.json). The current
+representation-transparent run is [standard]
+(results/replay-transparent-standard-20260929.json), with a Hotaru-only
+repeat at [standard Hotaru]
+(results/replay-transparent-ffi-standard-20260929.json).
