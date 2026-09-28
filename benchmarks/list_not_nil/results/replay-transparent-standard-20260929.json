@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "mode": "certificate-import",
-  "created_at_utc": "2026-09-28T17:36:39.828789+00:00",
+  "created_at_utc": "2026-09-28T17:44:10.822149+00:00",
   "host": {
     "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
     "machine": "arm64"
@@ -31,7 +31,7 @@
     "benchmarks/list_not_nil/prepare_hol4_reader.py": "f8033e7a5968a8421a44f3886966642aed664a47c788463775de3b8af0f3c5c7",
     "hotaru-sys/examples/list_not_nil_replay.rs": "d46ce543cfe122d7e8e605c9deb747af42b3f244db1d96888df1e3c6e263384a",
     "HotaruKernel/HotaruKernel/Equality.lean": "3011b6b7fd53c9a8a6cc46e8f0bf99ca6022d98fb9933c176b15a774c74bd68d",
-    "HotaruKernel/HotaruKernel/Kernel.lean": "c7327b4b32bb29b7afd87ef6a3137a9fd0886a3202fe2ac0f94138cf0432ab1a",
+    "HotaruKernel/HotaruKernel/Kernel.lean": "15ea995b8563bc76d534d4f802d7bd22f3158a7e161f0390fd52deba91423a83",
     "HotaruKernel/HotaruKernelFFI.lean": "7b3245978bb405b7f91458a82e8ac96f1b96dfcd3373fdc23215d4647fa25815",
     "hotaru-sys/src/lib.rs": "62fac83b033f65fca9230df64df6595b89cd0ad39ec624c1dfc338cd9dd729d3",
     "hotaru-sys/src/raw.rs": "bd4268dfb0797e13751aff3b453983b5b0127bef8379a09984977fd0fc10d762"
@@ -41,23 +41,23 @@
       "system": "hotaru",
       "implementation": {
         "binary_sha256": "12ef0353c4562851245608f84db00af040e867e36798b81e54a52d07d891b0d7",
-        "lean_library_sha256": "9f74a377814fdf11d66ee716e30564df7f7e16db56ffbeaeaf08a846b136dd33",
-        "revision": "2b25f13fc19f2a90dc1e9bd2aca9800f904c34c6",
+        "lean_library_sha256": "ab8dd732959804f8a525d988400ff2efd80cf8bc263a3bf5aa8517081ef30422",
+        "revision": "19626700b8608a6fe14ba2105eaf298049dda085",
         "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
         "lean": "Lean (version 4.29.0, arm64-apple-darwin24.6.0, commit 98dc76e3c0a9b856c9b98726b713fb04fab16740, Release)"
       },
       "elapsed_ns": [
-        276403667,
-        278302625,
-        267772792,
-        268633792,
-        272880917,
-        278734042,
-        269252167
+        281403166,
+        264869458,
+        268926458,
+        263464667,
+        262173166,
+        267375625,
+        266873292
       ],
-      "median_ns_per_import": 17055057.3125,
-      "min_ns_per_import": 16735799.5,
-      "max_ns_per_import": 17420877.625
+      "median_ns_per_import": 16679580.75,
+      "min_ns_per_import": 16385822.875,
+      "max_ns_per_import": 17587697.875
     },
     {
       "system": "hol-light",
@@ -67,17 +67,17 @@
         "library_sha256": "44540d2cbf4e3d8aa1bbb133cf2e85e8b6b17dcfa017fc1375b6fd7fb6251256"
       },
       "elapsed_ns": [
-        210714101,
-        203245878,
-        210838794,
-        200302124,
-        206557035,
-        201511144,
-        208983898
+        212285995,
+        204037904,
+        211055040,
+        203207015,
+        210448980,
+        202131986,
+        207877874
       ],
-      "median_ns_per_import": 12909814.6875,
-      "min_ns_per_import": 12518882.75,
-      "max_ns_per_import": 13177424.625
+      "median_ns_per_import": 12992367.125,
+      "min_ns_per_import": 12633249.125,
+      "max_ns_per_import": 13267874.6875
     },
     {
       "system": "hol4",
@@ -91,17 +91,17 @@
         "reader_adapter_sha256": "ce51282f4c9c6255eb9f9ddf3835228634170ad66b8b74cf40c5c28779292f5b"
       },
       "elapsed_ns": [
-        1029158000,
-        1061461000,
-        954382000,
-        1004228000,
-        1024558000,
-        1003539000,
-        975592000
+        1087962000,
+        967214000,
+        1062326000,
+        956808000,
+        1003748000,
+        943553000,
+        1012568000
       ],
-      "median_ns_per_import": 62764250.0,
-      "min_ns_per_import": 59648875.0,
-      "max_ns_per_import": 66341312.5
+      "median_ns_per_import": 62734250.0,
+      "min_ns_per_import": 58972062.5,
+      "max_ns_per_import": 67997625.0
     }
   ]
 }
