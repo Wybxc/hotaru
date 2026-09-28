@@ -341,6 +341,19 @@ def INST (t : Theory) (rs : List (RawTerm × RawTerm)) (th : Thm t) :
   return ⟨th.assumptions.map (Substitution.apply subst),
     Substitution.apply subst th.conclusion, .inst subst th.derivation, t.origin.join th.origin⟩
 
+def INST_TYPE_TERM (t : Theory) (i : TypeSubst) (rs : List (RawTerm × RawTerm)) (th : Thm t) :
+    Except KernelError (Thm t) := do
+  if hi : i.Valid t.signature then
+    let subst ← rs.mapM (fun (v, r) => checkReplacement t.signature v r)
+    let identity : Renaming ([] : List HolType) [] := fun {_} v => v
+    return ⟨
+      th.assumptions.map (fun p =>
+        p.instTypeFree (ctx := []) (dst := []) i hi (Substitution.lookup subst) identity),
+      th.conclusion.instTypeFree (ctx := []) (dst := []) i hi
+        (Substitution.lookup subst) identity,
+      .instTypeFree i hi subst th.derivation, t.origin.join th.origin⟩
+  else .error .invalidType
+
 structure CertifiedRewrite (t : Theory) where
   entry : RewriteEntry t.signature
   derivation : Derivable t entry.hypotheses (.equal entry.left entry.right)

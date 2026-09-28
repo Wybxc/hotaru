@@ -1,4 +1,5 @@
 import HotaruKernel.SubstitutionLemmas
+import HotaruKernel.TypeInstantiation
 
 namespace HotaruKernel
 
@@ -232,5 +233,58 @@ theorem Substitution.apply_cons_close (t : Closed s a) (entry : Replacement s)
         (Term.weaken_open _ _)
   · intro a v
     cases v
+
+/-! A type substitution and a free-variable substitution can share one term
+traversal when their result context is known. -/
+def Term.instTypeFree {ctx dst : List HolType} (i : TypeSubst) (hi : i.Valid s)
+    (r : FreeSubst s dst) (q : Renaming (ctx.map (HolType.inst i)) dst) :
+    Term s ctx a → Term s dst (a.inst i)
+  | .fvar n a h => r n (a.inst i) (s.validType_inst i hi a h)
+  | .bvar v => .bvar (q (v.instType i))
+  | .const n scheme j hd hv =>
+      have valid : s.validType (scheme.inst (j.compose i)) = true := by
+        rw [← HolType.inst_compose]
+        exact s.validType_inst i hi _ hv
+      cast (congrArg (Term s dst) (HolType.inst_compose scheme j i).symm)
+        (.const n scheme (j.compose i) hd valid)
+  | .app f x => .app (f.instTypeFree i hi r q) (x.instTypeFree i hi r q)
+  | .lam h b =>
+      .lam (s.validType_inst i hi _ h)
+        (b.instTypeFree (ctx := _ :: ctx) (dst := HolType.inst i _ :: dst) i hi r.lift
+          (@Renaming.lift _ _ _ q))
+  | .equal l u => .equal (l.instTypeFree i hi r q) (u.instTypeFree i hi r q)
+  | .imp p q' => .imp (p.instTypeFree i hi r q) (q'.instTypeFree i hi r q)
+
+theorem Term.substFree_cast {ctx dst : List HolType} {a b : HolType} (h : a = b)
+    (t : Term s ctx a)
+    (r : FreeSubst s dst) (q : Renaming ctx dst) :
+    (cast (congrArg (Term s ctx) h) t).substFree r q =
+      cast (congrArg (Term s dst) h) (t.substFree r q) := by
+  cases h
+  rfl
+
+theorem Term.instTypeFree_eq {ctx dst : List HolType} (t : Term s ctx a)
+    (i : TypeSubst) (hi : i.Valid s) (r : FreeSubst s dst)
+    (q : Renaming (ctx.map (HolType.inst i)) dst) :
+    (t.instType i hi).substFree r q = t.instTypeFree i hi r q := by
+  induction t generalizing dst with
+  | fvar => rfl
+  | bvar => rfl
+  | const n scheme j hd hv =>
+      simpa only [Term.instTypeFree, Term.substFree] using
+        (Term.substFree_cast (HolType.inst_compose scheme j i).symm
+          (.const n scheme (j.compose i) hd
+            (by
+              rw [← HolType.inst_compose]
+              exact s.validType_inst i hi _ hv)) r q)
+  | app f x ihf ihx =>
+      exact congrArg₂ Term.app (ihf r q) (ihx r q)
+  | lam h b ih =>
+      apply congrArg (Term.lam (s.validType_inst i hi _ h))
+      exact ih r.lift q.lift
+  | equal l r ihl ihr =>
+      exact congrArg₂ Term.equal (ihl r q) (ihr r q)
+  | imp p q ihp ihq =>
+      exact congrArg₂ Term.imp (ihp r q) (ihq r q)
 
 end HotaruKernel

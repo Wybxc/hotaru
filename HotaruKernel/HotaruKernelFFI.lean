@@ -131,9 +131,7 @@ def instType (s : Execution.State) (rs : Array (String × HolType)) (th : Thm s.
 @[export hotaru_lean_inst_ty_term]
 def instTyTerm (s : Execution.State) (typeRs : Array (String × HolType))
     (termRs : Array (RawTerm × RawTerm)) (th : Thm s.theory) : Result (Thm s.theory) :=
-  result (do
-    let typed ← Kernel.INST_TYPE s.theory typeRs.toList th
-    Kernel.INST s.theory termRs.toList typed)
+  result (Kernel.INST_TYPE_TERM s.theory typeRs.toList termRs.toList th)
 @[export hotaru_lean_subst]
 def subst (s : Execution.State) (rs : Array (RawTerm × Thm s.theory)) (p : RawTerm)
     (th : Thm s.theory) : Result (Thm s.theory) :=

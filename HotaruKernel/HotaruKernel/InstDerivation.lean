@@ -102,4 +102,36 @@ theorem Derivable.inst {t : Theory} {hs : List (Formula t.signature)}
   rw [Substitution.apply_implyList] at di
   exact di.undischargeList _
 
+theorem Derivable.instTypeFree {t : Theory} {hs : List (Formula t.signature)}
+    {p : Formula t.signature} (i : TypeSubst) (hi : i.Valid t.signature)
+    (rs : Substitution t.signature) (d : Derivable t hs p) :
+    Derivable t
+      (hs.map (fun q =>
+        q.instTypeFree (ctx := []) (dst := []) i hi rs.lookup
+          (fun {a} (v : BVar [] a) => v)))
+      (p.instTypeFree (ctx := []) (dst := []) i hi rs.lookup
+        (fun {a} (v : BVar [] a) => v)) := by
+  have hconclusion : rs.apply (p.instType i hi) =
+      p.instTypeFree (ctx := []) (dst := []) i hi rs.lookup
+        (fun {a} (v : BVar [] a) => v) := by
+    change (p.instType i hi).substFree rs.lookup
+      (fun {a} (v : BVar [] a) => v) = _
+    exact Term.instTypeFree_eq (ctx := []) (dst := []) p i hi rs.lookup
+      (fun {a} (v : BVar [] a) => v)
+  have hassumptions :
+      (hs.map (Term.instType i hi)).map rs.apply =
+        hs.map (fun q =>
+          q.instTypeFree (ctx := []) (dst := []) i hi rs.lookup
+            (fun {a} (v : BVar [] a) => v)) := by
+    clear d
+    induction hs with
+    | nil => rfl
+    | cons q hs ih =>
+        simpa only [List.map_cons, Substitution.apply] using
+          congrArg₂ List.cons
+            (Term.instTypeFree_eq (ctx := []) (dst := []) q i hi rs.lookup
+              (fun {a} (v : BVar [] a) => v)) ih
+  have di := Derivable.inst rs (Derivable.instType i hi d)
+  exact hconclusion ▸ (hassumptions ▸ di)
+
 end HotaruKernel
