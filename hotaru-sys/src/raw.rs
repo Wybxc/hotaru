@@ -23,6 +23,7 @@ unsafe extern "C" {
     pub fn hotaru_lean_term_const(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
     pub fn hotaru_lean_term_app(arg0: Obj, arg1: Obj) -> Obj;
     pub fn hotaru_lean_term_lam(arg0: Obj, arg1: Obj) -> Obj;
+    pub fn hotaru_lean_term_abstract(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
     pub fn hotaru_lean_term_equal(arg0: Obj, arg1: Obj) -> Obj;
     pub fn hotaru_lean_term_imp(arg0: Obj, arg1: Obj) -> Obj;
 

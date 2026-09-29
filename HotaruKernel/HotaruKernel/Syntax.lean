@@ -85,6 +85,18 @@ inductive RawTerm where
   | imp : RawTerm → RawTerm → RawTerm
   deriving DecidableEq, Repr
 
+def RawTerm.close (name : String) (a : HolType) : Nat → RawTerm → RawTerm
+  | depth, .fvar n b => if name == n && a == b then .bvar depth else .fvar n b
+  | _, .bvar n => .bvar n
+  | _, .const n inst => .const n inst
+  | depth, .app f x => .app (f.close name a depth) (x.close name a depth)
+  | depth, .lam b body => .lam b (body.close name a (depth + 1))
+  | depth, .equal l r => .equal (l.close name a depth) (r.close name a depth)
+  | depth, .imp p q => .imp (p.close name a depth) (q.close name a depth)
+
+def RawTerm.abstract (name : String) (a : HolType) (body : RawTerm) : RawTerm :=
+  .lam a (body.close name a 0)
+
 inductive BVar : List HolType → HolType → Type where
   | zero {ctx : List HolType} : BVar (a :: ctx) a
   | succ {ctx : List HolType} : BVar ctx a → BVar (b :: ctx) a

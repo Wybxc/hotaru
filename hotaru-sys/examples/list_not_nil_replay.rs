@@ -117,37 +117,6 @@ fn const_term(name: &str, ty: &Type) -> RunResult<Term> {
     }
 }
 
-fn close(name: &str, ty: &Type, term: &Term, depth: u64) -> RunResult<Term> {
-    match term.kind() {
-        TermKind::Free => {
-            if term.name().map_err(|error| format!("{error:?}"))? == name
-                && native(term.annotation())? == *ty
-            {
-                native(Term::bound(depth))
-            } else {
-                Ok(term.clone())
-            }
-        }
-        TermKind::Bound | TermKind::Constant => Ok(term.clone()),
-        TermKind::Application => native(Term::app(
-            &close(name, ty, &native(term.child(0))?, depth)?,
-            &close(name, ty, &native(term.child(1))?, depth)?,
-        )),
-        TermKind::Lambda => native(Term::lambda(
-            &native(term.annotation())?,
-            &close(name, ty, &native(term.child(0))?, depth + 1)?,
-        )),
-        TermKind::Equality => native(Term::equal(
-            &close(name, ty, &native(term.child(0))?, depth)?,
-            &close(name, ty, &native(term.child(1))?, depth)?,
-        )),
-        TermKind::Implication => native(Term::imp(
-            &close(name, ty, &native(term.child(0))?, depth)?,
-            &close(name, ty, &native(term.child(1))?, depth)?,
-        )),
-    }
-}
-
 fn describe(term: &Term) -> RunResult<String> {
     match term.kind() {
         TermKind::Free => Ok(format!("{}", native(term.name())?)),
@@ -447,10 +416,8 @@ impl<'a> Machine<'a> {
             "absTerm" => {
                 let body = self.term()?;
                 let (name, ty, _) = self.var()?;
-                self.stack.push(Value::Term(native(Term::lambda(
-                    &ty,
-                    &close(&name, &ty, &body, 0)?,
-                ))?));
+                self.stack
+                    .push(Value::Term(native(Term::abstract_term(&name, &ty, &body))?));
             }
             "appTerm" => {
                 let arg = self.term()?;
@@ -798,7 +765,7 @@ fn expected_conclusion(article_encoding: bool) -> RunResult<Term> {
     let cons_ls = native(Term::app(&native(Term::app(&cons, &hd_ls))?, &tl_ls))?;
     let rebuilt_eq = make_eq(&ls, &cons_ls, &list)?;
     let body = make_eq(&not_nil, &rebuilt_eq, &boolean)?;
-    let predicate = native(Term::lambda(&list, &close("ls", &list, &body, 0)?))?;
+    let predicate = native(Term::abstract_term("ls", &list, &body))?;
     native(Term::app(&all, &predicate))
 }
 

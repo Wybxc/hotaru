@@ -24,6 +24,13 @@ fn kernel_handles() -> Result<()> {
     let xb = Term::free("x", &b)?;
     let v0 = Term::bound(0)?;
     let id = Term::lambda(&b, &v0)?;
+    assert_eq!(Term::abstract_term("p", &b, &p)?, id);
+    assert_eq!(Term::abstract_term("p", &a, &p)?, Term::lambda(&a, &p)?);
+    let nested = Term::lambda(&b, &p)?;
+    assert_eq!(
+        Term::abstract_term("p", &b, &nested)?,
+        Term::lambda(&b, &Term::lambda(&b, &Term::bound(1)?)?)?
+    );
     let app = Term::app(&id, &p)?;
     let eqpp = Term::equal(&p, &p)?;
 

@@ -53,6 +53,9 @@ def termConst (scope name : String) (inst : Array (String × HolType)) : RawTerm
 def termApp (f x : RawTerm) : RawTerm := .app f x
 @[export hotaru_lean_term_lam]
 def termLam (a : HolType) (body : RawTerm) : RawTerm := .lam a body
+@[export hotaru_lean_term_abstract]
+def termAbstract (name : String) (a : HolType) (body : RawTerm) : RawTerm :=
+  body.abstract name a
 @[export hotaru_lean_term_equal]
 def termEqual (a b : RawTerm) : RawTerm := .equal a b
 @[export hotaru_lean_term_imp]

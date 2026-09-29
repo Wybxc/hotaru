@@ -445,6 +445,19 @@ impl Term {
         })
     }
 
+    /// Binds free occurrences of `name` with `ty` in `body`.
+    pub fn abstract_term(name: &str, ty: &Type, body: &Term) -> Result<Self> {
+        Ok(Self {
+            value: unsafe {
+                Owned::from_raw(hotaru_lean_term_abstract(
+                    Owned::string(name).into_raw(),
+                    ty.value.argument(),
+                    body.value.argument(),
+                ))
+            },
+        })
+    }
+
     pub fn kind(&self) -> TermKind {
         match unsafe { hotaru_lean_term_kind(self.value.argument()) } {
             0 => TermKind::Free,
