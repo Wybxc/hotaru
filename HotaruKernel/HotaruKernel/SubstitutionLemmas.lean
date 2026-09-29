@@ -61,6 +61,61 @@ theorem Substitution.apply_fresh (t : Closed s a) (r : Replacement s)
     · rfl
   · exact fun _ _ => rfl
 
+/-! A pair traversal shares the structural walk when two substitutions have
+the same source and destination contexts. -/
+def Term.substFreePair {ctx dst : List HolType} (left right : FreeSubst s dst)
+    (q : Renaming ctx dst) : Term s ctx a → Term s dst a × Term s dst a
+  | .fvar n a h => (left n a h, right n a h)
+  | .bvar v => (.bvar (q v), .bvar (q v))
+  | .const n t i h v => (.const n t i h v, .const n t i h v)
+  | .app f x =>
+      let f' := f.substFreePair left right q
+      let x' := x.substFreePair left right q
+      (.app f'.1 x'.1, .app f'.2 x'.2)
+  | .lam h b =>
+      let b' := b.substFreePair left.lift right.lift q.lift
+      (.lam h b'.1, .lam h b'.2)
+  | .equal l r =>
+      let l' := l.substFreePair left right q
+      let r' := r.substFreePair left right q
+      (.equal l'.1 r'.1, .equal l'.2 r'.2)
+  | .imp p q' =>
+      let p' := p.substFreePair left right q
+      let q'' := q'.substFreePair left right q
+      (.imp p'.1 q''.1, .imp p'.2 q''.2)
+
+theorem Term.substFreePair_fst {ctx dst : List HolType} (t : Term s ctx a)
+    (left right : FreeSubst s dst) (q : Renaming ctx dst) :
+    (t.substFreePair left right q).1 = t.substFree left q := by
+  induction t generalizing dst with
+  | fvar => rfl
+  | bvar => rfl
+  | const => rfl
+  | app f x ihf ihx =>
+      simp only [Term.substFreePair, Term.substFree, ihf, ihx]
+  | lam h b ih =>
+      simp only [Term.substFreePair, Term.substFree, ih]
+  | equal l r ihl ihr =>
+      simp only [Term.substFreePair, Term.substFree, ihl, ihr]
+  | imp p q ihp ihq =>
+      simp only [Term.substFreePair, Term.substFree, ihp, ihq]
+
+theorem Term.substFreePair_snd {ctx dst : List HolType} (t : Term s ctx a)
+    (left right : FreeSubst s dst) (q : Renaming ctx dst) :
+    (t.substFreePair left right q).2 = t.substFree right q := by
+  induction t generalizing dst with
+  | fvar => rfl
+  | bvar => rfl
+  | const => rfl
+  | app f x ihf ihx =>
+      simp only [Term.substFreePair, Term.substFree, ihf, ihx]
+  | lam h b ih =>
+      simp only [Term.substFreePair, Term.substFree, ih]
+  | equal l r ihl ihr =>
+      simp only [Term.substFreePair, Term.substFree, ihl, ihr]
+  | imp p q ihp ihq =>
+      simp only [Term.substFreePair, Term.substFree, ihp, ihq]
+
 def nameBound : List FVar → Nat
   | [] => 0
   | (n, _) :: vs => n.length + nameBound vs

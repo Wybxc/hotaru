@@ -338,11 +338,25 @@ def SUBST (t : Theory) (rs : List (RawTerm × Thm t)) (template : RawTerm) (th :
   let ⟨a, p, _⟩ ← check t.signature [] template
   if ha : a = .bool then
     let body : Term t.signature [] .bool := ha ▸ p
-    let left := (rewriteSubst rules false).apply body
+    let substitutions := rewriteSubst rules false
+    let rightSubstitutions := rewriteSubst rules true
+    let pair := body.substFreePair substitutions.lookup rightSubstitutions.lookup
+      (fun {_} v => v)
+    let left := pair.1
     if hc : left.Equivalent th.conclusion then
       have d : Derivable t th.assumptions left := .conversion hc.symm th.derivation
+      have dl : Derivable t th.assumptions ((rewriteSubst rules false).apply body) := by
+        change Derivable t th.assumptions
+          (body.substFree substitutions.lookup (fun {_} v => v))
+        rw [← Term.substFreePair_fst body substitutions.lookup rightSubstitutions.lookup
+          (fun {_} v => v)]
+        exact d
+      have dr : Derivable t (rewriteHypotheses rules ++ th.assumptions) pair.2 := by
+        rw [Term.substFreePair_snd body substitutions.lookup rightSubstitutions.lookup
+          (fun {_} v => v)]
+        exact .subst rules body eqs dl
       return ⟨rewriteHypotheses rules ++ th.assumptions,
-        (rewriteSubst rules true).apply body, .subst rules body eqs d,
+        pair.2, dr,
         t.origin.collect (th.origin :: rs.map (fun r => r.2.origin))⟩
     else .error .termMismatch
   else .error .notBoolean
