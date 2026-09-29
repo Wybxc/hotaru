@@ -1,5 +1,6 @@
 import HotaruKernel.Substitution
 import HotaruKernel.Check
+import HotaruKernel.LogicalEquality
 
 namespace HotaruKernel
 
@@ -61,8 +62,56 @@ theorem Substitution.apply_fresh (t : Closed s a) (r : Replacement s)
     · rfl
   · exact fun _ _ => rfl
 
+/-! Check the left side of a substitution while constructing only its right side. -/
+def Term.substFreeEquivalent {ctx dst : List HolType} (left : FreeSubst s dst)
+    (q : Renaming ctx dst) : Term s ctx a → Term s dst b → Bool
+  | .fvar n a h, u => (left n a h).logicalEq u
+  | .bvar v, u => (Term.bvar (q v) : Term s dst a).logicalEq u
+  | .const n scheme i hd hv, u =>
+      (Term.const n scheme i hd hv : Term s dst (scheme.inst i)).logicalEq u
+  | .app f x, .app g y =>
+      f.substFreeEquivalent left q g && x.substFreeEquivalent left q y
+  | .app .., _ => false
+  | @Term.lam _ a _ _ _ body, @Term.lam _ b _ _ _ other =>
+      if h : a = b then body.substFreeEquivalent left.lift q.lift (h ▸ other) else false
+  | .lam .., _ => false
+  | .equal l r, .equal l' r' =>
+      l.substFreeEquivalent left q l' && r.substFreeEquivalent left q r'
+  | .equal .., _ => false
+  | .imp p q', .imp p' q'' =>
+      p.substFreeEquivalent left q p' && q'.substFreeEquivalent left q q''
+  | .imp .., _ => false
+
+theorem Term.substFreeEquivalent_correct {ctx dst : List HolType}
+    (t : Term s ctx a) (left : FreeSubst s dst) (q : Renaming ctx dst)
+    (u : Term s dst b) :
+    t.substFreeEquivalent left q u = true ↔
+      (t.substFree left q).logical = u.logical := by
+  induction t generalizing dst b with
+  | fvar n a h =>
+      simp [Term.substFreeEquivalent, Term.substFree, Term.logicalEq_correct]
+  | bvar v =>
+      simp [Term.substFreeEquivalent, Term.substFree, Term.logical,
+        Term.logicalEq_correct]
+  | const n scheme i hd hv =>
+      simp [Term.substFreeEquivalent, Term.substFree, Term.logical,
+        Term.logicalEq_correct]
+  | app f x ihf ihx =>
+      cases u <;>
+        simp [Term.substFreeEquivalent, Term.substFree, Term.logical, ihf, ihx]
+  | lam h body ih =>
+      cases u
+      all_goals simp [Term.substFreeEquivalent, Term.substFree, Term.logical, ih]
+      all_goals aesop
+  | equal l r ihl ihr =>
+      cases u <;>
+        simp [Term.substFreeEquivalent, Term.substFree, Term.logical, ihl, ihr]
+  | imp p q ihp ihq =>
+      cases u <;>
+        simp [Term.substFreeEquivalent, Term.substFree, Term.logical, ihp, ihq]
+
 /-! A pair traversal shares the structural walk when two substitutions have
-the same source and destination contexts. -/
+    the same source and destination contexts. -/
 def Term.substFreePair {ctx dst : List HolType} (left right : FreeSubst s dst)
     (q : Renaming ctx dst) : Term s ctx a → Term s dst a × Term s dst a
   | .fvar n a h => (left n a h, right n a h)
