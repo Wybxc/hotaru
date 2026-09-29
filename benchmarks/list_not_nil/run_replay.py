@@ -92,7 +92,7 @@ def main() -> int:
         print(f"Running {system} certificate import...", file=sys.stderr, flush=True)
         if system == "hotaru":
             common.execute([
-                "cargo", "build", "--release", "--locked", "--package", "hotaru-sys",
+                "cargo", "build", "--release", "--locked", "--package", "hotaru",
                 "--example", "list_not_nil_replay",
             ], timeout=args.timeout)
             binary = common.ROOT / "target" / "release" / "examples" / "list_not_nil_replay"
@@ -163,14 +163,15 @@ def main() -> int:
         common.SOURCE / name for name in
         ("hol_light_replay.ml", "hol4_replay.sml", "prepare_hol4_reader.py")
     ]
-    sources.append(common.ROOT / "hotaru-sys" / "examples" / "list_not_nil_replay.rs")
+    sources.append(common.ROOT / "hotaru" / "examples" / "list_not_nil_replay.rs")
     sources += [
         common.ROOT / name for name in (
             "HotaruKernel/HotaruKernel/Equality.lean",
             "HotaruKernel/HotaruKernel/Kernel.lean",
             "HotaruKernel/HotaruKernelFFI.lean",
-            "hotaru-sys/src/lib.rs",
-            "hotaru-sys/src/raw.rs",
+            "hotaru/src/lib.rs",
+            "hotaru/src/syntax.rs",
+            "hotaru-kernel-bridge/src/raw/exports.rs",
         )
     ]
     document = {

@@ -272,7 +272,7 @@ def main() -> int:
             command_output(
                 [
                     "cargo", "build", "--release", "--locked", "--package",
-                    "hotaru-sys", "--example", "benchmark",
+                    "hotaru", "--example", "benchmark",
                 ],
                 timeout=args.timeout,
             )
@@ -363,7 +363,7 @@ def main() -> int:
                 BENCHMARKS / "run.py",
                 BENCHMARKS / "hol_light.ml",
                 BENCHMARKS / "hol4.sml",
-                ROOT / "hotaru-sys" / "examples" / "benchmark.rs",
+                ROOT / "hotaru" / "examples" / "benchmark.rs",
             )
         },
         "implementations": metadata,

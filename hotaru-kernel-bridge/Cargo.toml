@@ -1,9 +1,9 @@
 [package]
-name = "hotaru-sys"
+name = "hotaru-kernel-bridge"
 version = "0.0.0"
 edition = "2024"
 links = "hotaru_lean"
-description = "Rust handles for the verified Hotaru Lean kernel"
+description = "Rust bridge to the verified Hotaru Lean kernel"
 
 [build-dependencies]
 bindgen = "0.72.1"

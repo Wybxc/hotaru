@@ -145,14 +145,14 @@ exports. `import HotaruKernel` imports the implementation; tests live in
 `HotaruKernelTests/`, `HotaruKernelAudit.lean` runs the audit, and
 `HotaruKernelFFI.lean` defines internal native exports.
 
-The Rust interface offers managed handles while retaining Lean as the logical
-implementation. See [hotaru-sys](../hotaru-sys/README.md) for examples,
+The Rust interface offers managed typed values while retaining Lean as the
+logical implementation. See [hotaru](../hotaru/README.md) for examples,
 build requirements, and runtime restrictions. From the workspace root:
 
 ```sh
-cargo build -p hotaru-sys
+cargo build -p hotaru
 cargo test --workspace
-cargo run -p hotaru-sys --example refl
+cargo run -p hotaru --example refl
 ```
 
 ## Trust boundary

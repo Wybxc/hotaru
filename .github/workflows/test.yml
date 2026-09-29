@@ -40,4 +40,4 @@ jobs:
       - name: Test Rust interface
         run: cargo test --workspace --locked
       - name: Run Rust example
-        run: cargo run -p hotaru-sys --example refl --locked
+        run: cargo run -p hotaru --example refl --locked

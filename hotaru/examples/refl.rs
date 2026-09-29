@@ -1,4 +1,4 @@
-use hotaru_sys::{Result, Term, Theory, Type};
+use hotaru::{Result, Term, Theory, Type};
 
 fn main() -> Result<()> {
     let theory = Theory::new()?;

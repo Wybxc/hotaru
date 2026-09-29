@@ -79,7 +79,7 @@ fn main() {
         )
         .wrap_static_fns(true)
         .wrap_static_fns_path(&wrapper)
-        .wrap_static_fns_suffix("_hotaru_sys")
+        .wrap_static_fns_suffix("_hotaru_kernel_bridge")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .generate()
         .expect("generate bindings from the pinned Lean header (libclang is required)")

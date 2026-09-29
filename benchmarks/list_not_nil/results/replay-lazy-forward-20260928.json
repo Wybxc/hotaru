@@ -29,11 +29,11 @@
     "benchmarks/list_not_nil/hol_light_replay.ml": "e08cf6f88c2230caa65f0eb83c11c76aab78df3403b36eaa4325220fac6f417c",
     "benchmarks/list_not_nil/hol4_replay.sml": "1ad8eb2ffac62ce875ef4b037f2d9cb081ba91b1b0cd52175a583753212a1dde",
     "benchmarks/list_not_nil/prepare_hol4_reader.py": "f8033e7a5968a8421a44f3886966642aed664a47c788463775de3b8af0f3c5c7",
-    "hotaru-sys/examples/list_not_nil_replay.rs": "b2e672dd1dbb8935ce761e2c90db06468c5a245afeefdb18216f2f079bb127a4",
+    "hotaru/examples/list_not_nil_replay.rs": "b2e672dd1dbb8935ce761e2c90db06468c5a245afeefdb18216f2f079bb127a4",
     "HotaruKernel/HotaruKernel/Kernel.lean": "b3d6f4e2c189cf55537273d521a7289f26d8af083b64a7853fc0689741cc68d9",
     "HotaruKernel/HotaruKernelFFI.lean": "cf755d7b050f6ab46a5860273064788ce8de81f042b9edde1c9d074382c993d3",
-    "hotaru-sys/src/lib.rs": "b96c30d2b757bbdab00fd9403cb552f6ab389879e0b2dc08d6a2d503381ad4a4",
-    "hotaru-sys/src/raw.rs": "d34054c34a1e19d74bd3778723586e98dedc87499ccc53b3bbe698451cb112b9"
+    "hotaru/src/lib.rs": "b96c30d2b757bbdab00fd9403cb552f6ab389879e0b2dc08d6a2d503381ad4a4",
+    "hotaru-kernel-bridge/src/raw/exports.rs": "d34054c34a1e19d74bd3778723586e98dedc87499ccc53b3bbe698451cb112b9"
   },
   "results": [
     {

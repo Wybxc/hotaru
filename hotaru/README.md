@@ -1,10 +1,10 @@
-# hotaru-sys
+# hotaru
 
-`hotaru-sys` gives Rust programs managed access to HotaruKernel's Lean
-implementation. Rust owns handle lifetimes, error conversion, and theory
+`hotaru` gives Rust programs managed access to HotaruKernel's Lean
+implementation. Rust owns Lean value lifetimes, error conversion, and theory
 identity checks; Lean checks logical inputs and constructs the theorems. The
-native bridge is private, so the crate does not implement a second set of
-inference rules.
+`hotaru-kernel-bridge` crate contains the native bridge and is kept behind the
+safe API, so `hotaru` does not implement a second set of inference rules.
 
 ## Logical contract
 
@@ -22,15 +22,16 @@ to models satisfying the new axiom; the call does not establish consistency.
 
 ## Using the kernel
 
-The public handles keep Rust syntax construction separate from Lean validation.
+The typed public values keep Rust syntax construction separate from Lean validation.
 `Type` and `Term` constructors build raw syntax, while `Theory::check` and
 inference methods validate it in the current theory. `Theory::new()` starts
 from the logical foundation, and `Theory::foundation` retrieves its axiom
 theorems. Logical failures return `Error::Kernel` through `Result<T, Error>`;
-the public methods are defined in [src/lib.rs](src/lib.rs).
+the public methods are split across [src/syntax.rs](src/syntax.rs),
+[src/theorem.rs](src/theorem.rs), and [src/theory.rs](src/theory.rs).
 
 ```rust
-use hotaru_sys::{Result, Term, Theory, Type};
+use hotaru::{Result, Term, Theory, Type};
 
 fn main() -> Result<()> {
     let theory = Theory::new()?;
@@ -48,7 +49,7 @@ Repeated inference on the same term can reuse one checked representation.
 `refl_checked`, `assume_checked`, `beta_checked`, and `disch_checked` accept it
 without checking the raw syntax again. A checked term retains its typed Lean
 tree, so release the raw term when it is no longer needed and drop the checked
-handle when reuse ends. A descendant or sibling theory must check the term in
+value when reuse ends. A descendant or sibling theory must check the term in
 its own context.
 
 The inference methods correspond to the thirteen Lean kernel interfaces.
@@ -69,21 +70,23 @@ require a theorem proving their defining predicate nonempty.
 
 ## Theories and ownership
 
-Theory handles preserve the identity of an immutable theory. An extension
-returns a new handle, and a definition also returns a theorem owned by that
-new theory. A theorem keeps its theory alive even if another handle to that
+Theory values preserve the identity of an immutable theory. An extension
+returns a new theory, and a definition also returns a theorem owned by that
+new theory. A theorem keeps its theory alive even if another value for that
 theory is dropped. Inference rejects theorems from other theory identities,
 including structurally identical sibling extensions; use
 `theorem.rebase(&descendant)` to transport a theorem along its checked
 extension path.
 
-All handles manage their Lean references automatically on one runtime thread.
+All typed values manage their Lean references automatically on one runtime thread.
 `Type`, `Term`, `CheckedTerm`, `Theory`, and `Theorem` support `Clone` and
-release their references on drop, but they are neither `Send` nor `Sync`. The first thread
-to initialize Lean owns subsequent use, and initialization from another
-thread returns `Error::WrongThread`. A second, independently initialized
-Lean runtime in the same process is unsupported. The reference adapter is in
-[src/runtime.rs](src/runtime.rs).
+release their references on drop, but they are neither `Send` nor `Sync`. The
+first thread to initialize Lean owns subsequent use, and initialization from
+another thread returns `Error::WrongThread`. A second, independently
+initialized Lean runtime in the same process is unsupported. Runtime
+ownership and FFI calls are isolated in
+the private [raw runtime module](../hotaru-kernel-bridge/src/raw/runtime.rs)
+and its sibling raw modules.
 
 ## Provenance
 
@@ -96,7 +99,7 @@ identifier.
 
 Source annotations add context without changing logical validity.
 `with_source(&source)` returns a new descendant when called on a theory and a
-new handle in the same theory when called on a theorem. Existing theorems
+new theorem value in the same theory when called on a theorem. Existing theorems
 must be rebased to an annotated descendant theory before use there. A source
 label does not load a file, authenticate an artifact, or replace a proof.
 
@@ -115,9 +118,9 @@ is unsupported because the Lean library and Rust target must match. Run the
 following commands from the repository root:
 
 ```sh
-cargo build -p hotaru-sys
+cargo build -p hotaru
 cargo test --workspace
-cargo run -p hotaru-sys --example refl
+cargo run -p hotaru --example refl
 ```
 
 Downstream executables must be able to load the Lean shared libraries.

@@ -1,6 +1,6 @@
 import HotaruKernel
 
-/-! Internal native exports for hotaru-sys. Rust checks handle ownership; all
+/-! Internal native exports for hotaru-kernel-bridge. Rust checks handle ownership; all
 logical operations call the verified kernel. No serialized theorem import. -/
 namespace HotaruKernel.FFI
 

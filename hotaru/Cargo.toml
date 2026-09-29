@@ -1,0 +1,9 @@
+[package]
+name = "hotaru"
+version = "0.0.0"
+edition = "2024"
+description = "Safe typed Rust access to the verified Hotaru Lean kernel"
+build = "build.rs"
+
+[dependencies]
+hotaru-kernel-bridge = { path = "../hotaru-kernel-bridge" }

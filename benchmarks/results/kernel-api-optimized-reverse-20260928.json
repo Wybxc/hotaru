@@ -108,7 +108,7 @@
     "benchmarks/run.py": "a6228c04ca57dbb5812f51f1768c2e820580f3c8c433d43ed68034752532e73e",
     "benchmarks/hol_light.ml": "08b56b6d8a7d236cef6297ec8c0d715c2379f34cac993425e955f626a45352b1",
     "benchmarks/hol4.sml": "effdd53db1d3039628c1fd53b25a99d51bff95f80e45fb0094d981bb16ea1b4c",
-    "hotaru-sys/examples/benchmark.rs": "6b3ac3d919957d5add4d20af98dbac04007c61f416838afc39899de9d02cd90d"
+    "hotaru/examples/benchmark.rs": "6b3ac3d919957d5add4d20af98dbac04007c61f416838afc39899de9d02cd90d"
   },
   "implementations": {
     "hol4": {

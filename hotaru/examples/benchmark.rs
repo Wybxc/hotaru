@@ -1,4 +1,4 @@
-use hotaru_sys::{Result, Term, Theorem, Theory, Type};
+use hotaru::{Result, Term, Theorem, Theory, Type};
 use std::{env, hint::black_box, time::Instant};
 
 const BATCH: usize = 256;

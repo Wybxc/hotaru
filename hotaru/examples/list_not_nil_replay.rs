@@ -1,4 +1,4 @@
-use hotaru_sys::{Name, Source, SourceKind, Term, TermKind, Theorem, Theory, Type};
+use hotaru::{Name, Source, SourceKind, Term, TermKind, Theorem, Theory, Type};
 use std::{env, fs, hint::black_box, time::Instant};
 
 const FIXTURE: &[u8] = include_bytes!("../../benchmarks/list_not_nil/list_not_nil.art");
@@ -6,7 +6,7 @@ const AXIOM_COUNT: usize = 31;
 
 type RunResult<T> = std::result::Result<T, String>;
 
-fn native<T>(result: hotaru_sys::Result<T>) -> RunResult<T> {
+fn native<T>(result: hotaru::Result<T>) -> RunResult<T> {
     result.map_err(|error| format!("{error:?}"))
 }
 
@@ -119,7 +119,7 @@ fn const_term(name: &str, ty: &Type) -> RunResult<Term> {
 
 fn describe(term: &Term) -> RunResult<String> {
     match term.kind() {
-        TermKind::Free => Ok(format!("{}", native(term.name())?)),
+        TermKind::Free => Ok(native(term.name())?.to_string()),
         TermKind::Bound => Ok(format!("#{}", native(term.bound_index())?)),
         TermKind::Constant => Ok(format!(
             "{}.{}",

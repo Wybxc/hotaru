@@ -1,4 +1,4 @@
-use hotaru_sys::{
+use hotaru::{
     Error, Foundation, KernelError as K, Name, Result, Source, SourceKind, Term, TermKind, Theorem,
     Theory, Type, TypeKind,
 };
