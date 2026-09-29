@@ -72,11 +72,15 @@ private theorem nodup_unionSources (a b : List Source)
     exact hy' (hxy ▸ hx)
 
 def Origin.join (a b : Origin) : Origin :=
-  let sources := unionSources a.sources b.sources
-  { sources := sources
-    history := sources
-    exact := by simp [Depends]
-    nodup := nodup_unionSources a.sources b.sources a.nodup b.nodup }
+  if a.sources = [] then b
+  else if b.sources = [] then a
+  else if a.sources = b.sources then a
+  else
+    let sources := unionSources a.sources b.sources
+    { sources := sources
+      history := sources
+      exact := by simp [Depends]
+      nodup := nodup_unionSources a.sources b.sources a.nodup b.nodup }
 
 theorem Origin.complete (o : Origin) : Depends o.history s → s ∈ o.sources :=
   (o.exact s).mpr
@@ -92,7 +96,12 @@ theorem Origin.kind_absent (o : Origin) (kind : Kind)
 
 @[simp] theorem Origin.mem_join (a b : Origin) :
     s ∈ (a.join b).sources ↔ s ∈ a.sources ∨ s ∈ b.sources := by
-  exact mem_unionSources a.sources b.sources s
+  unfold Origin.join
+  split_ifs with ha hb hab
+  · simp [ha]
+  · simp [hb]
+  · simp [hab]
+  · exact mem_unionSources a.sources b.sources s
 
 def Origin.collect (context : Origin) (premises : List Origin) : Origin :=
   premises.foldl Origin.join context
