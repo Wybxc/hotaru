@@ -38,6 +38,9 @@ def termPair (a b : RawTerm) : RawTerm × RawTerm := (a, b)
 @[export hotaru_lean_equation_pair]
 def equationPair (s : Execution.State) (a : RawTerm) (th : Thm s.theory) :
     RawTerm × Thm s.theory := (a, th)
+@[export hotaru_lean_checked_term_pair]
+def checkedTermPair (s : Execution.State) (a : RawTerm) (th : CheckedTerm s.theory) :
+    RawTerm × CheckedTerm s.theory := (a, th)
 
 @[export hotaru_lean_some_thm]
 def someThm (s : Execution.State) (th : Thm s.theory) : Option (Thm s.theory) := some th
@@ -128,6 +131,10 @@ def eqMp (s : Execution.State) (a b : Thm s.theory) : Result (Thm s.theory) :=
 @[export hotaru_lean_inst]
 def inst (s : Execution.State) (rs : Array (RawTerm × RawTerm)) (th : Thm s.theory) :
     Result (Thm s.theory) := result (Kernel.INST s.theory rs.toList th)
+@[export hotaru_lean_inst_checked]
+def instChecked (s : Execution.State) (rs : Array (RawTerm × CheckedTerm s.theory))
+    (th : Thm s.theory) : Result (Thm s.theory) :=
+  result (Kernel.INST_CHECKED s.theory rs.toList th)
 @[export hotaru_lean_inst_type]
 def instType (s : Execution.State) (rs : Array (String × HolType)) (th : Thm s.theory) :
     Result (Thm s.theory) := result (Kernel.INST_TYPE s.theory rs.toList th)
@@ -135,6 +142,11 @@ def instType (s : Execution.State) (rs : Array (String × HolType)) (th : Thm s.
 def instTyTerm (s : Execution.State) (typeRs : Array (String × HolType))
     (termRs : Array (RawTerm × RawTerm)) (th : Thm s.theory) : Result (Thm s.theory) :=
   result (Kernel.INST_TYPE_TERM s.theory typeRs.toList termRs.toList th)
+@[export hotaru_lean_inst_ty_term_checked]
+def instTyTermChecked (s : Execution.State) (typeRs : Array (String × HolType))
+    (termRs : Array (RawTerm × CheckedTerm s.theory)) (th : Thm s.theory) :
+    Result (Thm s.theory) :=
+  result (Kernel.INST_TYPE_TERM_CHECKED s.theory typeRs.toList termRs.toList th)
 @[export hotaru_lean_subst]
 def subst (s : Execution.State) (rs : Array (RawTerm × Thm s.theory)) (p : RawTerm)
     (th : Thm s.theory) : Result (Thm s.theory) :=

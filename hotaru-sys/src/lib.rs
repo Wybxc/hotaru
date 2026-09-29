@@ -17,7 +17,7 @@ mod runtime;
 
 use raw::*;
 use runtime::{Obj, Owned};
-use std::{rc::Rc, sync::OnceLock, thread::ThreadId};
+use std::{cell::RefCell, rc::Rc, sync::OnceLock, thread::ThreadId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum KernelError {
@@ -133,12 +133,14 @@ fn bindings(items: &[(&str, &Type)]) -> Owned {
     })
 }
 
-fn term_pairs(items: &[(&Term, &Term)]) -> Owned {
-    items.iter().fold(Owned::array(), |a, (x, y)| {
+fn checked_term_pairs(state: Obj, items: &[(&Term, &CheckedTerm)]) -> Owned {
+    let state = unsafe { Owned::from_raw(state) };
+    items.iter().fold(Owned::array(), |a, (target, value)| {
         a.push(unsafe {
-            Owned::from_raw(hotaru_lean_term_pair(
-                x.value.argument(),
-                y.value.argument(),
+            Owned::from_raw(hotaru_lean_checked_term_pair(
+                state.argument(),
+                target.value.argument(),
+                value.value.argument(),
             ))
         })
     })
@@ -249,6 +251,7 @@ pub struct Type {
 #[derive(Clone)]
 pub struct Term {
     value: Owned,
+    checked: Rc<RefCell<Option<CachedCheckedTerm>>>,
 }
 
 /// A term validated for one exact theory. Retaining it also retains the typed Lean term.
@@ -273,6 +276,12 @@ struct Context {
     value: Owned,
     edge: Option<Owned>,
     parent: Option<Rc<Context>>,
+}
+
+#[derive(Clone)]
+struct CachedCheckedTerm {
+    context: Rc<Context>,
+    value: CheckedTerm,
 }
 
 impl Drop for Context {
@@ -401,61 +410,60 @@ impl Type {
 }
 
 impl Term {
+    fn from_value(value: Owned) -> Self {
+        Self {
+            value,
+            checked: Rc::new(RefCell::new(None)),
+        }
+    }
+
     pub fn free(name: &str, ty: &Type) -> Result<Self> {
-        Ok(Self {
-            value: unsafe {
-                Owned::from_raw(hotaru_lean_term_free(
-                    Owned::string(name).into_raw(),
-                    ty.value.argument(),
-                ))
-            },
-        })
+        Ok(Self::from_value(unsafe {
+            Owned::from_raw(hotaru_lean_term_free(
+                Owned::string(name).into_raw(),
+                ty.value.argument(),
+            ))
+        }))
     }
 
     pub fn bound(index: u64) -> Result<Self> {
         ready()?;
 
-        Ok(Self {
-            value: unsafe { Owned::from_raw(hotaru_lean_term_bound(index)) },
-        })
+        Ok(Self::from_value(unsafe {
+            Owned::from_raw(hotaru_lean_term_bound(index))
+        }))
     }
 
     pub fn constant(name: &Name, inst: &[(&str, &Type)]) -> Result<Self> {
         ready()?;
 
-        Ok(Self {
-            value: unsafe {
-                Owned::from_raw(hotaru_lean_term_const(
-                    Owned::string(&name.scope).into_raw(),
-                    Owned::string(&name.name).into_raw(),
-                    bindings(inst).into_raw(),
-                ))
-            },
-        })
+        Ok(Self::from_value(unsafe {
+            Owned::from_raw(hotaru_lean_term_const(
+                Owned::string(&name.scope).into_raw(),
+                Owned::string(&name.name).into_raw(),
+                bindings(inst).into_raw(),
+            ))
+        }))
     }
 
     pub fn lambda(ty: &Type, body: &Term) -> Result<Self> {
-        Ok(Self {
-            value: unsafe {
-                Owned::from_raw(hotaru_lean_term_lam(
-                    ty.value.argument(),
-                    body.value.argument(),
-                ))
-            },
-        })
+        Ok(Self::from_value(unsafe {
+            Owned::from_raw(hotaru_lean_term_lam(
+                ty.value.argument(),
+                body.value.argument(),
+            ))
+        }))
     }
 
     /// Binds free occurrences of `name` with `ty` in `body`.
     pub fn abstract_term(name: &str, ty: &Type, body: &Term) -> Result<Self> {
-        Ok(Self {
-            value: unsafe {
-                Owned::from_raw(hotaru_lean_term_abstract(
-                    Owned::string(name).into_raw(),
-                    ty.value.argument(),
-                    body.value.argument(),
-                ))
-            },
-        })
+        Ok(Self::from_value(unsafe {
+            Owned::from_raw(hotaru_lean_term_abstract(
+                Owned::string(name).into_raw(),
+                ty.value.argument(),
+                body.value.argument(),
+            ))
+        }))
     }
 
     pub fn kind(&self) -> TermKind {
@@ -472,9 +480,9 @@ impl Term {
     }
 
     pub fn child(&self, index: u64) -> Result<Term> {
-        Ok(Term {
-            value: unsafe { checked(hotaru_lean_term_child(self.value.argument(), index))? },
-        })
+        Ok(Term::from_value(unsafe {
+            checked(hotaru_lean_term_child(self.value.argument(), index))?
+        }))
     }
 
     pub fn annotation(&self) -> Result<Type> {
@@ -505,30 +513,24 @@ impl Term {
     }
 
     pub fn app(a: &Term, b: &Term) -> Result<Self> {
-        Ok(Self {
-            value: unsafe {
-                Owned::from_raw(hotaru_lean_term_app(a.value.argument(), b.value.argument()))
-            },
-        })
+        Ok(Self::from_value(unsafe {
+            Owned::from_raw(hotaru_lean_term_app(a.value.argument(), b.value.argument()))
+        }))
     }
 
     pub fn equal(a: &Term, b: &Term) -> Result<Self> {
-        Ok(Self {
-            value: unsafe {
-                Owned::from_raw(hotaru_lean_term_equal(
-                    a.value.argument(),
-                    b.value.argument(),
-                ))
-            },
-        })
+        Ok(Self::from_value(unsafe {
+            Owned::from_raw(hotaru_lean_term_equal(
+                a.value.argument(),
+                b.value.argument(),
+            ))
+        }))
     }
 
     pub fn imp(a: &Term, b: &Term) -> Result<Self> {
-        Ok(Self {
-            value: unsafe {
-                Owned::from_raw(hotaru_lean_term_imp(a.value.argument(), b.value.argument()))
-            },
-        })
+        Ok(Self::from_value(unsafe {
+            Owned::from_raw(hotaru_lean_term_imp(a.value.argument(), b.value.argument()))
+        }))
     }
 }
 
@@ -634,13 +636,24 @@ impl Theory {
         })
     }
 
-    /// Checks a term once for repeated inference in this exact theory.
-    /// The caller controls how long the checked representation remains in memory.
+    /// Checks a term for repeated inference in this exact theory.
+    /// The term retains one checked representation for this theory and returns a clone to callers.
     pub fn check_term(&self, term: &Term) -> Result<CheckedTerm> {
-        Ok(CheckedTerm {
+        if let Some(cached) = term.checked.borrow().as_ref()
+            && Rc::ptr_eq(&self.context, &cached.context)
+        {
+            return Ok(cached.value.clone());
+        }
+
+        let checked = CheckedTerm {
             value: unsafe { checked(hotaru_lean_check_term(self.arg(), term.value.argument()))? },
             context: self.context.clone(),
-        })
+        };
+        term.checked.borrow_mut().replace(CachedCheckedTerm {
+            context: self.context.clone(),
+            value: checked.clone(),
+        });
+        Ok(checked)
     }
 
     pub fn foundation(&self, which: Foundation) -> Result<Theorem> {
@@ -807,11 +820,20 @@ impl Theory {
 
     pub fn inst(&self, replacements: &[(&Term, &Term)], th: &Theorem) -> Result<Theorem> {
         self.owns(th)?;
+        let checked_terms = replacements
+            .iter()
+            .map(|(_, value)| self.check_term(value))
+            .collect::<Result<Vec<_>>>()?;
+        let checked_pairs = replacements
+            .iter()
+            .zip(checked_terms.iter())
+            .map(|((target, _), value)| (*target, value))
+            .collect::<Vec<_>>();
 
         Ok(self.theorem(unsafe {
-            checked(hotaru_lean_inst(
+            checked(hotaru_lean_inst_checked(
                 self.arg(),
-                term_pairs(replacements).into_raw(),
+                checked_term_pairs(self.arg(), &checked_pairs).into_raw(),
                 th.value.argument(),
             ))?
         }))
@@ -838,12 +860,21 @@ impl Theory {
         th: &Theorem,
     ) -> Result<Theorem> {
         self.owns(th)?;
+        let checked_terms = term_replacements
+            .iter()
+            .map(|(_, value)| self.check_term(value))
+            .collect::<Result<Vec<_>>>()?;
+        let checked_pairs = term_replacements
+            .iter()
+            .zip(checked_terms.iter())
+            .map(|((target, _), value)| (*target, value))
+            .collect::<Vec<_>>();
 
         Ok(self.theorem(unsafe {
-            checked(hotaru_lean_inst_ty_term(
+            checked(hotaru_lean_inst_ty_term_checked(
                 self.arg(),
                 bindings(type_replacements).into_raw(),
-                term_pairs(term_replacements).into_raw(),
+                checked_term_pairs(self.arg(), &checked_pairs).into_raw(),
                 th.value.argument(),
             ))?
         }))
@@ -1007,14 +1038,12 @@ impl Theorem {
     }
 
     pub fn conclusion(&self) -> Term {
-        Term {
-            value: unsafe {
-                Owned::from_raw(hotaru_lean_conclusion(
-                    self.context.value.argument(),
-                    self.value.argument(),
-                ))
-            },
-        }
+        Term::from_value(unsafe {
+            Owned::from_raw(hotaru_lean_conclusion(
+                self.context.value.argument(),
+                self.value.argument(),
+            ))
+        })
     }
 
     pub fn assumption_count(&self) -> u64 {
@@ -1024,15 +1053,13 @@ impl Theorem {
     }
 
     pub fn assumption(&self, index: u64) -> Result<Term> {
-        Ok(Term {
-            value: unsafe {
-                checked(hotaru_lean_assumption(
-                    self.context.value.argument(),
-                    self.value.argument(),
-                    index,
-                ))?
-            },
-        })
+        Ok(Term::from_value(unsafe {
+            checked(hotaru_lean_assumption(
+                self.context.value.argument(),
+                self.value.argument(),
+                index,
+            ))?
+        }))
     }
 
     pub fn assumptions(&self) -> Result<Vec<Term>> {

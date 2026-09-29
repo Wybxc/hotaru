@@ -370,9 +370,25 @@ def checkReplacement (s : Signature) (target value : RawTerm) :
       else .error .invalidType
   | _ => .error .notVariable
 
+def checkReplacementChecked {t : Theory} (target : RawTerm) (value : CheckedTerm t) :
+    Except KernelError (Replacement t.signature) := do
+  match target with
+  | .fvar n a =>
+      if t.signature.validType a then
+        if h : value.type = a then return ⟨a, n, h ▸ value.term⟩
+        else .error .typeMismatch
+      else .error .invalidType
+  | _ => .error .notVariable
+
 def INST (t : Theory) (rs : List (RawTerm × RawTerm)) (th : Thm t) :
     Except KernelError (Thm t) := do
   let subst ← rs.mapM (fun (v, r) => checkReplacement t.signature v r)
+  return ⟨th.assumptions.map (Substitution.apply subst),
+    Substitution.apply subst th.conclusion, .inst subst th.derivation, t.origin.join th.origin⟩
+
+def INST_CHECKED (t : Theory) (rs : List (RawTerm × CheckedTerm t)) (th : Thm t) :
+    Except KernelError (Thm t) := do
+  let subst ← rs.mapM (fun (v, r) => checkReplacementChecked v r)
   return ⟨th.assumptions.map (Substitution.apply subst),
     Substitution.apply subst th.conclusion, .inst subst th.derivation, t.origin.join th.origin⟩
 
@@ -380,6 +396,20 @@ def INST_TYPE_TERM (t : Theory) (i : TypeSubst) (rs : List (RawTerm × RawTerm))
     Except KernelError (Thm t) := do
   if hi : i.Valid t.signature then
     let subst ← rs.mapM (fun (v, r) => checkReplacement t.signature v r)
+    let identity : Renaming ([] : List HolType) [] := fun {_} v => v
+    return ⟨
+      th.assumptions.map (fun p =>
+        p.instTypeFree (ctx := []) (dst := []) i hi (Substitution.lookup subst) identity),
+      th.conclusion.instTypeFree (ctx := []) (dst := []) i hi
+        (Substitution.lookup subst) identity,
+      .instTypeFree i hi subst th.derivation, t.origin.join th.origin⟩
+  else .error .invalidType
+
+def INST_TYPE_TERM_CHECKED (t : Theory) (i : TypeSubst)
+    (rs : List (RawTerm × CheckedTerm t)) (th : Thm t) :
+    Except KernelError (Thm t) := do
+  if hi : i.Valid t.signature then
+    let subst ← rs.mapM (fun (v, r) => checkReplacementChecked v r)
     let identity : Renaming ([] : List HolType) [] := fun {_} v => v
     return ⟨
       th.assumptions.map (fun p =>

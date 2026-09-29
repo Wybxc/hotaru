@@ -15,8 +15,8 @@ unsafe extern "C" {
     pub fn hotaru_lean_type_op(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
 
     pub fn hotaru_lean_binding(arg0: Obj, arg1: Obj) -> Obj;
-    pub fn hotaru_lean_term_pair(arg0: Obj, arg1: Obj) -> Obj;
     pub fn hotaru_lean_equation_pair(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
+    pub fn hotaru_lean_checked_term_pair(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
 
     pub fn hotaru_lean_term_free(arg0: Obj, arg1: Obj) -> Obj;
     pub fn hotaru_lean_term_bound(arg0: u64) -> Obj;
@@ -48,9 +48,9 @@ unsafe extern "C" {
     pub fn hotaru_lean_symm(arg0: Obj, arg1: Obj) -> Obj;
     pub fn hotaru_lean_trans(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
     pub fn hotaru_lean_eq_mp(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
-    pub fn hotaru_lean_inst(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
+    pub fn hotaru_lean_inst_checked(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
     pub fn hotaru_lean_inst_type(arg0: Obj, arg1: Obj, arg2: Obj) -> Obj;
-    pub fn hotaru_lean_inst_ty_term(arg0: Obj, arg1: Obj, arg2: Obj, arg3: Obj) -> Obj;
+    pub fn hotaru_lean_inst_ty_term_checked(arg0: Obj, arg1: Obj, arg2: Obj, arg3: Obj) -> Obj;
     pub fn hotaru_lean_subst(arg0: Obj, arg1: Obj, arg2: Obj, arg3: Obj) -> Obj;
 
     pub fn hotaru_lean_extension_state(arg0: Obj, arg1: Obj) -> Obj;
