@@ -108,6 +108,29 @@ theorem Term.logical_type {ctx : List HolType} (t : Term s ctx a) (u : Term s ct
     cases u <;> simp only [logical, reduceCtorEq, LogicalTerm.imp.injEq] at h
     rfl
 
+def Term.closedLogicalEq {a b : HolType} (t : Closed s a) (u : Closed s b) : Bool :=
+  if h : a = b then
+    let u' : Closed s a := h ▸ u
+    withPtrEq t u' (fun _ => t.logicalEq u') (fun htu => by
+      change t.logicalEq u' = true
+      rw [htu]
+      exact (u'.logicalEq_correct u').2 rfl)
+  else false
+
+theorem Term.closedLogicalEq_correct {a b : HolType} (t : Closed s a) (u : Closed s b) :
+    t.closedLogicalEq u = true ↔ t.logical = u.logical := by
+  unfold closedLogicalEq
+  split
+  · rename_i h
+    subst b
+    simp only [withPtrEq]
+    exact t.logicalEq_correct u
+  · rename_i h
+    constructor
+    · simp
+    · intro heq
+      exact False.elim (h (t.logical_type u heq))
+
 theorem Model.constant_heq (m : Model s) (n : QName) (a b : HolType)
     (ha : ∃ scheme i, s.constants.lookup n = some scheme ∧ scheme.inst i = a)
     (hb : ∃ scheme i, s.constants.lookup n = some scheme ∧ scheme.inst i = b)

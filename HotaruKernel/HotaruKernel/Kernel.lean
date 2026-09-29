@@ -305,26 +305,30 @@ def eqMpRaw (t : Theory) (te tp : Thm t) :
             exact tp.derivation
           have bridge : Derivable t tp.assumptions (.equal view.left view.right) :=
             .eqMp (.holEquality view.type view.valid view.left view.right) dt
-          if hp : antecedent.Equivalent (.equal view.left view.right) then
-            finish (.conversion hp.symm bridge)
+          if hp : Term.closedLogicalEq antecedent (.equal view.left view.right) = true then
+            have hp' : antecedent.Equivalent (.equal view.left view.right) :=
+              (Term.closedLogicalEq_correct antecedent (.equal view.left view.right)).mp hp
+            finish (.conversion hp'.symm bridge)
           else .error .termMismatch
       | none =>
-          if hp : antecedent.Equivalent tp.conclusion then
-            finish (.conversion hp.symm tp.derivation)
+          if hp : Term.closedLogicalEq antecedent tp.conclusion = true then
+            have hp' : antecedent.Equivalent tp.conclusion :=
+              (Term.closedLogicalEq_correct antecedent tp.conclusion).mp hp
+            finish (.conversion hp'.symm tp.derivation)
           else .error .termMismatch
     else
       match holEqualityView antecedent with
       | some view =>
           match he : tp.conclusion with
           | .equal l r =>
-              let leftOk := view.left.logicalEq l
-              let rightOk := view.right.logicalEq r
+              let leftOk := view.left.closedLogicalEq l
+              let rightOk := view.right.closedLogicalEq r
               if h : leftOk && rightOk then
                 have hparts := Bool.and_eq_true _ _
                 have hl : view.left.logical = l.logical :=
-                  (Term.logicalEq_correct view.left l).mp ((Iff.of_eq hparts).mp h).1
+                  (Term.closedLogicalEq_correct view.left l).mp ((Iff.of_eq hparts).mp h).1
                 have hr : view.right.logical = r.logical :=
-                  (Term.logicalEq_correct view.right r).mp ((Iff.of_eq hparts).mp h).2
+                  (Term.closedLogicalEq_correct view.right r).mp ((Iff.of_eq hparts).mp h).2
                 have result : Except KernelError (EqMpOutput t teOrigin tpOrigin) := by
                   have ht := view.left.logical_type l hl
                   cases ht
@@ -347,12 +351,16 @@ def eqMpRaw (t : Theory) (te tp : Thm t) :
                 result
               else .error .termMismatch
           | _ =>
-              if hp : antecedent.Equivalent tp.conclusion then
-                finish (.conversion hp.symm tp.derivation)
+              if hp : Term.closedLogicalEq antecedent tp.conclusion = true then
+                have hp' : antecedent.Equivalent tp.conclusion :=
+                  (Term.closedLogicalEq_correct antecedent tp.conclusion).mp hp
+                finish (.conversion hp'.symm tp.derivation)
               else .error .termMismatch
       | none =>
-          if hp : antecedent.Equivalent tp.conclusion then
-            finish (.conversion hp.symm tp.derivation)
+          if hp : Term.closedLogicalEq antecedent tp.conclusion = true then
+            have hp' : antecedent.Equivalent tp.conclusion :=
+              (Term.closedLogicalEq_correct antecedent tp.conclusion).mp hp
+            finish (.conversion hp'.symm tp.derivation)
           else .error .termMismatch
   else .error .notBoolean
 
