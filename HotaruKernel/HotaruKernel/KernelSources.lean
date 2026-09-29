@@ -113,11 +113,17 @@ theorem trans_origin (l r out : Thm t) (h : TRANS t l r = .ok out) :
   unfold TRANS at h
   source_check h
 
+set_option maxHeartbeats 1000000 in
+-- The fused equality checker has dependent branches whose source proof needs a larger budget.
 theorem eqMp_origin (l r out : Thm t) (h : EQ_MP t l r = .ok out) :
     out.origin = (t.origin.join l.origin).join r.origin := by
   unfold EQ_MP at h
-  unfold alignHolEqualityPremise at h
-  source_check h
+  cases hm : eqMpRaw t l r with
+  | error e => simp [Except.map, hm] at h
+  | ok value =>
+      simp only [Except.map, hm] at h
+      cases h
+      exact value.property
 
 theorem inst_origin (rs : List (RawTerm × RawTerm)) (th out : Thm t)
     (h : INST t rs th = .ok out) : out.origin = t.origin.join th.origin := by

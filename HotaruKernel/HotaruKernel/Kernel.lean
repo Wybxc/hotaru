@@ -127,16 +127,24 @@ def isNativeEquality {t : Theory} {a : HolType} (p : Term t.signature [] a) : Bo
   | .equal _ _ => true
   | _ => false
 
-def isHolEquality {t : Theory} {a : HolType} (p : Term t.signature [] a) : Bool :=
+private structure HolEqualityView {s : Signature} (p : Formula s) where
+  type : HolType
+  valid : s.validType type = true
+  left : Closed s type
+  right : Closed s type
+  equation : p = Term.holEquality type valid left right
+
+private def holEqualityView {s : Signature} (p : Formula s) : Option (HolEqualityView p) :=
   match p with
-  | .app (.app (.lam _ (.lam _ (.equal (.bvar (.succ .zero)) (.bvar .zero)))) _) _ => true
-  | _ => false
+  | .app (.app (.lam ha (.lam _ (.equal (.bvar (.succ .zero)) (.bvar .zero)))) l) r =>
+      .some ⟨_, ha, l, r, rfl⟩
+  | _ => .none
 
 def alignHolEqualityPremise (t : Theory) (antecedent : Term t.signature [] .bool) (th : Thm t) :
     Except KernelError (Thm t) :=
   if isNativeEquality antecedent then
     normalizeHolEquality t th
-  else if isHolEquality antecedent then
+  else if holEqualityView antecedent |>.isSome then
     expandHolEquality t th
   else
     .ok th
@@ -256,7 +264,25 @@ def TRANS (t : Theory) (tl tr : Thm t) : Except KernelError (Thm t) := do
     else .error .termMismatch
   else .error .typeMismatch
 
-def EQ_MP (t : Theory) (te tp : Thm t) : Except KernelError (Thm t) := do
+private abbrev EqMpOutput (t : Theory) (teOrigin tpOrigin : Provenance.Origin) :=
+  { out : Thm t // out.origin = (t.origin.join teOrigin).join tpOrigin }
+
+private def finishEqMp (t : Theory) (te tp : Thm t)
+    (teOrigin tpOrigin : Provenance.Origin)
+    (antecedent consequent : Formula t.signature)
+    (de : Derivable t te.assumptions (.equal antecedent consequent))
+    (dp : Derivable t tp.assumptions antecedent) : EqMpOutput t teOrigin tpOrigin :=
+  let assumptions := unionAssumptions te.assumptions tp.assumptions
+  let derivation : Derivable t assumptions consequent :=
+    .context (fun r => by
+      simpa only [assumptions, List.mem_append] using
+        mem_unionAssumptions (a := te.assumptions) (b := tp.assumptions) (x := r)) (.eqMp de dp)
+  let out : Thm t :=
+    ⟨assumptions, consequent, derivation, (t.origin.join teOrigin).join tpOrigin⟩
+  ⟨out, rfl⟩
+
+def eqMpRaw (t : Theory) (te tp : Thm t) :
+    Except KernelError (EqMpOutput t te.origin tp.origin) := do
   let teOrigin := te.origin
   let tpOrigin := tp.origin
   let te ← normalizeHolEquality t te
@@ -264,21 +290,74 @@ def EQ_MP (t : Theory) (te tp : Thm t) : Except KernelError (Thm t) := do
   if ht : a = .bool then
     let antecedent : Term t.signature [] .bool := ht ▸ p
     let consequent : Term t.signature [] .bool := ht ▸ q
-    let tp ← alignHolEqualityPremise t antecedent tp
-    if hp : antecedent.Equivalent tp.conclusion then
-      have de : Derivable t te.assumptions (.equal antecedent consequent) := by
-        subst a
-        rw [← he]; exact te.derivation
-      have dp : Derivable t tp.assumptions antecedent := .conversion hp.symm tp.derivation
-      let assumptions := unionAssumptions te.assumptions tp.assumptions
-      let derivation : Derivable t assumptions consequent :=
-        .context (fun r => by
-          simpa only [assumptions, List.mem_append] using
-            mem_unionAssumptions (a := te.assumptions) (b := tp.assumptions) (x := r)) (.eqMp de dp)
-      return ⟨assumptions, consequent, derivation,
-        (t.origin.join teOrigin).join tpOrigin⟩
-    else .error .termMismatch
-    else .error .notBoolean
+    have de : Derivable t te.assumptions (.equal antecedent consequent) := by
+      subst a
+      rw [← he]; exact te.derivation
+    let finish : Derivable t tp.assumptions antecedent →
+        Except KernelError (EqMpOutput t teOrigin tpOrigin) :=
+      fun dp => .ok (finishEqMp t te tp teOrigin tpOrigin antecedent consequent de dp)
+    if isNativeEquality antecedent then
+      match holEqualityView tp.conclusion with
+      | some view =>
+          have dt : Derivable t tp.assumptions
+              (Term.holEquality view.type view.valid view.left view.right) := by
+            rw [← view.equation]
+            exact tp.derivation
+          have bridge : Derivable t tp.assumptions (.equal view.left view.right) :=
+            .eqMp (.holEquality view.type view.valid view.left view.right) dt
+          if hp : antecedent.Equivalent (.equal view.left view.right) then
+            finish (.conversion hp.symm bridge)
+          else .error .termMismatch
+      | none =>
+          if hp : antecedent.Equivalent tp.conclusion then
+            finish (.conversion hp.symm tp.derivation)
+          else .error .termMismatch
+    else
+      match holEqualityView antecedent with
+      | some view =>
+          match he : tp.conclusion with
+          | .equal l r =>
+              let leftOk := view.left.logicalEq l
+              let rightOk := view.right.logicalEq r
+              if h : leftOk && rightOk then
+                have hparts := Bool.and_eq_true _ _
+                have hl : view.left.logical = l.logical :=
+                  (Term.logicalEq_correct view.left l).mp ((Iff.of_eq hparts).mp h).1
+                have hr : view.right.logical = r.logical :=
+                  (Term.logicalEq_correct view.right r).mp ((Iff.of_eq hparts).mp h).2
+                have result : Except KernelError (EqMpOutput t teOrigin tpOrigin) := by
+                  have ht := view.left.logical_type l hl
+                  cases ht
+                  have dt : Derivable t tp.assumptions (.equal l r) := by
+                    rw [← he]
+                    exact tp.derivation
+                  have bridge : Derivable t tp.assumptions
+                      (Term.holEquality view.type view.valid l r) :=
+                    .eqMp (.symm (.holEquality view.type view.valid l r)) dt
+                  have equivalent :
+                      (Term.holEquality view.type view.valid l r).Equivalent antecedent := by
+                    change (Term.holEquality view.type view.valid l r).logical = antecedent.logical
+                    calc
+                      (Term.holEquality view.type view.valid l r).logical =
+                          (Term.holEquality view.type view.valid view.left view.right).logical := by
+                        simp only [Term.holEquality, Term.logical]
+                        rw [hl, hr]
+                      _ = antecedent.logical := congrArg Term.logical view.equation.symm
+                  exact finish (.conversion equivalent bridge)
+                result
+              else .error .termMismatch
+          | _ =>
+              if hp : antecedent.Equivalent tp.conclusion then
+                finish (.conversion hp.symm tp.derivation)
+              else .error .termMismatch
+      | none =>
+          if hp : antecedent.Equivalent tp.conclusion then
+            finish (.conversion hp.symm tp.derivation)
+          else .error .termMismatch
+  else .error .notBoolean
+
+def EQ_MP (t : Theory) (te tp : Thm t) : Except KernelError (Thm t) :=
+  (eqMpRaw t te tp).map (fun result => result.val)
 
 def checkReplacement (s : Signature) (target value : RawTerm) :
     Except KernelError (Replacement s) := do
